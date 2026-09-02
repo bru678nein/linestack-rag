@@ -1,0 +1,122 @@
+name: CI
+
+# What runs here, and what deliberately does not.
+#
+# Runs on every push: lint, unit tests, migration apply against a real
+# Postgres with pgvector, structural validation of the ground-truth set.
+# All of it is deterministic and free.
+#
+# Does NOT run on every push: the evaluation harness. It costs API calls and
+# its LLM-judged metrics vary run to run, which would produce flaky builds and
+# train everyone to ignore red. It is a separate, manually triggered job
+# (docs/evaluation.md section 6).
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv pip install --system -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv pip install --system -e ".[dev]"
+      - name: Unit tests
+        run: pytest -m "not integration and not evaluation"
+
+  migrate:
+    # The migration is the only place A1 is enforced by the database
+    # (docs/architecture.md section 4.1). If it does not apply cleanly, that
+    # guarantee does not exist, so this runs on every push.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: linestack
+          POSTGRES_PASSWORD: linestack
+          POSTGRES_DB: linestack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U linestack"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      PGPASSWORD: linestack
+      DATABASE_URL_SYNC: postgresql://linestack:linestack@localhost:5432/linestack
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv pip install --system -e ".[dev]"
+      - name: Apply migrations
+        run: |
+          for f in migrations/*.sql; do
+            echo "applying $f"
+            psql "$DATABASE_URL_SYNC" -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Migrations are idempotent enough to re-apply on a clean database
+        run: psql "$DATABASE_URL_SYNC" -v ON_ERROR_STOP=1 -c "SELECT version FROM schema_migrations ORDER BY version"
+      - name: Schema and isolation tests
+        run: pytest -m integration
+
+  ground-truth:
+    # Structural validation only: required fields, resolvable prospect
+    # references, well-formed source URLs. No model calls, no cost. A malformed
+    # dataset should not reach the harness.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: uv pip install --system -e ".[dev]"
+      - name: Validate the ground-truth set
+        run: |
+          if [ -z "$(ls -A eval/ground_truth/*.yaml 2>/dev/null)" ]; then
+            echo "No ground-truth files yet; nothing to validate."
+            echo "See docs/ground-truth.md -- authoring is blocked on the"
+            echo "ingestion defects in docs/open-questions.md section 1."
+            exit 0
+          fi
+          python -m linestack.evaluation.dataset --validate eval/ground_truth
+
+  evaluation:
+    # Manual only, and currently a no-op. Enable the body once the harness and
+    # the ground-truth set exist. A3: every retrieval change records a
+    # before-and-after, and this is where that record is produced.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Not yet implemented
+        run: |
+          echo "The evaluation harness does not exist yet."
+          echo "Design: docs/evaluation.md. Dataset: docs/ground-truth.md."
+          echo "Blocked on the ingestion defects in docs/open-questions.md."

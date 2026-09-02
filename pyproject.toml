@@ -1,0 +1,123 @@
+[project]
+name = "linestack-rag"
+version = "0.1.0"
+description = "Retrieval system for lead qualification at Linestack"
+requires-python = ">=3.13"
+readme = "README.md"
+
+# Versions are pinned exactly, not ranged. A range means two developers can
+# resolve different trees and get different measurements, and this project's
+# whole method is comparing measurements across runs (A3).
+#
+# Verification status, as of 2026-09-02 (A4):
+#   VERIFIED  installed in .venv and exercised against live sites
+#   RESOLVED  the current release on PyPI on 2026-09-02, never installed here
+#
+# Everything marked RESOLVED is an unverified pin. Run `make install` and
+# update docs/open-questions.md section 3.1 with what actually resolved.
+dependencies = [
+    # ---- ingestion (the only code that exists) -------------------------
+    "httpx==0.28.1",              # VERIFIED  HTTP client; robots.txt is fetched
+                                  #           through it on purpose (ADR-0006)
+    "trafilatura==2.2.0",         # VERIFIED  readable-text extraction
+    "selectolax==0.4.11",         # VERIFIED  fast HTML parsing for structural
+                                  #           signal counting (ADR-0003)
+
+    # ---- storage --------------------------------------------------------
+    "sqlalchemy==2.0.52",         # RESOLVED  async ORM
+    "asyncpg==0.31.0",            # RESOLVED  async driver. Not in the brief's
+                                  #           list, but SQLAlchemy async needs
+                                  #           a driver and asyncpg is the one
+                                  #           with pgvector support.
+    "pgvector==0.5.0",            # RESOLVED  halfvec type adapters for
+                                  #           SQLAlchemy and asyncpg. Not in
+                                  #           the brief's list; without it the
+                                  #           embedding column round-trips as
+                                  #           text.
+
+    # ---- api ------------------------------------------------------------
+    "fastapi==0.141.1",           # RESOLVED
+    "uvicorn[standard]==0.52.4",  # RESOLVED  ASGI server. Not in the brief's
+                                  #           list; FastAPI does not ship one.
+    "pydantic==2.13.5",           # RESOLVED
+    "pydantic-settings==2.15.0",  # RESOLVED  environment-backed config. Not in
+                                  #           the brief's list; the alternative
+                                  #           is hand-rolled os.environ
+                                  #           parsing, which is where secrets
+                                  #           get mishandled.
+
+    # ---- embedding and generation ---------------------------------------
+    "openai==3.7.0",              # RESOLVED  text-embedding-3-small is an
+                                  #           OpenAI model, so the SDK is
+                                  #           implied by the settled stack.
+    "tiktoken==0.14.0",           # RESOLVED  token counting. Not in the
+                                  #           brief's list; chunk sizing is
+                                  #           specified in tokens (ADR-0005)
+                                  #           and counting them by estimate
+                                  #           would make the 800-1200 target
+                                  #           unmeasurable.
+
+    # ---- observability ---------------------------------------------------
+    "langfuse==4.15.1",           # RESOLVED  SDK version line differs from the
+                                  #           self-hosted server image tag in
+                                  #           docker-compose.yml; compatibility
+                                  #           is assumed, not tested.
+]
+
+# Deliberately absent: langchain, langchain-community, llama-index. The core
+# pipeline is written directly (ADR-0002). A LangGraph comparison, if it is
+# ever built, gets its own optional group and stays off the serving path.
+
+[project.optional-dependencies]
+# Installed only when the evaluation harness runs, because ragas pulls a large
+# transitive tree and nothing in ingestion or serving needs it.
+eval = [
+    "ragas==0.4.3",               # RESOLVED  pinned exactly because its API
+                                  #           changes across releases. The
+                                  #           pinned version has NOT been
+                                  #           imported; the metric names used
+                                  #           in docs/evaluation.md come from
+                                  #           the library's general shape, not
+                                  #           from this version's docs. Verify
+                                  #           before writing
+                                  #           linestack/evaluation/metrics.py.
+]
+
+dev = [
+    "pytest==9.1.1",              # RESOLVED
+    "pytest-asyncio==1.4.0",      # RESOLVED  async session and API tests
+    "ruff==0.16.5",               # RESOLVED  lint and format, one tool
+]
+
+[build-system]
+requires = ["hatchling==1.32.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# ingest.py is a top-level module rather than part of the package because it
+# predates the package (ADR-0010). It ships alongside it until it moves.
+packages = ["linestack"]
+include = ["ingest.py"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+# ingest.py is excluded, not exempted on merit. It is working, debugged code
+# that predates this configuration (ADR-0010), and reformatting it would
+# rewrite the one module in the repository with measured behaviour, for no
+# functional gain. The exclusion is removed when the module moves into
+# linestack/ingestion/ with tests around it.
+extend-exclude = ["ingest.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
+markers = [
+    "integration: requires a running Postgres (make up && make migrate)",
+    "evaluation: requires API credentials and the ground-truth set",
+]
