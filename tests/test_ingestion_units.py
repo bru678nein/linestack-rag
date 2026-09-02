@@ -305,3 +305,96 @@ def test_content_hash_is_stable_for_identical_text() -> None:
     assert a.content_hash == b.content_hash
     assert a.content_hash != c.content_hash
     assert a.content_hash
+
+
+# ---------------------------------------------------------------------------
+# Extraction escalation (Finding 8)
+# ---------------------------------------------------------------------------
+# Measured 2026-09-02: fly.io/about is 249,893 bytes holding the whole team
+# roster, and trafilatura with favor_precision=True extracts 29 words of it --
+# one word under the old threshold, so the page vanished and `has_team_page`
+# read False. The page is not client-rendered; recall mode returns 316 words.
+_PROSE = " ".join(f"word{i}" for i in range(60))
+
+
+def test_clean_prose_is_extracted_by_the_precision_pass() -> None:
+    html = f"<html><body><article><p>{_PROSE}</p></article></body></html>"
+    doc, reason = ingest.extract("https://ex.com/a", html)
+    assert reason == ingest.EXTRACT_OK
+    assert doc is not None and doc.extract_reason == ingest.EXTRACT_OK
+
+
+def test_a_page_with_no_text_is_reported_as_empty_not_as_a_bare_none() -> None:
+    doc, reason = ingest.extract("https://ex.com/a", "<html><body></body></html>")
+    assert doc is None
+    assert reason == ingest.EXTRACT_EMPTY
+
+
+def test_a_genuinely_thin_page_is_distinguished_from_an_empty_one() -> None:
+    html = "<html><body><main><p>Three words here.</p></main></body></html>"
+    doc, reason = ingest.extract("https://ex.com/a", html)
+    assert doc is None
+    assert reason == ingest.EXTRACT_THIN
+
+
+def test_dom_fallback_strips_chrome_and_keeps_content() -> None:
+    html = (
+        "<html><body>"
+        "<nav>Home About Careers Blog Contact</nav>"
+        "<script>var tracking = 1;</script>"
+        f"<main><p>{_PROSE}</p></main>"
+        "<footer>Copyright notice all rights reserved</footer>"
+        "</body></html>"
+    )
+    text = ingest.dom_text(html)
+    assert "word0" in text and "word59" in text
+    assert "tracking" not in text
+    assert "Copyright" not in text
+
+
+def test_every_extraction_reason_is_a_distinct_value() -> None:
+    reasons = [
+        ingest.EXTRACT_OK,
+        ingest.EXTRACT_RECALL,
+        ingest.EXTRACT_DOM,
+        ingest.EXTRACT_THIN,
+        ingest.EXTRACT_EMPTY,
+    ]
+    assert len(set(reasons)) == len(reasons), "reasons must not collapse (A5)"
+
+
+def test_a_link_heavy_roster_is_recovered_by_the_recall_pass() -> None:
+    """The fly.io/about shape: many short cards, each mostly links.
+
+    favor_precision=True reads this as navigation and discards it. Recall mode
+    keeps it. Without the escalation the page is dropped and `has_team_page`
+    reads False for a company whose team page plainly exists.
+    """
+    people = [
+        ("Ada Lovelace", "Developer"),
+        ("Grace Hopper", "Engineer"),
+        ("Alan Turing", "Researcher"),
+        ("Katherine Johnson", "Mathematician"),
+        ("Barbara Liskov", "Architect"),
+        ("Donald Knuth", "Author"),
+        ("Radia Perlman", "Network Engineer"),
+        ("Margaret Hamilton", "Lead"),
+        ("Tim Berners-Lee", "Web Lead"),
+        ("Linus Torvalds", "Kernel Developer"),
+    ]
+    cards = "".join(
+        f'<div class="card"><h3>{name}</h3><span>{role}</span>'
+        f'<a href="https://twitter.com/x">Twitter</a>'
+        f'<a href="https://github.com/x">GitHub</a></div>'
+        for name, role in people
+    )
+    html = f"<html><body><main><h1>Meet the team</h1>{cards}</main></body></html>"
+
+    doc, reason = ingest.extract("https://ex.com/about", html)
+
+    assert reason == ingest.EXTRACT_RECALL
+    assert doc is not None
+    assert "Ada Lovelace" in doc.text
+    assert doc.extract_reason == ingest.EXTRACT_RECALL, (
+        "the document must carry how it was extracted, not just that it was"
+    )

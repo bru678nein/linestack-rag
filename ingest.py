@@ -177,6 +177,10 @@ class Document:
     title: str
     text: str
     published: str | None = None
+    # Which extraction strategy produced `text`. A document recovered by the
+    # DOM fallback is real content but lower confidence than one trafilatura
+    # extracted cleanly, and downstream must be able to tell them apart (A4).
+    extract_reason: str = ""
     content_hash: str = ""
 
     def finalise(self) -> "Document":
@@ -192,12 +196,69 @@ def classify(url: str, title: str) -> str:
     return "website"
 
 
-def extract(url: str, html: str) -> Document | None:
-    text = trafilatura.extract(
+# Minimum words for a page to be worth keeping. Below this there is nothing
+# to embed, and a chunk of pure navigation is worse than no chunk at all.
+MIN_WORDS = 30
+
+# Outcome of extraction. "We got nothing" and "we got nothing the easy way"
+# are different facts and must not collapse into one None (A5).
+EXTRACT_OK = "ok"                    # precision pass produced usable text
+EXTRACT_RECALL = "recovered_recall"  # precision was thin, recall pass recovered
+EXTRACT_DOM = "recovered_dom"        # both trafilatura passes thin, DOM used
+EXTRACT_THIN = "thin"                # every strategy came in under MIN_WORDS
+EXTRACT_EMPTY = "empty"              # no strategy produced any text at all
+
+# Structural elements whose text is chrome, not content. Stripped before the
+# DOM fallback, which unlike trafilatura has no readability model of its own.
+DOM_NOISE_TAGS = ("script", "style", "noscript", "svg", "template",
+                  "iframe", "nav", "footer", "form")
+
+
+def _trafilatura_text(html: str, url: str, *, precision: bool) -> str:
+    return trafilatura.extract(
         html, include_comments=False, include_tables=True,
-        favor_precision=True, url=url)
-    if not text or len(text.split()) < 30:
-        return None
+        favor_precision=precision, url=url) or ""
+
+
+def dom_text(html: str) -> str:
+    """Last-resort extraction: main/article/body text with chrome removed."""
+    tree = HTMLParser(html)
+    for tag in DOM_NOISE_TAGS:
+        for node in tree.css(tag):
+            node.decompose()
+    root = tree.css_first("main") or tree.css_first("article") or tree.body
+    if root is None:
+        return ""
+    return re.sub(r"\s+", " ", root.text(separator=" ")).strip()
+
+
+def extract(url: str, html: str) -> tuple[Document | None, str]:
+    """
+    Extract readable text, escalating when precision mode throws it away.
+
+    favor_precision=True is the right default for a RAG corpus: it drops
+    navigation, boilerplate and related-post lists that would otherwise be
+    embedded as though they were content. But it also discards real content
+    on heavily templated pages.
+
+    Measured 2026-09-02: fly.io/about is 249,893 bytes containing the entire
+    team roster, and precision mode extracts 29 words of it -- one word below
+    the old threshold, so the page vanished and `has_team_page` read False.
+    The page is not client-rendered; the names are in the HTML. Recall mode
+    returns 316 words of it.
+
+    So try precision, then recall, then raw DOM text. Keep whichever clears
+    MIN_WORDS first, and record which one it was.
+    """
+    for reason, text in (
+        (EXTRACT_OK, _trafilatura_text(html, url, precision=True)),
+        (EXTRACT_RECALL, _trafilatura_text(html, url, precision=False)),
+        (EXTRACT_DOM, dom_text(html)),
+    ):
+        if len(text.split()) >= MIN_WORDS:
+            break
+    else:
+        return None, EXTRACT_THIN if text.strip() else EXTRACT_EMPTY
 
     tree = HTMLParser(html)
     title_node = tree.css_first("title")
@@ -213,7 +274,8 @@ def extract(url: str, html: str) -> Document | None:
             published = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
 
     return Document(url=url, kind=classify(url, title), title=title,
-                    text=text, published=published).finalise()
+                    text=text, published=published,
+                    extract_reason=reason).finalise(), reason
 
 
 def discover_links(html: str, base_url: str, domain: str) -> list[str]:
@@ -497,6 +559,9 @@ class Prospect:
     crawled_at: str = ""
     robots_reason: str = ""
     skipped_by_robots: list[str] = field(default_factory=list)
+    # Pages fetched successfully but yielding no usable text, with the reason.
+    # A dropped page is a measurement, not an absence (A5).
+    dropped_pages: list[dict] = field(default_factory=list)
 
 
 def ingest(base_url: str, company_name: str = "",
@@ -513,6 +578,7 @@ def ingest(base_url: str, company_name: str = "",
     docs: list[Document] = []
     raw: dict[str, str] = {}
     skipped: list[str] = []
+    dropped: list[dict] = []
 
     kind_counts: dict[str, int] = {}
 
@@ -536,12 +602,15 @@ def ingest(base_url: str, company_name: str = "",
             continue
 
         raw[url] = html
-        doc = extract(url, html)
+        doc, reason = extract(url, html)
         if doc:
             docs.append(doc)
             kind_counts[doc.kind] = kind_counts.get(doc.kind, 0) + 1
             if verbose:
-                print(f"  [{doc.kind:11}] {doc.url}")
+                mark = "" if reason == EXTRACT_OK else f" <{reason}>"
+                print(f"  [{doc.kind:11}] {doc.url}{mark}")
+        else:
+            dropped.append({"url": url, "reason": reason})
 
         for link in discover_links(html, url, domain):
             if link not in seen and len(seen) + len(queue) < max_pages * 3:
@@ -564,6 +633,7 @@ def ingest(base_url: str, company_name: str = "",
         crawled_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         robots_reason=client.robots_reason,
         skipped_by_robots=skipped,
+        dropped_pages=dropped,
     )
 
 
@@ -587,6 +657,10 @@ if __name__ == "__main__":
         print(f"  robots:    {prospect.robots_reason} "
               f"({len(prospect.skipped_by_robots)} paths skipped)")
         print(f"  {s.pages_crawled} pages, {s.total_words} words")
+        recovered = sum(1 for d in prospect.documents
+                        if d.extract_reason != EXTRACT_OK)
+        print(f"  extract:   {recovered} recovered, "
+              f"{len(prospect.dropped_pages)} dropped")
         print(f"  team page: {s.has_team_page} ({s.people_listed} people, "
               f"{s.technical_roles_named} technical mentions)")
         print(f"  careers:   {s.has_careers_page} ({s.open_roles_seen} roles, "

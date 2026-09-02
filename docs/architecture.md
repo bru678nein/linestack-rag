@@ -30,7 +30,9 @@ crawl loop (budget: 40 pages)
    ├── seed queue: 24 known paths (/, /about, /team, /careers, /blog, …)
    ├── pick next URL by queue_rank(kind) — quota-capped, priority-ordered
    ├── robots check → skipped_by_robots, or fetch
-   ├── trafilatura extract  → Document(url, kind, title, text, published, hash)
+   ├── extract: precision → recall → DOM fallback, first over MIN_WORDS wins
+   │      → Document(url, kind, title, text, published, extract_reason, hash)
+   │      → or dropped_pages[{url, reason}] — never a silent drop (ADR-0011)
    └── discover same-domain links that look like content
    │
    ▼
@@ -88,7 +90,28 @@ never *ingested*, and it is why ingestion coverage is reported per page kind.
 
 The rejected intermediate design and the reason it was reverted are in ADR-0007.
 
-### 1.3 Computed signals
+### 1.3 Extraction escalates rather than thresholding once
+
+`extract()` tries trafilatura with `favor_precision=True`, then with
+`favor_precision=False`, then a `selectolax` DOM fallback, and keeps the first
+result clearing `MIN_WORDS` (30). The winning pass is recorded on
+`Document.extract_reason`; pages clearing none are recorded on
+`Prospect.dropped_pages` with a reason rather than disappearing (A5).
+
+**[verified]** `fly.io/about` is 249,893 bytes containing the whole team
+roster, and precision mode extracted **29 words** of it — one under the
+threshold. The page was dropped and `has_team_page` read `False` for a company
+whose team page plainly exists. The page is not client-rendered: recall mode on
+the identical bytes returns **316 words**. The defect was our configuration.
+
+Precision stays first because recall costs chrome: on `fly.io/` precision
+returns 598 words, recall 635, the DOM fallback 761, and the difference is
+navigation and footer text. Escalation pays that only where the alternative is
+losing the page.
+
+See ADR-0011.
+
+### 1.4 Computed signals
 
 `compute_signals()` produces the `Signals` dataclass: `has_team_page`,
 `team_page_url`, `people_listed`, `technical_roles_named`, `has_careers_page`,
@@ -122,7 +145,7 @@ observed to fire on a real site.
 
 See ADR-0003.
 
-### 1.4 What ingestion does not do
+### 1.5 What ingestion does not do
 
 The crawl writes JSON and stops. Loading into Postgres is a separate step
 (ADR-0008), so a crawl can be re-run and diffed without touching the database.

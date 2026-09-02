@@ -26,3 +26,4 @@ Every record states four things:
 | [0008](0008-crawl-output-is-a-json-artifact.md) | Crawl output is a JSON artifact; the database load is separate | Accepted |
 | [0009](0009-retrieval-strategy.md) | Retrieval: naive vector search first, hybrid only on evidence | Accepted |
 | [0010](0010-keep-ingest-py-despite-build-order-violation.md) | Keep `ingest.py` despite the build-order violation | Accepted |
+| [0011](0011-extraction-escalates-with-reason-codes.md) | Extraction escalates through three passes and records which one won | Accepted |

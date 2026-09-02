@@ -183,26 +183,29 @@ looks like a retrieval regression.
 
 ---
 
-## 6. Blocked until the ingestion defects are fixed
+## 6. Still blocked — one of two blockers cleared
 
-Do not start authoring yet. From `docs/open-questions.md`:
+**Cleared 2026-09-02.** The silent 30-word drop is fixed (ADR-0011). Extraction
+now escalates precision → recall → DOM fallback, every outcome carries a reason
+code, and dropped pages are recorded rather than vanishing. `has_team_page` for
+fly.io is `True`, as it always should have been.
 
-> `extract()` discards any page yielding fewer than 30 words. **[verified]**
-> `fly.io/about` is a 249,893-byte page that trafilatura extracts to **29
-> words** — dropped by one word, indistinguishable in the output from a 404.
-> `fly.io/team` redirects to it. Consequently `has_team_page: False` for fly.io
-> is an **ingestion artifact, not a fact about the company**.
+**Still blocking.** Do not start authoring yet:
 
-Writing ground truth over a corpus with that defect bakes the defect in as
-truth. A later fix then reads as a regression against a set that was wrong,
-and the person investigating has no way to tell which of the two is broken.
+1. **Failure reason codes for DNS, timeout, non-200 and non-HTML outcomes**
+   (`docs/open-questions.md` §1.2, A5). A missing `source_url` in a ground-truth
+   pair still cannot be explained: a page that 404ed, a page that timed out and
+   a page on a dead host are all a bare `None`. Extraction and robots.txt now
+   have reason codes; fetching does not.
+2. **The shuffled-roster defect** (§1.1a). `fly.io/about` returns a different
+   content hash on every crawl, so any pair citing it as `source_url` cannot be
+   reproduced, and `/about` and `/team` both sit in the corpus as near
+   duplicates. Ground truth written against that is not stable.
 
-Fix, in this order, before the first pair is written:
+Writing ground truth over a corpus with those defects bakes them in as truth. A
+later fix then reads as a regression against a set that was wrong, and the
+person investigating has no way to tell which of the two is broken.
 
-1. The 30-word threshold — the drop must be recorded with a reason code, and
-   the threshold itself reconsidered.
-2. Failure reason codes for DNS, timeout, non-200, and non-HTML outcomes (A5),
-   so that a missing `source_url` can be explained.
-
-Signal ground truth (§1 `signals:`) may be recorded now, since it is hand-checked
-against the live site and is what will reveal the ingestion defects.
+Signal ground truth (§1 `signals:`) may be recorded now, since it is
+hand-checked against the live site and is what reveals the ingestion defects —
+as it did for §1.1b, where `people_listed` is 0 on a page that lists people.

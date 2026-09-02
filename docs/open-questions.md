@@ -13,43 +13,80 @@ Three sections:
 
 ## 1. Known defects
 
-All five are **[verified]** against live sites on 2026-09-01/02.
+All **[verified]** against live sites on 2026-09-01/02. §1.1 is fixed;
+§1.1a and §1.1b are new defects that fixing it exposed.
 
-### 1.1 Silent thin-extraction threshold — blocks the ground-truth set
+### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
-`extract()` in `ingest.py` discards any page yielding fewer than 30 words:
+`extract()` discarded any page yielding fewer than 30 words, and said nothing
+about it. `fly.io/about` (249,893 bytes, the entire team roster) extracted to
+**29 words** and vanished, so `has_team_page: False` for fly.io was an
+ingestion artifact rather than a fact about the company.
 
-```python
-if not text or len(text.split()) < 30:
-    return None
+**Correction to the earlier diagnosis.** This document previously guessed the
+content was "probably client-rendered". It is not. **[verified]** The roster is
+plain HTML; `favor_precision=True` was throwing it away. Same page, same bytes,
+recall mode: **316 words**. The defect was ours, not the site's.
+
+Fixed by escalating instead of thresholding once (ADR-0011): precision, then
+recall, then a `selectolax` DOM fallback, keeping the first result that clears
+`MIN_WORDS` and recording which pass produced it on `Document.extract_reason`.
+Every outcome now has a reason code, including the two failures
+(`thin` vs `empty`), and dropped pages are recorded on
+`Prospect.dropped_pages` rather than disappearing (A5).
+
+Measured before/after, both crawls run within minutes of each other on
+2026-09-02 so that live-site drift is controlled for:
+
+| | fly.io before | fly.io after | thoughtbot before | thoughtbot after |
+| --- | --- | --- | --- | --- |
+| `has_team_page` | `False` | **`True`** | `True` | `True` |
+| pages recovered | — | 2 | — | 1 |
+| pages dropped silently | unknown | **0, all recorded** | unknown | **0, all recorded** |
+
+The two recovered fly.io pages displaced two blog posts from the fixed 40-page
+budget (`/blog/kamal-in-production`, `/blog/youre-all-nuts`); on thoughtbot one
+playbook page displaced another. That is the crawl budget working as designed —
+recovered pages compete for slots like any other — and the fly.io trade, a team
+roster for two blog posts, is the right way round for the four questions.
+
+One consequence worth naming: `technical_roles_named` for thoughtbot moved
+33 → 23. That is **not** a signal defect. It is the displaced page
+(`/playbook/.../apprenticeship`) taking its role mentions with it, confirmed by
+diffing the document sets of the two same-moment crawls.
+
+### 1.1a fly.io serves a shuffled roster — breaks A7 idempotency [verified]
+
+Surfacing `fly.io/about` exposed a new defect. The team roster is emitted in a
+different order on every request. Three consecutive fetches, 316 words each,
+three different content hashes:
+
+```
+fetch 1: hash=42ef59e449083838 words=316
+fetch 2: hash=ec8e0c0528c27b35 words=316
+fetch 3: hash=7c10735938aac23d words=316
 ```
 
-**[verified]** `fly.io/about` is a 249,893-byte page that trafilatura extracts to
-**29 words**. It is dropped by one word, and the outcome is indistinguishable in
-the output from a 404. `fly.io/team` redirects to `/about`.
+Two consequences:
 
-Consequence: `has_team_page: False` for fly.io is an **ingestion artifact, not a
-fact about the company**. A signal that is supposed to be a deterministic
-computed fact (A2, ADR-0003) is silently wrong, and there is no reason code
-saying so (A5).
+1. **A7 is violated for this page.** Re-crawling produces a "changed" document
+   that has not changed. The earlier idempotency check passed only because this
+   page was being dropped entirely.
+2. **Near-duplicate dedup fails.** `/about` and `/team` are the same page
+   (`/team` redirects), but their hashes differ, so `content_hash` dedup keeps
+   both. Two budget slots and two near-identical chunk sets for one page.
 
-This must be resolved before any ground truth is written
-(`docs/ground-truth.md` §6). Writing reference answers over this corpus bakes the
-defect in as truth.
+Not fixed here — it needs a decision on whether `content_hash` should be
+order-insensitive, or whether shuffled content should be normalised before
+hashing, and both have consequences beyond this one page.
 
-Open, and not decided here:
+### 1.1b `people_listed` is 0 for a page that lists people [verified]
 
-- What the threshold should be, or whether it should be a threshold at all. A
-  249 KB page extracting to 29 words is more likely an extraction failure — the
-  content is probably client-rendered — than a genuinely empty page, and those
-  two deserve different reason codes.
-- Whether a fallback extractor should run when trafilatura returns nearly
-  nothing. `selectolax` is already a dependency, so a crude text extraction as a
-  second attempt costs no new dependency. **[assumed]** it would recover this
-  page. Untested.
-- Whether pages below the threshold should still be counted for signals even
-  when they are not chunked. A page that proves a team page *exists* is useful
-  for `has_team_page` even if there is nothing worth embedding on it.
+With `fly.io/about` now in the corpus, `has_team_page` is `True` but
+`people_listed` is `0`, on a page whose text plainly reads "Vincent Charlebois
+Developer … Michele Baroody Product Manager". `PERSON_SELECTORS` does not match
+fly.io's markup. Previously invisible because the page never survived
+extraction. Distinct from the thoughtbot overcount already fixed (§ADR-0003).
 
 ### 1.2 Failure classification is incomplete (violates A5)
 
