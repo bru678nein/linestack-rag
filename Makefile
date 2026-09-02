@@ -63,9 +63,21 @@ psql:  ## Open a psql shell on the application database
 # schema
 # --------------------------------------------------------------------------
 .PHONY: migrate
-migrate:  ## Apply migrations/*.sql in filename order
+migrate:  ## Apply migrations/*.sql not yet recorded in schema_migrations
+# Every file used to be re-run on every invocation. 0001 creates types without
+# IF NOT EXISTS, so the second `make migrate` on an existing database died with
+# `ERROR: type "document_kind" already exists` and never reached 0002. Verified
+# 2026-09-02. schema_migrations already recorded what had been applied; nothing
+# consulted it. Now it is consulted. The query is tolerated failing, because on
+# a fresh database the table does not exist yet.
 	@set -e; for f in migrations/*.sql; do \
-	  echo "applying $$f"; \
+	  v=$$(basename "$$f" .sql); \
+	  applied=$$($(COMPOSE) exec -T postgres psql -tAq \
+	    -U $${POSTGRES_USER:-linestack} -d $${POSTGRES_DB:-linestack} \
+	    -c "SELECT 1 FROM schema_migrations WHERE version = '$$v'" \
+	    2>/dev/null || true); \
+	  if [ "$$applied" = "1" ]; then echo "skipping $$v (already applied)"; continue; fi; \
+	  echo "applying $$v"; \
 	  $(COMPOSE) exec -T postgres psql -v ON_ERROR_STOP=1 \
 	    -U $${POSTGRES_USER:-linestack} -d $${POSTGRES_DB:-linestack} < "$$f"; \
 	done

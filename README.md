@@ -115,7 +115,7 @@ to a domain that does not exist — **[verified]** 26 attempts → 1, 0.25 s
 (ADR-0016), still exiting non-zero with a reason.
 
 **Ground truth is unblocked** (`docs/ground-truth.md` §6). Migration `0002` is
-written but has not been applied to a database.
+applied and exercised against `pgvector/pgvector:pg17` on 2026-09-02.
 
 The build order (A3) is: naive vector search end-to-end → ground truth →
 evaluation harness → *then* hybrid retrieval, reranking, chunking changes. That
@@ -125,6 +125,13 @@ documentation, schema, or harness existed. See ADR-0010.
 ## Setup
 
 Requirements: Docker, Python 3.13, [`uv`](https://docs.astral.sh/uv/).
+
+If port 5432 is already taken on your machine — another project's Postgres is
+the usual culprit — set `POSTGRES_PORT` in `.env` **and** point
+`DATABASE_URL_SYNC` at the same port. Compose will otherwise fail to publish
+the port, and `tests/test_isolation_contract.py`, which defaults to
+`localhost:5432`, will happily connect to whatever else is listening there.
+`make migrate` is unaffected: it runs `psql` inside the container.
 
 ```sh
 cp .env.example .env          # then fill in OPENAI_API_KEY

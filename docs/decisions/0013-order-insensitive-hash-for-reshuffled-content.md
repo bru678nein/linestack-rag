@@ -86,5 +86,9 @@ Caught by running the crawl, not by reading the diff.
   A page served at both `/handbook/x` and `/careers/x` would keep whichever
   kind won deduplication. No instance of this was observed; recorded in
   `docs/open-questions.md` rather than fixed speculatively.
-- Migration `0002` is **written but not applied** — no database was available
-  in this session. It must be applied before the columns are trusted.
+- Migration `0002` is **applied and exercised** — 2026-09-02, against
+  `pgvector/pgvector:pg17`. `stable_hash text` (nullable),
+  `duplicate_urls text[] NOT NULL DEFAULT '{}'`, and
+  `documents_prospect_stable_hash_idx` all verified present, with both columns
+  accepting real values in an insert that also re-exercised the A1 composite
+  foreign key.

@@ -3,8 +3,10 @@
 -- Adds the order-insensitive content hash that A7 idempotency actually needs,
 -- and the duplicate-URL aliases that deduplication must not throw away.
 --
--- STATUS: written, NOT yet applied to a database. 0001 was applied and
--- exercised; this file has not been. Apply it before trusting the columns.
+-- STATUS: applied and exercised 2026-09-02 against pgvector/pgvector:pg17.
+-- Verified: stable_hash text NULL, duplicate_urls text[] NOT NULL DEFAULT '{}',
+-- documents_prospect_stable_hash_idx present, both columns accepting real
+-- values in an insert that also re-exercised the A1 composite foreign key.
 --
 -- Background: some sites serve repeated records in a different order on every
 -- request. Verified 2026-09-02 -- fly.io/about returns its team roster
