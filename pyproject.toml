@@ -24,7 +24,12 @@ dependencies = [
                                   #           signal counting (ADR-0003)
 
     # ---- storage --------------------------------------------------------
-    "sqlalchemy==2.0.52",         # RESOLVED  async ORM
+    # The [asyncio] extra, not the bare package. It pulls greenlet, which the
+    # async engine needs at RUNTIME but not at import: `import sqlalchemy`
+    # succeeds without it and the first await raises "the greenlet library is
+    # required". VERIFIED 2026-09-02 by the halfvec round-trip test failing
+    # exactly that way. This is why "imported" is not "exercised".
+    "sqlalchemy[asyncio]==2.0.52",  # VERIFIED  async ORM
     "asyncpg==0.31.0",            # RESOLVED  async driver. Not in the brief's
                                   #           list, but SQLAlchemy async needs
                                   #           a driver and asyncpg is the one

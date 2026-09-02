@@ -331,6 +331,30 @@ with no error raised. The extension here is 0.8.6, well above the 0.7.0 halfvec
 needs, but the silent-skip shape is why the round-trip test is a requirement and
 not a formality.
 
+**[verified] 2026-09-02, by exercising rather than importing.** Two defects
+surfaced the moment the halfvec round-trip test ran, neither of which an import
+check could have found:
+
+- **`sqlalchemy==2.0.52` was the wrong pin.** The async engine needs `greenlet`
+  at runtime, and the bare package does not depend on it. `import sqlalchemy`
+  succeeds; the first `await` raises *"the greenlet library is required"*. The
+  pin is now `sqlalchemy[asyncio]==2.0.52`.
+- **Registering the asyncpg vector codec breaks the SQLAlchemy path.** The
+  obvious `connect`-event call to `pgvector.asyncpg.register_vector` produced
+  `invalid input for query argument $7: '[0.0,...]' (expected list or ndarray)`
+  on every insert. `pgvector.sqlalchemy.HALFVEC` already serialises to
+  pgvector's text form; the asyncpg codec then tries to binary-encode a string.
+  They are alternatives, not layers. `linestack/db.py` registers nothing and
+  carries the reasoning, because "register the codec" is what anyone would
+  reach for next.
+
+With both fixed, a 1536-dimension halfvec round-trips exactly and cosine
+ordering is correct against a live PostgreSQL 17 / pgvector 0.8.6.
+`sqlalchemy`, `pgvector`, `greenlet` and `asyncpg` are therefore **exercised**,
+not merely installed. Also measured: halfvec is float16, so a value like
+`0.1234567` returns rounded — far below what cosine ranking distinguishes, and
+now written down in `tests/test_db_integration.py` rather than discovered later.
+
 **Still [assumed]:**
 
 - **`ragas`** is in the optional `eval` extra and was NOT installed by

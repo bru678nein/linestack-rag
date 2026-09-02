@@ -133,6 +133,11 @@ the port, and `tests/test_isolation_contract.py`, which defaults to
 `localhost:5432`, will happily connect to whatever else is listening there.
 `make migrate` is unaffected: it runs `psql` inside the container.
 
+Note that `DATABASE_URL` (async, used by the application) and
+`DATABASE_URL_SYNC` (used by `psql` and the isolation test) are separate
+variables. Setting only one leaves the other pointing at the default port, and
+the tests that read it will connect somewhere else without saying so.
+
 ```sh
 cp .env.example .env          # then fill in OPENAI_API_KEY
 make install                  # create .venv and install pinned dependencies
