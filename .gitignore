@@ -26,3 +26,7 @@ ingest.py.bak*
 # Local tooling state. Auto-generated, machine-specific, contains absolute
 # paths to the operator's home directory.
 .atl/
+
+# The original project brief. Ignored so it is not republished; note that
+# removing it from the index does NOT remove it from history.
+SCAFFOLD_PROMPT.md
