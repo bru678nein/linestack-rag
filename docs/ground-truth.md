@@ -198,11 +198,11 @@ looks like a retrieval regression.
 Two known defects remain, and neither blocks authoring — both are visible in
 the output rather than silent:
 
-- **§1.1b** `people_listed` is 0 for fly.io on a page that lists people. Do not
-  write a ground-truth `people_listed` for fly.io until the selectors are
-  fixed; every other signal for that prospect is fine.
 - **§1.1c** `kind` is taken from the surviving URL after deduplication. Affects
   retrieval weighting, not the ingestion record.
+- **§1.1b (partial)** a roster listing people by first name only is still
+  counted as 0. Neither validation prospect is affected; fly.io
+  `people_listed` is hand-counted at **57** and matches.
 
 Signal ground truth (§1 `signals:`) is hand-checked against the live site and
 should be written first — it is what revealed §1.1b in the first place.

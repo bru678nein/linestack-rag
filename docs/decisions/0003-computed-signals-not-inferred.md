@@ -46,6 +46,12 @@ the following were found only by running against live sites, not by reasoning:
   by signature (tag plus the class tokens that matched) and taking the largest
   group, on the reasoning that a CMS emits one identical card per person. Now
   returns 54.
+- **[verified]** That fix was necessary and not sufficient. Class-based
+  counting reported **0** people on fly.io/about, a page listing **57** by
+  name, because the site styles its roster entirely with Tailwind utility
+  classes and the words `team`, `member`, `person` and `bio` appear nowhere in
+  its markup. Counting repeated sibling elements whose text reads like a person
+  entry returns 57 there and 54 on thoughtbot. See ADR-0014.
 - **[verified]** Counting pages classified `job_posting` reported **3 roles / 2
   technical** for fly.io against a ground truth of **2 / 1**, and **4 / 3** for
   thoughtbot against a ground truth of **0 / 0**. thoughtbot's four

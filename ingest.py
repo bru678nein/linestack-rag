@@ -438,11 +438,81 @@ PERSON_SELECTORS = ("[class*=team]", "[class*=member]", "[class*=staff]",
 _PERSON_KEYWORD_RE = re.compile(r"\[class\*=([a-z]+)\]")
 
 
+# A person entry names a person: two or more capitalised words, allowing
+# initials ("A. S.") and hyphenated or apostrophised surnames.
+PERSON_NAME_RE = re.compile(r"^[A-Z][\w.'\u2019-]*(?:\s+[A-Z][\w.'\u2019-]*)+")
+
+# A card holds a name and usually a role and a couple of links. Anything much
+# longer is a paragraph that happens to start with a name; anything shorter is
+# not a card. Bounds are inclusive, in words.
+PERSON_CARD_WORDS = (2, 20)
+
+# Fewer repetitions than this is not a roster, it is a coincidence.
+MIN_ROSTER = 3
+
+
 def count_people(html: str) -> int:
     """
-    Count person-cards on a team page. Structural, not semantic: repeated
-    elements whose class suggests a person, which is how nearly every CMS
-    renders a team grid.
+    Count person-cards on a team page.
+
+    Two independent strategies, because the class-based one alone is not
+    enough. **[verified]** 2026-09-02: fly.io/about lists 57 people and styles
+    them entirely with Tailwind utility classes -- `<figure>` inside a grid
+    `<div class="grid md:grid-cols-2 ...">`. There is no `team`, `member`,
+    `person` or `bio` anywhere in the markup, so the class-based count was 0
+    for a page listing 57 people by name.
+
+    `count_people_structurally` is tried first and the class-based count is the
+    fallback. Structural matched hand-counted truth exactly on both validation
+    sites -- fly.io 57, thoughtbot 54 -- while the class-based count got
+    thoughtbot right and fly.io wrong, so where the two disagree the structural
+    one has the better record. The class-based path is kept because it needs no
+    name-shaped text, and so still covers rosters this one cannot see.
+
+    **Known miss, [verified]:** buttondown.com/about lists its team by first
+    name only ("Anita", "Ben", "Justin"). Both strategies return 0. Requiring
+    only one capitalised word would not fix it, it would count every navigation
+    item ("Features", "Pricing"), so this is recorded rather than papered over.
+    """
+    return (count_people_structurally(html)
+            or count_people_by_class(html))
+
+
+def count_people_structurally(html: str) -> int:
+    """
+    Count repeated sibling elements whose text reads like a person entry.
+
+    A roster is a CMS emitting one identical element per person, so the signal
+    is repetition among siblings of the same tag, independent of what the site
+    calls its classes. Siblings are grouped from the parent, not by inspecting
+    each node's parent: selectolax does not give stable identity to a repeated
+    `.parent` access, so grouping on it silently produces no groups at all.
+    """
+    tree = HTMLParser(html)
+    for tag in DOM_NOISE_TAGS:
+        for node in tree.css(tag):
+            node.decompose()
+
+    lo, hi = PERSON_CARD_WORDS
+    best = 0
+    for parent in tree.css("*"):
+        by_tag: dict[str, int] = {}
+        for child in parent.iter():
+            text = re.sub(r"\s+", " ", child.text(separator=" ")).strip()
+            if lo <= len(text.split()) <= hi and PERSON_NAME_RE.match(text):
+                by_tag[child.tag] = by_tag.get(child.tag, 0) + 1
+        for count in by_tag.values():
+            if count >= MIN_ROSTER:
+                best = max(best, count)
+    return best
+
+
+def count_people_by_class(html: str) -> int:
+    """
+    Count person-cards by the class names a CMS gives them.
+
+    Structural, not semantic: repeated elements whose class suggests a person,
+    which is how nearly every CMS renders a team grid.
 
     Two traps, in opposite directions.
 

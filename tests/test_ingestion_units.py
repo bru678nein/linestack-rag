@@ -658,3 +658,90 @@ def test_a_team_page_is_found_under_its_own_url_without_any_alias() -> None:
         url="https://ex.com/team", kind="website", title="", text="Ada Developer"
     ).finalise()
     assert ingest.compute_signals([d], {}).has_team_page is True
+
+
+# ---------------------------------------------------------------------------
+# Structural person counting (Finding 1.1b)
+# ---------------------------------------------------------------------------
+# Measured 2026-09-02: fly.io/about lists 57 people styled entirely with
+# Tailwind utility classes -- <figure> inside a grid <div>, with no "team",
+# "member", "person" or "bio" anywhere in the markup. The class-based count
+# returned 0 for a page listing 57 people by name.
+
+_FLY_SHAPED = "".join(
+    f'<figure class="w-full grid grid-cols-auto-span items-center">'
+    f'<figcaption class="relative pl-6">'
+    f'<div class="flex items-center">{name}</div>'
+    f'<div class="text-sm">{role}</div>'
+    f'<a href="#">GitHub</a></figcaption></figure>'
+    for name, role in [
+        ("Thomas Ptacek", "Developer"),
+        ("Kurt Mackey", "CEO"),
+        ("Ben Johnson", "VP of Product"),
+        ("Chris McCord", "Developer"),
+        ("Annie Sexton", "JavaScript Specialist"),
+    ]
+)
+
+
+def test_people_are_counted_without_any_person_shaped_class_name() -> None:
+    html = f'<html><body><div class="grid gap-x-8">{_FLY_SHAPED}</div></body></html>'
+
+    assert ingest.count_people_by_class(html) == 0, (
+        "precondition: this markup has no person-ish class names"
+    )
+    assert ingest.count_people_structurally(html) == 5
+    assert ingest.count_people(html) == 5
+
+
+def test_the_class_based_count_still_runs_when_structure_finds_nothing() -> None:
+    """It needs no name-shaped text, so it covers rosters structure misses."""
+    cards = "".join(
+        '<div class="team-member"><div class="person-photo"></div>'
+        '<div class="person-info-name">someone lowercase</div></div>'
+        for _ in range(4)
+    )
+    html = f"<html><body><div class='team-grid'>{cards}</div></body></html>"
+
+    assert ingest.count_people_structurally(html) == 0
+    assert ingest.count_people(html) == 4
+
+
+def test_a_narrative_about_page_counts_nobody() -> None:
+    """basecamp.com/about is prose, not a roster. 0 is the correct answer."""
+    html = (
+        "<html><body><main>"
+        "<p>Born out of desperate necessity to stop embarrassing ourselves.</p>"
+        "<p>Hey there, I am Jason Fried, and this is the story of Basecamp.</p>"
+        "</main></body></html>"
+    )
+    assert ingest.count_people(html) == 0
+
+
+def test_navigation_is_not_mistaken_for_a_roster() -> None:
+    nav = "".join(
+        f"<li><a href='#'>{w}</a></li>"
+        for w in ("Features", "Pricing", "Resources", "Changelog")
+    )
+    html = f"<html><body><nav><ul>{nav}</ul></nav></body></html>"
+    assert ingest.count_people(html) == 0
+
+
+def test_two_repeated_names_are_a_coincidence_not_a_roster() -> None:
+    html = (
+        "<html><body><div>"
+        "<p>Ada Lovelace Developer</p><p>Grace Hopper Engineer</p>"
+        "</div></body></html>"
+    )
+    assert ingest.count_people_structurally(html) == 0
+
+
+def test_a_paragraph_starting_with_a_name_is_not_a_card() -> None:
+    """Bounded by word count, so prose beginning with a name does not count."""
+    prose = " ".join(f"word{i}" for i in range(40))
+    html = (
+        "<html><body><div>"
+        + "".join(f"<p>Ada Lovelace {prose}</p>" for _ in range(4))
+        + "</div></body></html>"
+    )
+    assert ingest.count_people_structurally(html) == 0

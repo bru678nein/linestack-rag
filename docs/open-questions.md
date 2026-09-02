@@ -13,8 +13,8 @@ Three sections:
 
 ## 1. Known defects
 
-All **[verified]** against live sites on 2026-09-01/02. §1.1, §1.1a and §1.2
-are fixed. §1.1b and §1.1c remain open and were both exposed by those fixes.
+All **[verified]** against live sites on 2026-09-01/02. §1.1, §1.1a, §1.1b and
+§1.2 are fixed. §1.1c remains open, and was exposed by fixing §1.1a.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -87,6 +87,48 @@ Two things this cost, both recorded honestly:
   did not. Fixed with `Document.duplicate_urls`: dedup keeps the dropped URLs
   as aliases and signals read them. Which URL wins dedup is an accident of
   crawl order and must never decide a signal.
+
+### 1.1c Deduplication still picks `kind` from the surviving URL alone
+
+`Document.kind` comes from the URL path. When two URLs serve one page, the
+surviving URL's kind wins, so a page reachable at both `/handbook/x` and
+`/careers/x` would carry whichever classification happened to be crawled
+first. `duplicate_urls` fixed this for `has_team_page`; `kind` has the same
+shape of bug and was not given the same treatment.
+
+**No instance observed.** Recorded rather than fixed speculatively, because
+`kind` drives retrieval source weighting (ADR-0004) and there is no measurement
+yet to say which URL *should* win. Related to §1.4.
+
+### 1.1b `people_listed` is 0 for a page that lists people — FIXED 2026-09-02
+
+`fly.io/about` lists **57** people by name and role, and `people_listed`
+reported **0**. fly.io styles its roster entirely with Tailwind utility classes
+— `<figure>` inside a grid `<div>` — and the words `team`, `member`, `staff`,
+`person`, `bio` and `profile` appear nowhere in the markup, so the class-based
+count had nothing to match.
+
+Fixed by ADR-0014: count repeated sibling elements whose text reads like a
+person entry (2–20 words starting with two or more capitalised words, at least
+three siblings), and fall back to the class-based count when that finds
+nothing. Class names are a site's private vocabulary; repetition is not.
+
+**[verified]** against hand-counted truth:
+
+| Page | Truth | Structural | By class |
+| --- | --- | --- | --- |
+| fly.io/about | 57 | **57** | 0 |
+| thoughtbot.com/team | 54 | **54** | 54 |
+| basecamp.com/about | 0 | 0 | 0 |
+
+basecamp is the negative control — `/about/team` redirects to a narrative page
+with no roster, so 0 is correct rather than a miss.
+
+**Still missed, [verified]:** `buttondown.com/about` lists its team by first
+name only ("Anita", "Ben", "Justin"). Both strategies return 0. Relaxing the
+pattern to a single capitalised word would count every navigation item
+("Features", "Pricing"), so this is recorded rather than papered over. A
+single-name roster is invisible to both strategies today.
 
 ### 1.1c Deduplication still picks `kind` from the surviving URL alone
 

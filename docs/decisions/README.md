@@ -29,3 +29,4 @@ Every record states four things:
 | [0011](0011-extraction-escalates-with-reason-codes.md) | Extraction escalates through three passes and records which one won | Accepted |
 | [0012](0012-page-outcome-vocabulary-shared-with-the-schema.md) | Every URL gets one classified outcome, in the schema's own vocabulary | Accepted |
 | [0013](0013-order-insensitive-hash-for-reshuffled-content.md) | Order-insensitive hash for reshuffled content; keep duplicate URLs | Accepted |
+| [0014](0014-count-people-structurally-first.md) | Count people by repeated structure first, class names second | Accepted |

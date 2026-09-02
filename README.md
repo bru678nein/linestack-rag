@@ -98,9 +98,10 @@ failure classification (ADR-0012) — every URL the crawl touches now carries an
 outcome in the schema's own vocabulary, and a crawl that finds nothing exits
 non-zero saying why instead of exiting 0; and content that is reshuffled on
 every request (ADR-0013), which was breaking A7 idempotency and defeating
-deduplication. Two defects remain open, both visible in the output rather than
-silent: a person-counting selector that returns 0 on a page listing people, and
-`kind` being taken from whichever URL survives deduplication.
+deduplication; and person counting that returned 0 on a page listing 57 people
+by name (ADR-0014), because class-name selectors cannot see a roster built from
+utility classes. One defect remains open and is visible in the output rather
+than silent: `kind` is taken from whichever URL survives deduplication.
 
 **Ground truth is unblocked** (`docs/ground-truth.md` §6). Migration `0002` is
 written but has not been applied to a database.

@@ -136,6 +136,12 @@ Two of them were wrong in ways that only running against live sites revealed:
   person-info-name, person-info-title} = 162 leaves; the count reported 162
   against a ground truth of 54. Fixed by grouping leaves by signature (tag plus
   the matched class tokens) and taking the largest group. Now returns 54.
+  That was necessary and not sufficient: the same code returned **0** for
+  fly.io/about, which lists **57** people styled entirely with Tailwind utility
+  classes and contains no person-shaped class name at all. Counting is now
+  structural first -- repeated sibling elements whose text reads like a person
+  entry -- with the class-based count as a fallback. **[verified]** 57 on
+  fly.io and 54 on thoughtbot, both matching hand-counted truth. ADR-0014.
 - **Role counting.** Counting pages classified `job_posting` counts the careers
   listing as a vacancy alongside the postings it links to, and counts policy
   pages as vacancies. **[verified]** fly.io reported 3 roles / 2 technical
