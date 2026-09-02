@@ -137,10 +137,16 @@ CREATE TABLE documents (
     published_at date,
     word_count   integer       NOT NULL DEFAULT 0 CHECK (word_count >= 0),
 
-    -- A7: re-running against the same prospect produces the same result or
-    -- fails loudly. An unchanged hash means the chunks and embeddings below
-    -- are still valid and are not recomputed. Verified: two consecutive
-    -- crawls of fly.io produced identical hashes for all 40 documents.
+    -- Exact hash of the extracted text. Any change changes it, a pure
+    -- reordering included -- which is why this is NOT the column to compare
+    -- for A7 idempotency. Use documents.stable_hash (migration 0002,
+    -- ADR-0013).
+    --
+    -- The claim previously recorded here -- "verified: two consecutive crawls
+    -- of fly.io produced identical hashes for all 40 documents" -- held only
+    -- because fly.io/about was being dropped by the extractor at the time.
+    -- Once it was ingested, four consecutive fetches produced four different
+    -- hashes for a page that had not changed.
     content_hash text          NOT NULL,
 
     fetched_at   timestamptz   NOT NULL,

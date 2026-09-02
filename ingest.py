@@ -241,11 +241,51 @@ class Document:
     # DOM fallback is real content but lower confidence than one trafilatura
     # extracted cleanly, and downstream must be able to tell them apart (A4).
     extract_reason: str = ""
+    # Exact hash of `text`. Any change at all changes it, reordering included.
     content_hash: str = ""
+    # Hash of the same text with word order removed. Two texts that are
+    # permutations of each other share it. See stable_digest and ADR-0013.
+    stable_hash: str = ""
+    # Other URLs that served this same content. Deduplication stores the text
+    # once, but the URLs are evidence in their own right -- `has_team_page`
+    # reads the path, not the text -- and discarding them turns a real team
+    # page into a missing one. See ADR-0013.
+    duplicate_urls: list[str] = field(default_factory=list)
 
     def finalise(self) -> "Document":
         self.content_hash = hashlib.sha256(self.text.encode()).hexdigest()[:16]
+        self.stable_hash = stable_digest(self.text)
         return self
+
+
+def stable_digest(text: str) -> str:
+    """
+    Hash `text` with word order removed, for "is this the same content?".
+
+    Some sites shuffle repeated records on every request. **[verified]**
+    2026-09-02: fly.io/about returns its team roster in a different order each
+    time -- four consecutive fetches gave 316 words, four different exact
+    hashes, and one identical word multiset. `/team` redirects to `/about` and
+    matches that multiset too.
+
+    An exact hash therefore reports a change on every crawl of a page that has
+    not changed, which breaks A7, and fails to dedup two URLs serving one page.
+
+    Word level is not a preference, it is what survives. The shuffle destroys
+    adjacency at every record boundary, so bigrams and shingles do not survive
+    it, and this page's extracted text has no line or block structure to sort
+    instead: trafilatura returns all 316 words on a single line, and the DOM
+    has one top-level block.
+
+    The cost is a real collision mode: same words, different arrangement.
+    "5 engineers and 2 designers" and "2 engineers and 5 designers" share a
+    multiset. **[verified]** across the 78 documents of the two validation
+    crawls this produced exactly one collision group, and it was the genuine
+    duplicate. That is evidence, not a proof; `content_hash` stays exact so the
+    reordering is always still visible.
+    """
+    return hashlib.sha256(
+        "\x00".join(sorted(text.split())).encode()).hexdigest()[:16]
 
 
 def classify(url: str, title: str) -> str:
@@ -389,6 +429,8 @@ class Signals:
     total_words: int = 0
 
 
+TEAM_PATH_RE = re.compile(r"/(team|equipo|people|leadership|nosotros)")
+
 PERSON_SELECTORS = ("[class*=team]", "[class*=member]", "[class*=staff]",
                     "[class*=person]", "[class*=bio]", "[class*=profile]")
 
@@ -504,13 +546,18 @@ def compute_signals(docs: list[Document], raw: dict[str, str]) -> Signals:
     s.total_words = sum(len(d.text.split()) for d in docs)
 
     for d in docs:
-        path = urllib.parse.urlparse(d.url).path.lower()
-
-        if re.search(r"/(team|equipo|people|leadership|nosotros)", path):
+        # Every URL that served this document, not just the surviving one. A
+        # page reachable at both /about and /team is a team page, and which of
+        # the two won deduplication is an accident of crawl order.
+        team_url = next(
+            (u for u in (d.url, *d.duplicate_urls)
+             if TEAM_PATH_RE.search(urllib.parse.urlparse(u).path.lower())),
+            None)
+        if team_url:
             if not s.has_team_page:
                 s.has_team_page = True
-                s.team_page_url = d.url
-                s.people_listed = count_people(raw.get(d.url, ""))
+                s.team_page_url = team_url
+                s.people_listed = count_people(raw.get(team_url, ""))
             s.technical_roles_named += len(TECH_ROLE_RE.findall(d.text))
 
         if d.kind == "blog_post":
@@ -697,12 +744,24 @@ def ingest(base_url: str, company_name: str = "",
                                                   PAGE_BUDGET_EXHAUSTED))
 
     # Drop near-duplicate pages (same content on /about and /about-us).
+    # Keyed on stable_hash, not content_hash: a site that shuffles repeated
+    # records serves one page under two URLs with two different exact hashes,
+    # and exact-hash dedup keeps both (ADR-0013).
     unique: dict[str, Document] = {}
     for d in docs:
-        first = unique.setdefault(d.content_hash, d)
+        first = unique.setdefault(d.stable_hash, d)
         if first is not d:
+            # Same words, different exact hash, proves the source reorders its
+            # content between requests. Worth recording rather than collapsing
+            # into a plain duplicate: it is the observable evidence of an A7
+            # violation on that URL, and the only place we can see it without
+            # fetching the same URL twice.
+            first.duplicate_urls.append(d.url)
+            how = ("reordered" if d.content_hash != first.content_hash
+                   else "identical")
             outcomes[d.url] = PageOutcome(d.url, PAGE_DUPLICATE_CONTENT,
-                                          http_status=200, detail=first.url)
+                                          http_status=200,
+                                          detail=f"{how} of {first.url}")
     docs = list(unique.values())
 
     return Prospect(

@@ -183,33 +183,26 @@ looks like a retrieval regression.
 
 ---
 
-## 6. One blocker left
+## 6. Unblocked — start writing
 
-**Cleared 2026-09-02, both of the original two.**
+**All three original blockers are cleared as of 2026-09-02.**
 
-- The silent 30-word extraction drop is fixed (ADR-0011). Extraction escalates
-  precision → recall → DOM fallback, and `has_team_page` for fly.io is `True`,
-  as it always should have been.
-- Fetch failures are classified (ADR-0012). Every URL the crawl touches carries
-  one outcome in the schema's own vocabulary, so a missing `source_url` can be
-  explained: `http_error` with its status, `non_html` with its content-type,
-  `dns_failure`, `timeout`, `transport_error`, `skipped_robots`,
-  `duplicate_content`, `budget_exhausted`. A crawl that finds nothing now exits
-  non-zero and says why.
+- Silent thin-extraction drop — fixed, ADR-0011.
+- Unclassified fetch failures — fixed, ADR-0012. A missing `source_url` can now
+  be explained by an outcome code rather than guessed at.
+- Reshuffled content breaking reproducibility — fixed, ADR-0013. `stable_hash`
+  is identical across fetches and across runs, so a pair citing `fly.io/about`
+  is reproducible. Cite `stable_hash`, not `content_hash`, when a pair needs to
+  pin a document version.
 
-**Still blocking.** One item, and it arrived while fixing the first:
+Two known defects remain, and neither blocks authoring — both are visible in
+the output rather than silent:
 
-**The shuffled-roster defect** (`docs/open-questions.md` §1.1a). `fly.io/about`
-returns a different `content_hash` on every crawl, so a pair citing it as
-`source_url` cannot be reproduced, and `/about` and `/team` both sit in the
-corpus as near-duplicates that dedup cannot see. Ground truth written against
-that is not stable, and instability in the reference set is worse than a known
-gap in it — a flapping pair teaches everyone to ignore failures.
+- **§1.1b** `people_listed` is 0 for fly.io on a page that lists people. Do not
+  write a ground-truth `people_listed` for fly.io until the selectors are
+  fixed; every other signal for that prospect is fine.
+- **§1.1c** `kind` is taken from the surviving URL after deduplication. Affects
+  retrieval weighting, not the ingestion record.
 
-That defect is confined to pages whose content is shuffled server-side. Pairs
-that do **not** cite such a page are safe to write now. For the two validation
-prospects that means everything except `fly.io/about` and `fly.io/team`.
-
-Signal ground truth (§1 `signals:`) may be recorded now, since it is
-hand-checked against the live site and is what reveals the ingestion defects —
-as it did for §1.1b, where `people_listed` is 0 on a page that lists people.
+Signal ground truth (§1 `signals:`) is hand-checked against the live site and
+should be written first — it is what revealed §1.1b in the first place.

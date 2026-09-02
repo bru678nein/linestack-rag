@@ -556,3 +556,105 @@ def test_an_empty_crawl_blames_the_transport_not_robots_txt() -> None:
 def test_an_empty_crawl_is_never_reported_without_a_reason() -> None:
     p = ingest.Prospect(company_name="x", domain="ex.com", base_url="https://ex.com")
     assert ingest.explain_empty_crawl(p).strip() != ""
+
+
+# ---------------------------------------------------------------------------
+# Reordered content (Finding 1.1a)
+# ---------------------------------------------------------------------------
+# Measured 2026-09-02: fly.io/about returns its team roster in a different order
+# on every request. Four consecutive fetches gave 316 words, four different
+# content hashes, and one identical word multiset. /team redirects to /about and
+# matches that multiset. Exact hashing therefore reported a change on every
+# crawl of a page that had not changed (A7) and kept both URLs as documents.
+
+
+def test_stable_hash_ignores_word_order_and_content_hash_does_not() -> None:
+    a = ingest.Document(
+        url="https://ex.com/about",
+        kind="website",
+        title="",
+        text="Ada Developer Grace Engineer",
+    ).finalise()
+    b = ingest.Document(
+        url="https://ex.com/team",
+        kind="website",
+        title="",
+        text="Grace Engineer Ada Developer",
+    ).finalise()
+
+    assert a.stable_hash == b.stable_hash
+    assert a.content_hash != b.content_hash, (
+        "content_hash must stay exact so the reordering is still visible"
+    )
+
+
+def test_stable_hash_still_changes_when_the_words_change() -> None:
+    a = ingest.Document(
+        url="https://ex.com/a",
+        kind="website",
+        title="",
+        text="Ada Developer Grace Engineer",
+    ).finalise()
+    b = ingest.Document(
+        url="https://ex.com/a",
+        kind="website",
+        title="",
+        text="Ada Developer Grace Designer",
+    ).finalise()
+
+    assert a.stable_hash != b.stable_hash
+
+
+def test_stable_hash_counts_repeats_so_it_is_a_multiset_not_a_set() -> None:
+    a = ingest.Document(
+        url="https://ex.com/a",
+        kind="website",
+        title="",
+        text="engineer engineer designer",
+    ).finalise()
+    b = ingest.Document(
+        url="https://ex.com/a",
+        kind="website",
+        title="",
+        text="engineer designer designer",
+    ).finalise()
+
+    assert a.stable_hash != b.stable_hash
+
+
+def test_deduplication_keeps_the_urls_of_the_pages_it_drops() -> None:
+    """Dropping a duplicate must not drop the evidence its URL carried.
+
+    `has_team_page` reads the URL path, not the text. Deduplicating
+    fly.io/team into fly.io/about turned a real team page into a missing one
+    until the dropped URL was kept as an alias -- caught by running the crawl,
+    where has_team_page flipped True -> False.
+    """
+    roster = "Ada Developer Grace Engineer " * 10
+    about = ingest.Document(
+        url="https://ex.com/about", kind="website", title="", text=roster
+    ).finalise()
+    team = ingest.Document(
+        url="https://ex.com/team", kind="website", title="", text=roster
+    ).finalise()
+
+    unique: dict[str, ingest.Document] = {}
+    for d in (about, team):
+        first = unique.setdefault(d.stable_hash, d)
+        if first is not d:
+            first.duplicate_urls.append(d.url)
+
+    assert len(unique) == 1
+    survivor = next(iter(unique.values()))
+    assert survivor.duplicate_urls == ["https://ex.com/team"]
+
+    signals = ingest.compute_signals([survivor], {})
+    assert signals.has_team_page is True
+    assert signals.team_page_url == "https://ex.com/team"
+
+
+def test_a_team_page_is_found_under_its_own_url_without_any_alias() -> None:
+    d = ingest.Document(
+        url="https://ex.com/team", kind="website", title="", text="Ada Developer"
+    ).finalise()
+    assert ingest.compute_signals([d], {}).has_team_page is True

@@ -77,8 +77,9 @@ Ingestion produces two separate outputs on purpose:
 **Verified.** The crawler (`ingest.py`) is implemented and has been run against
 live company domains. It honours robots.txt, rate limits per domain, classifies
 pages, allocates the page budget across page kinds, and computes the signals
-listed above. Two consecutive crawls of the same domain produced identical
-content hashes for all 40 documents (A7 holds for that case).
+listed above. Re-crawling produces identical `stable_hash` values, which is
+what A7 idempotency is checked on — **[verified]** across four fetches of a page
+whose content the site reshuffles on every request, and across separate runs.
 
 **Verified.** The schema applies. `migrations/0001_initial_schema.sql` was
 applied against `pgvector/pgvector:pg17` (PostgreSQL 17.11, pgvector 0.8.6) on
@@ -91,15 +92,18 @@ embedding, no retrieval, no generation, no API, no frontend, and no evaluation
 harness. The modules under `linestack/` are empty and carry only a docstring
 stating what each is responsible for.
 
-**Known defects.** All measured, all in `docs/open-questions.md`. Two are
-**fixed**: the silent 30-word extraction threshold (ADR-0011), and the missing
+**Known defects.** All measured, all in `docs/open-questions.md`. Three are
+**fixed**: the silent 30-word extraction threshold (ADR-0011); the missing
 failure classification (ADR-0012) — every URL the crawl touches now carries an
 outcome in the schema's own vocabulary, and a crawl that finds nothing exits
-non-zero saying why instead of exiting 0. Fixing the first exposed two new
-defects: a site that shuffles its team roster on every request, breaking A7
-idempotency, and a person-counting selector that returns 0 on a page listing
-people. Ground truth is down to one blocker, the shuffled roster
-(`docs/ground-truth.md` §6).
+non-zero saying why instead of exiting 0; and content that is reshuffled on
+every request (ADR-0013), which was breaking A7 idempotency and defeating
+deduplication. Two defects remain open, both visible in the output rather than
+silent: a person-counting selector that returns 0 on a page listing people, and
+`kind` being taken from whichever URL survives deduplication.
+
+**Ground truth is unblocked** (`docs/ground-truth.md` §6). Migration `0002` is
+written but has not been applied to a database.
 
 The build order (A3) is: naive vector search end-to-end → ground truth →
 evaluation harness → *then* hybrid retrieval, reranking, chunking changes. That

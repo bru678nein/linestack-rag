@@ -31,13 +31,16 @@ crawl loop (budget: 40 pages)
    ├── pick next URL by queue_rank(kind) — quota-capped, priority-ordered
    ├── robots check → outcome skipped_robots, or fetch
    ├── extract: precision → recall → DOM fallback, first over MIN_WORDS wins
-   │      → Document(url, kind, title, text, published, extract_reason, hash)
+   │      → Document(url, kind, title, text, published, extract_reason,
+   │                 content_hash, stable_hash, duplicate_urls)
    │      → or a thin_extraction outcome — never a silent drop (ADR-0011)
    └── discover same-domain links that look like content
    │
    ▼
-deduplicate by content_hash       /about and /about-us often serve one page
-   │                              (losers recorded as duplicate_content)
+deduplicate by stable_hash        order-insensitive: some sites reshuffle
+   │                              repeated records on every request (ADR-0013)
+   │                              losers recorded as duplicate_content, and
+   │                              their URLs kept as duplicate_urls evidence
    │
    ▼
 page_outcomes[]                   one classified row per URL touched, stored
@@ -224,12 +227,22 @@ become columns. The trigger to migrate: the first time a signal appears in a
 ### 3.2 documents
 
 `(id, prospect_id FK, source_url, kind, title, published_at, word_count,
-fetched_at, content_hash, UNIQUE (prospect_id, source_url))`
+fetched_at, content_hash, stable_hash, duplicate_urls,
+UNIQUE (prospect_id, source_url))`
 
-`content_hash` is what makes re-ingestion idempotent (A7): an unchanged hash
-means the document's chunks and embeddings are still valid and are not
-recomputed. **[verified]** two consecutive crawls of fly.io produced identical
-content hashes for all 40 documents.
+`stable_hash` — not `content_hash` — is what makes re-ingestion idempotent
+(A7): an unchanged `stable_hash` means the document's chunks and embeddings are
+still valid and are not recomputed.
+
+This corrects an earlier claim in this document, that two consecutive crawls of
+fly.io produced identical `content_hash` values for all 40 documents. That was
+**[verified]** and is now **wrong** — it held only because `fly.io/about` was
+being dropped by the extractor at the time. Once it was ingested, four
+consecutive fetches produced four different `content_hash` values for an
+unchanged page, because the site reshuffles its team roster on every request.
+**[verified]** the `stable_hash` for that page was identical across all four
+fetches and across separate runs. `content_hash` stays exact so that a
+reordering is visible rather than hidden. See ADR-0013.
 
 `kind` is an enum (`website`, `job_posting`, `blog_post`) rather than free text,
 because it is used for source weighting and a typo would silently change

@@ -13,8 +13,8 @@ Three sections:
 
 ## 1. Known defects
 
-All **[verified]** against live sites on 2026-09-01/02. §1.1 and §1.2 are
-fixed; §1.1a and §1.1b are new defects that fixing §1.1 exposed.
+All **[verified]** against live sites on 2026-09-01/02. §1.1, §1.1a and §1.2
+are fixed. §1.1b and §1.1c remain open and were both exposed by those fixes.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -55,30 +55,50 @@ One consequence worth naming: `technical_roles_named` for thoughtbot moved
 (`/playbook/.../apprenticeship`) taking its role mentions with it, confirmed by
 diffing the document sets of the two same-moment crawls.
 
-### 1.1a fly.io serves a shuffled roster — breaks A7 idempotency [verified]
+### 1.1a fly.io serves a shuffled roster — FIXED 2026-09-02
 
-Surfacing `fly.io/about` exposed a new defect. The team roster is emitted in a
-different order on every request. Three consecutive fetches, 316 words each,
-three different content hashes:
+`fly.io/about` emits its team roster in a different order on every request.
+Four consecutive fetches: 316 words each, **four different `content_hash`
+values, one identical word multiset**. `/team` redirects to `/about` and shares
+that multiset. Exact hashing therefore reported a change on every crawl of an
+unchanged page (breaking A7) and kept both URLs as separate documents.
 
-```
-fetch 1: hash=42ef59e449083838 words=316
-fetch 2: hash=ec8e0c0528c27b35 words=316
-fetch 3: hash=7c10735938aac23d words=316
-```
+Fixed by ADR-0013. `Document` gains `stable_hash` — sha256 over the text's
+words sorted — and deduplication keys on it. `content_hash` stays exact, so a
+reordering is still visible rather than hidden.
 
-Two consequences:
+**[verified]** after the fix, four fetches of `fly.io/about` gave four
+different `content_hash` values and one `stable_hash`, `6cc2140dbf3a5a13`,
+identical across separate crawl runs. fly.io drops 40 → 39 documents with
+`duplicate_content 1`, and the freed budget slot goes to another page.
 
-1. **A7 is violated for this page.** Re-crawling produces a "changed" document
-   that has not changed. The earlier idempotency check passed only because this
-   page was being dropped entirely.
-2. **Near-duplicate dedup fails.** `/about` and `/team` are the same page
-   (`/team` redirects), but their hashes differ, so `content_hash` dedup keeps
-   both. Two budget slots and two near-identical chunk sets for one page.
+Two things this cost, both recorded honestly:
 
-Not fixed here — it needs a decision on whether `content_hash` should be
-order-insensitive, or whether shuffled content should be normalised before
-hashing, and both have consequences beyond this one page.
+- **A collision mode.** "5 engineers and 2 designers" and "2 engineers and 5
+  designers" share a word multiset. **[verified]** across the 78 documents of
+  the two validation crawls, `stable_hash` produced exactly one collision
+  group and it was the genuine duplicate — zero false positives. Evidence, not
+  proof. Word level is what survives a shuffle: bigrams and shingles do not,
+  and this page has no lines or blocks to sort instead (trafilatura returns all
+  316 words on one line; the DOM has one top-level block).
+- **A regression, caught by running it.** Keying dedup on `stable_hash` flipped
+  fly.io's `has_team_page` `True` → `False`, because `has_team_page` matches
+  the URL *path* and `/team` was the URL dropped. The text survived, the proof
+  did not. Fixed with `Document.duplicate_urls`: dedup keeps the dropped URLs
+  as aliases and signals read them. Which URL wins dedup is an accident of
+  crawl order and must never decide a signal.
+
+### 1.1c Deduplication still picks `kind` from the surviving URL alone
+
+`Document.kind` comes from the URL path. When two URLs serve one page, the
+surviving URL's kind wins, so a page reachable at both `/handbook/x` and
+`/careers/x` would carry whichever classification happened to be crawled
+first. `duplicate_urls` fixed this for `has_team_page`; `kind` has the same
+shape of bug and was not given the same treatment.
+
+**No instance observed.** Recorded rather than fixed speculatively, because
+`kind` drives retrieval source weighting (ADR-0004) and there is no measurement
+yet to say which URL *should* win. Related to §1.4.
 
 ### 1.1b `people_listed` is 0 for a page that lists people [verified]
 
