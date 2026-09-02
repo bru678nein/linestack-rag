@@ -306,24 +306,45 @@ PostgreSQL 17.11 with pgvector extension **0.8.6** — above the 0.7.0 the
 `halfvec` column needs and above the 0.8.0 `hnsw.iterative_scan` would need if
 ADR-0001 is ever reversed.
 
-**[assumed]** everything else. The remaining pins were resolved from PyPI on
-2026-09-02 as the then-current release and **have never been installed**. In
-particular:
+**[verified] 2026-09-02.** `make install` resolved the full tree in one pass —
+every pin is satisfiable together, and each was the current release on PyPI at
+the time. Now installed and importable:
 
-- **`ragas`** is pinned because its API changes across releases, exactly as the
-  brief warns. The pinned version has not been imported, and the metric names
-  and call signatures used in `docs/evaluation.md` are from the library's
-  general shape, not from that version's documentation. **Verify before writing
+| Package | Version | First checked |
+| --- | --- | --- |
+| sqlalchemy | 2.0.52 | imports |
+| pgvector | 0.5.0 | `HALFVEC`, `register_vector` |
+| openai | 3.7.0 | `AsyncOpenAI` |
+| tiktoken | 0.14.0 | `encoding_for_model("text-embedding-3-small")` → `cl100k_base` |
+| pydantic | 2.13.5 | imports |
+| pydantic-settings | 2.15.0 | `BaseSettings` |
+| fastapi | 0.141.1 | imports |
+| langfuse | 4.15.1 | imports |
+
+**`pgvector.asyncpg.register_vector` does register `halfvec`** — read the
+function, do not grep the module; a first check that searched the module source
+for the string reported a false negative. It registers `vector` unconditionally,
+then `halfvec` and `sparsevec` **inside a `try/except ValueError` that swallows
+`unknown type:`**. So against a server whose pgvector extension is too old,
+halfvec registration is skipped *silently* and every vector round-trips wrong
+with no error raised. The extension here is 0.8.6, well above the 0.7.0 halfvec
+needs, but the silent-skip shape is why the round-trip test is a requirement and
+not a formality.
+
+**Still [assumed]:**
+
+- **`ragas`** is in the optional `eval` extra and was NOT installed by
+  `make install`. Its API changes across releases, exactly as the brief warns,
+  and the metric names in `docs/evaluation.md` come from the library's general
+  shape rather than that version's documentation. **Verify before writing
   `linestack/evaluation/metrics.py`.**
-- **`langfuse`** (Python SDK, 4.x) and the self-hosted Langfuse server images in
-  `docker-compose.yml` are separate version lines. They are believed compatible;
-  not tested.
-- **`pgvector`** the Python package and the pgvector *extension* in the Postgres
-  image are separate version lines. The extension is verified at 0.8.6 above;
-  the Python package, which supplies the SQLAlchemy and asyncpg type adapters,
-  is not installed. Without it the `halfvec` column round-trips as text.
-
-Run `make install` and update this section with what the full tree resolves to.
+- **`langfuse`** the Python SDK and the self-hosted server images in
+  `docker-compose.yml` are separate version lines. Imported, never connected.
+- Every package above is **imported, not exercised**. Importing `AsyncOpenAI` is
+  not evidence that `client.embeddings.create` has the signature this project
+  assumes, and importing `HALFVEC` is not evidence that a 1536-dimension vector
+  survives a round trip. Those become **[verified]** when the round-trip and
+  embedding tests pass, not before.
 
 ### 3.2 Text-search configuration: `simple` or `english`
 

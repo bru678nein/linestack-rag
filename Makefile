@@ -26,7 +26,11 @@ help:  ## List targets
 # --------------------------------------------------------------------------
 .PHONY: install
 install:  ## Create .venv and install pinned dependencies (dev included)
-	uv venv --python 3.13 $(VENV)
+# --allow-existing so a second `make install` updates the environment instead of
+# failing with "a virtual environment already exists". Verified 2026-09-02: the
+# first form made the target usable exactly once per machine, which is the same
+# defect `migrate` had.
+	uv venv --python 3.13 --allow-existing $(VENV)
 	uv pip install --python $(PY) -e ".[dev]"
 
 .PHONY: install-eval
