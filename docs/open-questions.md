@@ -13,8 +13,11 @@ Three sections:
 
 ## 1. Known defects
 
-All **[verified]** against live sites on 2026-09-01/02. §1.1, §1.1a, §1.1b and
-§1.2 are fixed. §1.1c remains open, and was exposed by fixing §1.1a.
+All **[verified]** against live sites on 2026-09-01/02. Every defect listed
+here is now fixed. What remains is recorded inline under the entry it belongs
+to: §1.1b cannot see a roster of single-word names, §1.1c does not yet know
+which URL should win a genuine `kind` disagreement, and §1.3 is unblocked but
+not implemented.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -88,18 +91,6 @@ Two things this cost, both recorded honestly:
   as aliases and signals read them. Which URL wins dedup is an accident of
   crawl order and must never decide a signal.
 
-### 1.1c Deduplication still picks `kind` from the surviving URL alone
-
-`Document.kind` comes from the URL path. When two URLs serve one page, the
-surviving URL's kind wins, so a page reachable at both `/handbook/x` and
-`/careers/x` would carry whichever classification happened to be crawled
-first. `duplicate_urls` fixed this for `has_team_page`; `kind` has the same
-shape of bug and was not given the same treatment.
-
-**No instance observed.** Recorded rather than fixed speculatively, because
-`kind` drives retrieval source weighting (ADR-0004) and there is no measurement
-yet to say which URL *should* win. Related to §1.4.
-
 ### 1.1b `people_listed` is 0 for a page that lists people — FIXED 2026-09-02
 
 `fly.io/about` lists **57** people by name and role, and `people_listed`
@@ -130,25 +121,27 @@ pattern to a single capitalised word would count every navigation item
 ("Features", "Pricing"), so this is recorded rather than papered over. A
 single-name roster is invisible to both strategies today.
 
-### 1.1c Deduplication still picks `kind` from the surviving URL alone
+### 1.1c Deduplication picked `kind` by crawl order — FIXED 2026-09-02
 
-`Document.kind` comes from the URL path. When two URLs serve one page, the
-surviving URL's kind wins, so a page reachable at both `/handbook/x` and
-`/careers/x` would carry whichever classification happened to be crawled
-first. `duplicate_urls` fixed this for `has_team_page`; `kind` has the same
-shape of bug and was not given the same treatment.
+`Document.kind` comes from the URL path, and deduplication kept whichever copy
+was crawled first, so both `source_url` and `kind` were an accident of queue
+order. A page reachable at `/handbook/x` and `/careers/x` carried whichever
+classification happened to be fetched first, and that could change between runs
+as a site's own links change.
 
-**No instance observed.** Recorded rather than fixed speculatively, because
-`kind` drives retrieval source weighting (ADR-0004) and there is no measurement
-yet to say which URL *should* win. Related to §1.4.
+Fixed by ADR-0015: `canonical_document()` picks `min(group, key=url)`, so the
+same page yields the same canonical URL on every crawl.
 
-### 1.1b `people_listed` is 0 for a page that lists people [verified]
+**This is a determinism fix, not a semantic one.** It deliberately does *not*
+prefer a more specific `kind`, because there is still no measurement saying
+which URL should win — and after the segment-matching fix, thoughtbot's two
+`career-paths` URLs both classify `website` and agree. Inventing a winner would
+be an assumption dressed as a rule. A genuine disagreement is now recorded on
+the `duplicate_content` outcome as `kind conflict X vs Y`, so the measurement
+will exist when one occurs (A3).
 
-With `fly.io/about` now in the corpus, `has_team_page` is `True` but
-`people_listed` is `0`, on a page whose text plainly reads "Vincent Charlebois
-Developer … Michele Baroody Product Manager". `PERSON_SELECTORS` does not match
-fly.io's markup. Previously invisible because the page never survived
-extraction. Distinct from the thoughtbot overcount already fixed (§ADR-0003).
+**Still open:** which URL should win a real `kind` disagreement. No instance
+observed on either validation site.
 
 ### 1.2 Failure classification — FIXED 2026-09-02
 
@@ -213,23 +206,37 @@ settled it. Both finished quickly because a refused connection and an NXDOMAIN
 both fail fast; the 8-minute case is the host that *hangs*, which is
 `timeout`, and remains **[computed]**, not measured.
 
-### 1.4 Page-kind misclassification carries into retrieval weighting
+### 1.4 Page-kind misclassification — FIXED 2026-09-02
 
-`KIND_PATTERNS` matches `careers?` anywhere in a path, so
-`/playbook/our-company/career-paths` is classified `job_posting`.
+`KIND_PATTERNS` matched `careers?` anywhere in a path, so
+`/playbook/our-company/career-paths` was classified `job_posting`, as was
+`/playbook/strategy/design-sprints/02-pre-product-validation/jobs-profile`.
 **[verified]** on thoughtbot.com.
 
-It no longer inflates role counts — `_count_open_roles` counts role identity,
-not pages (ADR-0003) — but `kind` is denormalised onto `chunks` specifically for
-source weighting (ADR-0004). A playbook article would carry job-posting weight
-into retrieval as soon as weighting ships. Fix before ADR-0009 step 2.
+It never inflated role counts — `_count_open_roles` counts role identity, not
+pages (ADR-0003) — but `kind` is denormalised onto `chunks` specifically for
+source weighting (ADR-0004), so a playbook article would have carried
+job-posting weight into retrieval as soon as weighting shipped.
 
-### 1.5 `classify(url, title)` ignores its `title` argument
+Fixed by ADR-0015: patterns are anchored and matched against whole path
+segments. **[verified]** thoughtbot `job_posting` documents 4 → 2, the two
+remaining being `/jobs` and `/jobs/compensation`, both genuinely under the
+careers section. fly.io unchanged at 3. Signals still match ground truth on
+both sites.
 
-Classification is path-only. The signature promises otherwise, which is the kind
-of thing that gets discovered when someone changes the title-handling and
-nothing happens. Either use the title — a `<title>` of "Careers at X" is a
-useful signal where the path is not — or drop the parameter.
+### 1.5 `classify(url, title)` ignored its `title` argument — FIXED 2026-09-02
+
+The parameter is **dropped**, not wired up, and the measurement is why.
+
+**[verified]** across both validation corpora, the only three pages whose
+`<title>` matches career/job/hiring words are thoughtbot playbook *articles* —
+"Career Paths | thoughtbot's Playbook", "Jobs Profile | ...", "Hiring | ...".
+Three false positives, zero true positives. Using the title would have
+reintroduced the very misclassification §1.4 just removed.
+
+The reasoning is in `classify()`'s docstring as well as here, so that nobody
+re-adds it on the reasonable-sounding theory that a title saying "Careers"
+means a careers page.
 
 ---
 

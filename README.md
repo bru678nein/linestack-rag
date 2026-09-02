@@ -100,8 +100,15 @@ non-zero saying why instead of exiting 0; and content that is reshuffled on
 every request (ADR-0013), which was breaking A7 idempotency and defeating
 deduplication; and person counting that returned 0 on a page listing 57 people
 by name (ADR-0014), because class-name selectors cannot see a roster built from
-utility classes. One defect remains open and is visible in the output rather
-than silent: `kind` is taken from whichever URL survives deduplication.
+utility classes; and page-kind misclassification (ADR-0015), where `careers?`
+matching inside a path segment labelled playbook articles as job postings and
+deduplication let crawl order decide a page's `kind`.
+
+**Every defect recorded in `docs/open-questions.md` §1 is now fixed.** Three
+limitations remain, all documented under the entry they belong to and all
+visible in the output rather than silent: a roster of single-word names is
+counted as 0, no rule yet decides a genuine `kind` disagreement between two
+URLs for one page, and there is still no fast-fail on an unreachable host.
 
 **Ground truth is unblocked** (`docs/ground-truth.md` §6). Migration `0002` is
 written but has not been applied to a database.

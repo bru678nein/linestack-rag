@@ -30,3 +30,4 @@ Every record states four things:
 | [0012](0012-page-outcome-vocabulary-shared-with-the-schema.md) | Every URL gets one classified outcome, in the schema's own vocabulary | Accepted |
 | [0013](0013-order-insensitive-hash-for-reshuffled-content.md) | Order-insensitive hash for reshuffled content; keep duplicate URLs | Accepted |
 | [0014](0014-count-people-structurally-first.md) | Count people by repeated structure first, class names second | Accepted |
+| [0015](0015-classify-by-path-segment-not-substring.md) | Classify by whole path segments; no title; deterministic canonical URL | Accepted |

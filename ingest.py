@@ -53,9 +53,16 @@ SEED_PATHS = [
     "/contact", "/contacto",
 ]
 
+# Page kind from the URL path. Matched against whole path SEGMENTS, never as a
+# substring: `careers?` anywhere in the path classified
+# /playbook/our-company/career-paths as a job posting, and
+# /playbook/strategy/design-sprints/02-pre-product-validation/jobs-profile too.
+# Both verified on thoughtbot.com. `kind` is denormalised onto chunks for
+# retrieval source weighting (ADR-0004), so a playbook article carrying
+# job-posting weight is a retrieval defect, not a cosmetic one.
 KIND_PATTERNS = [
-    ("job_posting", r"/(careers?|jobs?|vacan|empleos?|join-us|trabaja)"),
-    ("blog_post",   r"/(blog|news|insights|posts?|articles?|noticias|novedades)"),
+    ("job_posting", r"^(careers?|jobs?|vacantes?|empleos?|join-us|trabaja[\w-]*)$"),
+    ("blog_post",   r"^(blog|news|insights|posts?|articles?|noticias|novedades)$"),
 ]
 
 # Role words that indicate technical capacity when they appear on a team page.
@@ -288,10 +295,26 @@ def stable_digest(text: str) -> str:
         "\x00".join(sorted(text.split())).encode()).hexdigest()[:16]
 
 
-def classify(url: str, title: str) -> str:
-    path = urllib.parse.urlparse(url).path.lower()
+def classify(url: str) -> str:
+    """
+    Page kind from the URL path alone. The title is deliberately not used.
+
+    The signature used to take a `title` it ignored. Before dropping it, the
+    title was measured as a signal: **[verified]** 2026-09-02, across both
+    validation corpora the only three pages whose `<title>` matches
+    career/job/hiring words are thoughtbot playbook ARTICLES -- "Career Paths |
+    thoughtbot's Playbook", "Jobs Profile | ...", "Hiring | ...". Three false
+    positives, zero true positives. Using the title would have reintroduced
+    exactly the misclassification that segment matching just fixed.
+
+    So the parameter is gone rather than wired up, and this comment is the
+    reason, so nobody re-adds it on the reasonable-sounding theory that a
+    title saying "Careers" means a careers page.
+    """
+    segments = [seg for seg in
+                urllib.parse.urlparse(url).path.lower().split("/") if seg]
     for kind, pat in KIND_PATTERNS:
-        if re.search(pat, path):
+        if any(re.match(pat, seg) for seg in segments):
             return kind
     return "website"
 
@@ -373,7 +396,7 @@ def extract(url: str, html: str) -> tuple[Document | None, str]:
         if m:
             published = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
 
-    return Document(url=url, kind=classify(url, title), title=title,
+    return Document(url=url, kind=classify(url), title=title,
                     text=text, published=published,
                     extract_reason=reason).finalise(), reason
 
@@ -769,7 +792,7 @@ def ingest(base_url: str, company_name: str = "",
         # Serve the highest-value kind that is still under its cap, oldest URL
         # within it. Kind comes from the path, so this costs no extra request.
         idx = min(range(len(queue)),
-                  key=lambda i: (queue_rank(classify(queue[i], ""),
+                  key=lambda i: (queue_rank(classify(queue[i]),
                                             kind_counts, max_pages), i))
         url = normalise(queue.pop(idx))
         if url in seen:
@@ -817,22 +840,33 @@ def ingest(base_url: str, company_name: str = "",
     # Keyed on stable_hash, not content_hash: a site that shuffles repeated
     # records serves one page under two URLs with two different exact hashes,
     # and exact-hash dedup keeps both (ADR-0013).
-    unique: dict[str, Document] = {}
+    groups: dict[str, list[Document]] = {}
     for d in docs:
-        first = unique.setdefault(d.stable_hash, d)
-        if first is not d:
+        groups.setdefault(d.stable_hash, []).append(d)
+
+    docs = []
+    for group in groups.values():
+        canonical = canonical_document(group)
+        for other in group:
+            if other is canonical:
+                continue
+            canonical.duplicate_urls.append(other.url)
             # Same words, different exact hash, proves the source reorders its
             # content between requests. Worth recording rather than collapsing
             # into a plain duplicate: it is the observable evidence of an A7
             # violation on that URL, and the only place we can see it without
             # fetching the same URL twice.
-            first.duplicate_urls.append(d.url)
-            how = ("reordered" if d.content_hash != first.content_hash
+            how = ("reordered" if other.content_hash != canonical.content_hash
                    else "identical")
-            outcomes[d.url] = PageOutcome(d.url, PAGE_DUPLICATE_CONTENT,
-                                          http_status=200,
-                                          detail=f"{how} of {first.url}")
-    docs = list(unique.values())
+            # A disagreement about `kind` between two URLs for one page is the
+            # measurement §1.1c said it did not have. Record it; do not invent
+            # a winner. No instance has been observed on either validation site.
+            if other.kind != canonical.kind:
+                how += f", kind conflict {other.kind} vs {canonical.kind}"
+            outcomes[other.url] = PageOutcome(other.url, PAGE_DUPLICATE_CONTENT,
+                                              http_status=200,
+                                              detail=f"{how} of {canonical.url}")
+        docs.append(canonical)
 
     return Prospect(
         company_name=company_name or domain,
@@ -875,6 +909,27 @@ def explain_empty_crawl(p: Prospect) -> str:
         return "no URL was even attempted"
     dominant, count = max(tally.items(), key=lambda kv: kv[1])
     return f"{count} of {len(p.page_outcomes)} URLs ended in {dominant}"
+
+
+def canonical_document(group: list[Document]) -> Document:
+    """
+    Pick which of several URLs serving one page is the canonical one.
+
+    Deduplication used to keep whichever copy was crawled first, which made
+    both `source_url` and `kind` an accident of queue order: a page reachable
+    at /handbook/x and /careers/x carried whichever classification happened to
+    be fetched first, and could change between runs as a site's links change.
+
+    The order is now the URL itself, so the same page yields the same canonical
+    URL on every crawl. That is a determinism fix, NOT a semantic one -- it
+    makes no claim that the alphabetically first URL is the *right* one, and
+    deliberately does not prefer a more specific `kind`. There is no
+    measurement saying which URL should win: neither validation site has ever
+    produced two URLs for one page that disagree about `kind`. When one does,
+    the disagreement is recorded on the duplicate_content outcome, and that
+    measurement can decide the rule (A3).
+    """
+    return min(group, key=lambda d: d.url)
 
 
 def to_json(p: Prospect) -> str:

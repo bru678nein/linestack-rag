@@ -46,34 +46,43 @@ def test_normalise_collapses_equivalent_urls(raw: str, expected: str) -> None:
     ],
 )
 def test_classify_by_path(url: str, expected: str) -> None:
-    assert ingest.classify(url, "") == expected
+    assert ingest.classify(url) == expected
 
 
-def test_classify_misreads_career_paths_as_a_job_posting() -> None:
-    """KNOWN DEFECT, verified on thoughtbot.com.
-
-    KIND_PATTERNS matches `careers?` anywhere in a path, so a playbook article
-    is classified as a job posting. It no longer inflates role counts, but
-    `kind` is denormalised onto `chunks` for source weighting (ADR-0004), so
-    this page would carry job-posting weight into retrieval.
-
-    This test asserts the current, wrong behaviour on purpose. When the defect
-    is fixed, this test fails, and that is the signal to update it and
-    docs/open-questions.md section 1.4 together.
-    """
-    assert ingest.classify("https://ex.com/playbook/career-paths", "") == "job_posting"
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason="KNOWN DEFECT: classify() ignores its title argument; classification "
-    "is path-only. docs/open-questions.md section 1.5.",
+@pytest.mark.parametrize(
+    "url",
+    [
+        # Verified on thoughtbot.com: both were classified job_posting because
+        # `careers?` and `jobs?` matched inside a path segment.
+        "https://thoughtbot.com/playbook/our-company/career-paths",
+        "https://thoughtbot.com/playbook/strategy/design-sprints/jobs-profile",
+        # Same shape, the other direction.
+        "https://ex.com/newsletter-archive",
+        "https://ex.com/handbook/blogging-policy",
+    ],
 )
-def test_classify_should_use_the_title() -> None:
-    assert (
-        ingest.classify("https://ex.com/opportunities", "Careers at Ex")
-        == "job_posting"
-    )
+def test_a_word_inside_a_path_segment_does_not_classify_the_page(url: str) -> None:
+    """Patterns match whole path segments, never substrings.
+
+    `kind` is denormalised onto `chunks` for retrieval source weighting
+    (ADR-0004), so a playbook article classified job_posting would carry
+    job-posting weight into retrieval. See ADR-0015.
+    """
+    assert ingest.classify(url) == "website"
+
+
+def test_classify_does_not_take_a_title() -> None:
+    """The title was measured as a signal and rejected, not overlooked.
+
+    **[verified]** across both validation corpora the only three pages whose
+    <title> matches career/job/hiring words are thoughtbot playbook ARTICLES
+    ("Career Paths | ...", "Jobs Profile | ...", "Hiring | ..."). Three false
+    positives, zero true positives: using the title would have reintroduced
+    the very misclassification segment matching fixes. See ADR-0015.
+    """
+    import inspect
+
+    assert list(inspect.signature(ingest.classify).parameters) == ["url"]
 
 
 # ---------------------------------------------------------------------------
@@ -745,3 +754,46 @@ def test_a_paragraph_starting_with_a_name_is_not_a_card() -> None:
         + "</div></body></html>"
     )
     assert ingest.count_people_structurally(html) == 0
+
+
+# ---------------------------------------------------------------------------
+# Canonical URL choice (Finding 1.1c)
+# ---------------------------------------------------------------------------
+
+
+def _doc(url: str, text: str = "shared roster text here") -> ingest.Document:
+    return ingest.Document(
+        url=url, kind=ingest.classify(url), title="", text=text
+    ).finalise()
+
+
+def test_the_canonical_url_does_not_depend_on_crawl_order() -> None:
+    """Which URL survives deduplication must not be an accident of the queue.
+
+    Before this, `source_url` and `kind` were both decided by whichever copy
+    happened to be fetched first, so a site reordering its own links could
+    change a document's classification between runs.
+    """
+    a, b, c = (
+        _doc("https://ex.com/careers/x"),
+        _doc("https://ex.com/about"),
+        _doc("https://ex.com/handbook/x"),
+    )
+
+    assert ingest.canonical_document([a, b, c]).url == "https://ex.com/about"
+    assert ingest.canonical_document([c, a, b]).url == "https://ex.com/about"
+    assert ingest.canonical_document([b, c, a]).url == "https://ex.com/about"
+
+
+def test_the_canonical_choice_does_not_prefer_a_more_specific_kind() -> None:
+    """Deliberate. No measurement says a specific kind should win.
+
+    Neither validation site has produced two URLs for one page that disagree
+    about `kind`. Inventing a winner would be an assumption dressed as a rule;
+    the disagreement is recorded on the duplicate_content outcome instead.
+    """
+    specific = _doc("https://ex.com/careers/x")
+    generic = _doc("https://ex.com/about")
+
+    assert specific.kind == "job_posting" and generic.kind == "website"
+    assert ingest.canonical_document([specific, generic]) is generic

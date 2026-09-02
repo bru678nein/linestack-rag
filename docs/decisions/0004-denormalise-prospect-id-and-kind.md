@@ -67,8 +67,14 @@ argument is secondary and currently unverified.
 ## Known risk
 
 `kind` is denormalised onto `chunks` for source weighting, and page
-classification is currently path-only and imprecise: `KIND_PATTERNS` matches
-`careers?` anywhere in a path, so `/playbook/our-company/career-paths` is
-classified `job_posting`. **[verified]** on thoughtbot.com. It no longer inflates
-role counts (ADR-0003), but it would carry job-posting weight into retrieval for
-a page that is a playbook article. Tracked in `docs/open-questions.md`.
+classification is path-only. It was also imprecise: `KIND_PATTERNS` matched
+`careers?` anywhere in a path, so `/playbook/our-company/career-paths` was
+classified `job_posting` and would have carried job-posting weight into
+retrieval for a playbook article. **[verified]** on thoughtbot.com.
+
+**Fixed 2026-09-02** by ADR-0015 — patterns are anchored to whole path
+segments, and thoughtbot `job_posting` documents went 4 → 2. The residual risk
+is smaller but real: classification is still path-only, so a job posting served
+from a path that names neither jobs nor careers is classified `website`. The
+page title was measured as an additional signal and rejected, three false
+positives to zero true positives; see ADR-0015.

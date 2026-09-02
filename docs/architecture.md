@@ -29,6 +29,7 @@ PoliteClient                      one client per prospect
 crawl loop (budget: 40 pages)
    ├── seed queue: 24 known paths (/, /about, /team, /careers, /blog, …)
    ├── pick next URL by queue_rank(kind) — quota-capped, priority-ordered
+   │      kind comes from whole path SEGMENTS, never substrings (ADR-0015)
    ├── robots check → outcome skipped_robots, or fetch
    ├── extract: precision → recall → DOM fallback, first over MIN_WORDS wins
    │      → Document(url, kind, title, text, published, extract_reason,
@@ -37,7 +38,9 @@ crawl loop (budget: 40 pages)
    └── discover same-domain links that look like content
    │
    ▼
-deduplicate by stable_hash        order-insensitive: some sites reshuffle
+deduplicate by stable_hash        canonical URL = min(urls), so kind and
+   │                              source_url do not depend on crawl order
+   │                              order-insensitive: some sites reshuffle
    │                              repeated records on every request (ADR-0013)
    │                              losers recorded as duplicate_content, and
    │                              their URLs kept as duplicate_urls evidence
