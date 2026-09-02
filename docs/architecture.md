@@ -29,14 +29,20 @@ PoliteClient                      one client per prospect
 crawl loop (budget: 40 pages)
    ├── seed queue: 24 known paths (/, /about, /team, /careers, /blog, …)
    ├── pick next URL by queue_rank(kind) — quota-capped, priority-ordered
-   ├── robots check → skipped_by_robots, or fetch
+   ├── robots check → outcome skipped_robots, or fetch
    ├── extract: precision → recall → DOM fallback, first over MIN_WORDS wins
    │      → Document(url, kind, title, text, published, extract_reason, hash)
-   │      → or dropped_pages[{url, reason}] — never a silent drop (ADR-0011)
+   │      → or a thin_extraction outcome — never a silent drop (ADR-0011)
    └── discover same-domain links that look like content
    │
    ▼
 deduplicate by content_hash       /about and /about-us often serve one page
+   │                              (losers recorded as duplicate_content)
+   │
+   ▼
+page_outcomes[]                   one classified row per URL touched, stored
+                                  or failed, in the schema's own vocabulary
+                                  (ADR-0012). No documents => exit 1.
    │
    ├──▶ documents[]               text for chunking and embedding
    └──▶ compute_signals()         deterministic facts
@@ -96,7 +102,7 @@ The rejected intermediate design and the reason it was reverted are in ADR-0007.
 `favor_precision=False`, then a `selectolax` DOM fallback, and keeps the first
 result clearing `MIN_WORDS` (30). The winning pass is recorded on
 `Document.extract_reason`; pages clearing none are recorded on
-`Prospect.dropped_pages` with a reason rather than disappearing (A5).
+`Prospect.page_outcomes` as `thin_extraction` rather than disappearing (A5).
 
 **[verified]** `fly.io/about` is 249,893 bytes containing the whole team
 roster, and precision mode extracted **29 words** of it — one under the

@@ -20,7 +20,8 @@ recorded on the run:
 | `fetch_failed` | transport error, timeout, DNS | Recorded; crawling permitted. |
 
 This follows RFC 9309 §2.3.1. Politeness itself is not up for discussion (A6):
-a disallowed path is skipped and recorded in `skipped_by_robots`, never worked
+a disallowed path is skipped and recorded as a `skipped_robots` page outcome
+(ADR-0012), never worked
 around.
 
 ## Alternatives

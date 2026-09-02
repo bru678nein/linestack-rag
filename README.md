@@ -91,14 +91,15 @@ embedding, no retrieval, no generation, no API, no frontend, and no evaluation
 harness. The modules under `linestack/` are empty and carry only a docstring
 stating what each is responsible for.
 
-**Known defects.** All measured, all in `docs/open-questions.md`. The silent
-30-word extraction threshold is **fixed** (ADR-0011): extraction now escalates
-precision → recall → DOM fallback and every outcome carries a reason code, so
-the false `has_team_page: False` is gone. Fixing it exposed two new defects — a
-site that shuffles its team roster on every request, which breaks A7
+**Known defects.** All measured, all in `docs/open-questions.md`. Two are
+**fixed**: the silent 30-word extraction threshold (ADR-0011), and the missing
+failure classification (ADR-0012) — every URL the crawl touches now carries an
+outcome in the schema's own vocabulary, and a crawl that finds nothing exits
+non-zero saying why instead of exiting 0. Fixing the first exposed two new
+defects: a site that shuffles its team roster on every request, breaking A7
 idempotency, and a person-counting selector that returns 0 on a page listing
-people. Ground truth remains blocked (`docs/ground-truth.md` §6) on the
-shuffled roster and on missing fetch-failure reason codes.
+people. Ground truth is down to one blocker, the shuffled roster
+(`docs/ground-truth.md` §6).
 
 The build order (A3) is: naive vector search end-to-end → ground truth →
 evaluation harness → *then* hybrid retrieval, reranking, chunking changes. That

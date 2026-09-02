@@ -26,6 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import socket
 import time
 import urllib.parse
 import urllib.robotparser
@@ -76,6 +77,51 @@ ROBOTS_ABSENT = "absent"              # 4xx (not 401/403): no robots.txt exists
 ROBOTS_UNREADABLE = "unreadable"      # 401/403: exists, withheld from us
 ROBOTS_SERVER_ERROR = "server_error"  # 5xx: site is unwell, do not crawl
 ROBOTS_FETCH_FAILED = "fetch_failed"  # transport error, timeout, DNS
+
+# What happened to one URL. These strings ARE the `page_outcome` enum in
+# migrations/0001_initial_schema.sql -- the crawler and the schema share one
+# vocabulary so that `crawl_page_outcomes` can be loaded without translation.
+# A prospect with no documents must say WHY (A5): a dead domain, a site that
+# blocked us and a company with no website are three different facts.
+PAGE_STORED = "stored"
+PAGE_SKIPPED_ROBOTS = "skipped_robots"
+PAGE_DNS_FAILURE = "dns_failure"
+PAGE_TIMEOUT = "timeout"
+PAGE_TRANSPORT_ERROR = "transport_error"
+PAGE_HTTP_ERROR = "http_error"
+PAGE_NON_HTML = "non_html"
+PAGE_THIN_EXTRACTION = "thin_extraction"
+PAGE_DUPLICATE_CONTENT = "duplicate_content"
+PAGE_BUDGET_EXHAUSTED = "budget_exhausted"
+
+
+@dataclass
+class PageOutcome:
+    """One row of `crawl_page_outcomes`, mirrored field for field."""
+    url: str
+    outcome: str
+    http_status: int | None = None
+    detail: str = ""
+
+
+def host_resolves(host: str) -> bool:
+    """
+    Whether `host` resolves. Used only to explain a failure, never to gate one.
+
+    httpx flattens `socket.gaierror` into a plain `ConnectError` and drops the
+    cause, so a non-resolving host and a refused connection arrive identical
+    apart from an errno string. Matching that string is fragile; asking the
+    resolver is not. Returning True when we cannot tell is deliberate: claiming
+    `dns_failure` without evidence is exactly the invented measurement A5 and
+    A4 exist to prevent.
+    """
+    try:
+        socket.getaddrinfo(host, None)
+        return True
+    except socket.gaierror:
+        return False
+    except Exception:
+        return True
 
 
 class PoliteClient:
@@ -149,19 +195,33 @@ class PoliteClient:
         except Exception:
             return True
 
-    def get(self, url: str) -> str | None:
+    def get(self, url: str) -> tuple[str | None, PageOutcome]:
+        """Fetch one page. Every failure returns a classified outcome (A5)."""
         if not self.allowed(url):
-            return None
+            return None, PageOutcome(url, PAGE_SKIPPED_ROBOTS)
         try:
             r = self._request(url)
-        except Exception:
-            return None
+        except httpx.TimeoutException as exc:
+            return None, PageOutcome(url, PAGE_TIMEOUT,
+                                     detail=type(exc).__name__)
+        except httpx.ConnectError as exc:
+            host = urllib.parse.urlparse(url).hostname or ""
+            if not host_resolves(host):
+                return None, PageOutcome(url, PAGE_DNS_FAILURE, detail=host)
+            return None, PageOutcome(url, PAGE_TRANSPORT_ERROR,
+                                     detail=type(exc).__name__)
+        except Exception as exc:
+            return None, PageOutcome(url, PAGE_TRANSPORT_ERROR,
+                                     detail=type(exc).__name__)
         if r.status_code != 200:
-            return None
+            return None, PageOutcome(url, PAGE_HTTP_ERROR,
+                                     http_status=r.status_code)
         ctype = r.headers.get("content-type", "")
         if "html" not in ctype.lower():
-            return None
-        return r.text
+            return None, PageOutcome(url, PAGE_NON_HTML,
+                                     http_status=r.status_code,
+                                     detail=ctype.split(";")[0].strip())
+        return r.text, PageOutcome(url, PAGE_STORED, http_status=r.status_code)
 
     def close(self):
         self._client.close()
@@ -558,10 +618,14 @@ class Prospect:
     signals: Signals = field(default_factory=Signals)
     crawled_at: str = ""
     robots_reason: str = ""
-    skipped_by_robots: list[str] = field(default_factory=list)
-    # Pages fetched successfully but yielding no usable text, with the reason.
-    # A dropped page is a measurement, not an absence (A5).
-    dropped_pages: list[dict] = field(default_factory=list)
+    # One classified outcome per URL the crawl touched, stored and failed
+    # alike. Replaces the earlier `skipped_by_robots` and `dropped_pages`
+    # lists: one vocabulary, one row per URL, matching `crawl_page_outcomes`
+    # (which is UNIQUE on (crawl_run_id, url), so a URL gets exactly one).
+    page_outcomes: list[dict] = field(default_factory=list)
+
+    def outcomes(self, kind: str) -> list[dict]:
+        return [o for o in self.page_outcomes if o["outcome"] == kind]
 
 
 def ingest(base_url: str, company_name: str = "",
@@ -577,8 +641,10 @@ def ingest(base_url: str, company_name: str = "",
     seen: set[str] = set()
     docs: list[Document] = []
     raw: dict[str, str] = {}
-    skipped: list[str] = []
-    dropped: list[dict] = []
+    # url -> PageOutcome. A dict, not a list: the destination table is UNIQUE
+    # on (crawl_run_id, url), and a later outcome supersedes an earlier one --
+    # a stored page that turns out to be a duplicate is a duplicate, not both.
+    outcomes: dict[str, PageOutcome] = {}
 
     kind_counts: dict[str, int] = {}
 
@@ -594,10 +660,11 @@ def ingest(base_url: str, company_name: str = "",
         seen.add(url)
 
         if not client.allowed(url):
-            skipped.append(url)
+            outcomes[url] = PageOutcome(url, PAGE_SKIPPED_ROBOTS)
             continue
 
-        html = client.get(url)
+        html, outcome = client.get(url)
+        outcomes[url] = outcome
         if html is None:
             continue
 
@@ -610,7 +677,11 @@ def ingest(base_url: str, company_name: str = "",
                 mark = "" if reason == EXTRACT_OK else f" <{reason}>"
                 print(f"  [{doc.kind:11}] {doc.url}{mark}")
         else:
-            dropped.append({"url": url, "reason": reason})
+            # `thin` and `empty` are the word-count distinction the schema
+            # comment asks for, at the granularity that changes a diagnosis:
+            # empty usually means client-rendered, thin means we nearly had it.
+            outcomes[url] = PageOutcome(url, PAGE_THIN_EXTRACTION,
+                                        http_status=200, detail=reason)
 
         for link in discover_links(html, url, domain):
             if link not in seen and len(seen) + len(queue) < max_pages * 3:
@@ -618,10 +689,20 @@ def ingest(base_url: str, company_name: str = "",
 
     client.close()
 
+    # Anything still queued was never fetched: the budget ran out. This is the
+    # difference between "we looked and there was nothing" and "we stopped
+    # looking", and only one of those is a fact about the company.
+    for leftover in queue:
+        outcomes.setdefault(leftover, PageOutcome(leftover,
+                                                  PAGE_BUDGET_EXHAUSTED))
+
     # Drop near-duplicate pages (same content on /about and /about-us).
     unique: dict[str, Document] = {}
     for d in docs:
-        unique.setdefault(d.content_hash, d)
+        first = unique.setdefault(d.content_hash, d)
+        if first is not d:
+            outcomes[d.url] = PageOutcome(d.url, PAGE_DUPLICATE_CONTENT,
+                                          http_status=200, detail=first.url)
     docs = list(unique.values())
 
     return Prospect(
@@ -632,9 +713,39 @@ def ingest(base_url: str, company_name: str = "",
         signals=compute_signals(docs, raw),
         crawled_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         robots_reason=client.robots_reason,
-        skipped_by_robots=skipped,
-        dropped_pages=dropped,
+        page_outcomes=[asdict(o) for o in outcomes.values()],
     )
+
+
+def explain_empty_crawl(p: Prospect) -> str:
+    """
+    Why a prospect ended with no documents.
+
+    "No documents" is not a fact about a company until the reason is known.
+    A dead domain, a site that refused us, and a business with no web presence
+    are three different answers to question 1, and before this they were all
+    reported as a successful crawl of nothing (A5).
+    """
+    tally: dict[str, int] = {}
+    for o in p.page_outcomes:
+        tally[o["outcome"]] = tally.get(o["outcome"], 0) + 1
+
+    # Transport failures come first, and deliberately outrank the robots.txt
+    # reason. A robots.txt that "could not be fetched" on a domain that does
+    # not resolve is a symptom being reported as the cause, which sends the
+    # reader to check a robots policy on a host that does not exist.
+    for transport in (PAGE_DNS_FAILURE, PAGE_TIMEOUT, PAGE_TRANSPORT_ERROR):
+        if tally.get(transport):
+            return (f"{tally[transport]} of {len(p.page_outcomes)} URLs ended "
+                    f"in {transport}")
+    if p.robots_reason == ROBOTS_SERVER_ERROR:
+        return "robots.txt returned 5xx; RFC 9309 treats that as full disallow"
+    if p.robots_reason == ROBOTS_FETCH_FAILED:
+        return "robots.txt could not be fetched at all"
+    if not tally:
+        return "no URL was even attempted"
+    dominant, count = max(tally.items(), key=lambda kv: kv[1])
+    return f"{count} of {len(p.page_outcomes)} URLs ended in {dominant}"
 
 
 def to_json(p: Prospect) -> str:
@@ -647,6 +758,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         raise SystemExit(1)
+    failures = 0
     for target in sys.argv[1:]:
         print(f"\n=== {target} ===")
         prospect = ingest(target)
@@ -655,15 +767,27 @@ if __name__ == "__main__":
             f.write(to_json(prospect))
         s = prospect.signals
         print(f"  robots:    {prospect.robots_reason} "
-              f"({len(prospect.skipped_by_robots)} paths skipped)")
+              f"({len(prospect.outcomes(PAGE_SKIPPED_ROBOTS))} paths skipped)")
         print(f"  {s.pages_crawled} pages, {s.total_words} words")
         recovered = sum(1 for d in prospect.documents
                         if d.extract_reason != EXTRACT_OK)
         print(f"  extract:   {recovered} recovered, "
-              f"{len(prospect.dropped_pages)} dropped")
+              f"{len(prospect.outcomes(PAGE_THIN_EXTRACTION))} too thin")
+        tally: dict[str, int] = {}
+        for o in prospect.page_outcomes:
+            tally[o["outcome"]] = tally.get(o["outcome"], 0) + 1
+        print("  outcomes:  " + ", ".join(
+            f"{k} {v}" for k, v in sorted(tally.items())))
         print(f"  team page: {s.has_team_page} ({s.people_listed} people, "
               f"{s.technical_roles_named} technical mentions)")
         print(f"  careers:   {s.has_careers_page} ({s.open_roles_seen} roles, "
               f"{s.technical_roles_open} technical)")
         print(f"  blog:      {s.blog_posts_seen} posts, latest {s.latest_post_date}")
         print(f"  -> {out}")
+        if not prospect.documents:
+            # A crawl that found nothing must not look like a crawl that
+            # worked. Exit non-zero so a pipeline notices.
+            print(f"  FAILED: no documents -- {explain_empty_crawl(prospect)}")
+            failures += 1
+    if failures:
+        raise SystemExit(1)

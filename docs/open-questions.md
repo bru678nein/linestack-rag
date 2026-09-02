@@ -13,8 +13,8 @@ Three sections:
 
 ## 1. Known defects
 
-All **[verified]** against live sites on 2026-09-01/02. §1.1 is fixed;
-§1.1a and §1.1b are new defects that fixing it exposed.
+All **[verified]** against live sites on 2026-09-01/02. §1.1 and §1.2 are
+fixed; §1.1a and §1.1b are new defects that fixing §1.1 exposed.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -33,7 +33,7 @@ recall, then a `selectolax` DOM fallback, keeping the first result that clears
 `MIN_WORDS` and recording which pass produced it on `Document.extract_reason`.
 Every outcome now has a reason code, including the two failures
 (`thin` vs `empty`), and dropped pages are recorded on
-`Prospect.dropped_pages` rather than disappearing (A5).
+`Prospect.page_outcomes` as `thin_extraction` rather than disappearing (A5).
 
 Measured before/after, both crawls run within minutes of each other on
 2026-09-02 so that live-site drift is controlled for:
@@ -88,26 +88,50 @@ Developer … Michele Baroody Product Manager". `PERSON_SELECTORS` does not matc
 fly.io's markup. Previously invisible because the page never survived
 extraction. Distinct from the thoughtbot overcount already fixed (§ADR-0003).
 
-### 1.2 Failure classification is incomplete (violates A5)
+### 1.2 Failure classification — FIXED 2026-09-02
 
-Only robots.txt outcomes have reason codes (five of them, ADR-0006). Every other
-failure collapses into a bare `None` from `PoliteClient.get()` or `extract()`:
+Only robots.txt outcomes had reason codes. Every other failure collapsed into a
+bare `None`, so a prospect with zero documents read identically whether the
+domain did not resolve, the site blocked us, or the company has no website —
+and the run exited 0.
 
-| Failure | Current outcome | Needed |
-| --- | --- | --- |
-| DNS failure | `None` | reason code |
-| Timeout | `None` | reason code |
-| Non-200 status | `None` | reason code + status |
-| Non-HTML content-type | `None` | reason code + content-type |
-| Thin extraction (§1.1) | `None` | reason code + word count |
+Fixed by ADR-0012. Every URL the crawl touches gets one `PageOutcome(url,
+outcome, http_status, detail)` on `Prospect.page_outcomes`. The outcome strings
+**are** the `page_outcome` enum in the migration, and a unit test reads the
+migration and asserts the two sets are equal, so they cannot drift. `main()`
+now exits 1 on a prospect with no documents and prints why.
 
-A total failure exits 0. A prospect with zero documents is reported the same way
-whether the domain does not resolve, the site blocked us, or the company has no
-website.
+The enum in that migration was described here as "proposed, not validated". It
+is now validated: eight of its ten values were observed in live runs, the other
+two are covered by unit tests, and none of the ten turned out to be
+unreachable or redundant.
 
-The schema already has somewhere to put these: `crawl_page_outcomes` in
-`migrations/0001_initial_schema.sql`. The crawler does not populate it, and the
-enum in that migration is the proposed vocabulary, not a validated one.
+**[verified] 2026-09-02:**
+
+| Outcome | Evidence |
+| --- | --- |
+| `stored` | thoughtbot 38, fly.io 40 |
+| `skipped_robots` | thoughtbot 1 (`/people`) |
+| `http_error` | thoughtbot 18, fly.io 19 |
+| `non_html` | fly.io 2 (`/jobs/feed.xml`) |
+| `duplicate_content` | thoughtbot 2 |
+| `budget_exhausted` | thoughtbot 8, fly.io 36 |
+| `dns_failure` | 26/26 on a non-resolving domain, exit 1 |
+| `transport_error` | 26/26 on `127.0.0.1:9`, exit 1 |
+| `timeout` | unit test |
+| `thin_extraction` | unit test; 0 on both live sites since ADR-0011 |
+
+Two things worth carrying forward:
+
+- **`dns_failure` is confirmed, not guessed.** httpx flattens `socket.gaierror`
+  into a plain `ConnectError` and drops the cause, so a dead name and a refused
+  connection differ only by an errno string. `host_resolves()` asks the resolver
+  instead, and returns `True` when it cannot tell — claiming a DNS failure
+  without evidence is the invented measurement A4 forbids.
+- **The first version of the explanation blamed the wrong thing.** It checked
+  `robots_reason` first and reported a non-resolving domain as "robots.txt could
+  not be fetched at all" — a symptom presented as a cause. Transport failures now
+  outrank robots.txt. Found by running it, not by reading it.
 
 ### 1.3 No fast-fail on an unreachable host
 
@@ -118,7 +142,14 @@ The per-path arithmetic is derived, not directly measured.
 
 A single failed resolution or connection to the base URL should abort the run
 with a reason code, rather than retrying the same dead host two dozen times.
-This interacts with §1.2: without reason codes there is nothing to abort *with*.
+
+**Now unblocked.** §1.2 supplied the reason codes this needed to abort *with*,
+and the cost is no longer an estimate: **[verified] 2026-09-02**, a
+non-resolving domain produced 26 `dns_failure` outcomes and `127.0.0.1:9`
+produced 26 `transport_error` outcomes — 26 attempts each where one would have
+settled it. Both finished quickly because a refused connection and an NXDOMAIN
+both fail fast; the 8-minute case is the host that *hangs*, which is
+`timeout`, and remains **[computed]**, not measured.
 
 ### 1.4 Page-kind misclassification carries into retrieval weighting
 

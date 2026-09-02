@@ -398,3 +398,161 @@ def test_a_link_heavy_roster_is_recovered_by_the_recall_pass() -> None:
     assert doc.extract_reason == ingest.EXTRACT_RECALL, (
         "the document must carry how it was extracted, not just that it was"
     )
+
+
+# ---------------------------------------------------------------------------
+# Page outcome classification (Finding 3)
+# ---------------------------------------------------------------------------
+# Before this, every fetch failure was a bare `None`. A prospect with zero
+# documents was reported identically whether the domain did not resolve, the
+# site blocked us, or the company has no website -- and the run exited 0.
+
+
+def _client_without_network() -> ingest.PoliteClient:
+    """A PoliteClient with robots.txt loading and rate limiting stubbed out."""
+    client = object.__new__(ingest.PoliteClient)
+    client.base = "https://ex.com"
+    client.domain = "ex.com"
+    client._last_hit = 0.0
+    client._robots = None
+    client.robots_reason = ingest.ROBOTS_ABSENT
+    return client
+
+
+class _Response:
+    def __init__(self, status: int, ctype: str = "text/html", text: str = "hi"):
+        self.status_code = status
+        self.headers = {"content-type": ctype}
+        self.text = text
+
+
+def test_the_outcome_vocabulary_matches_the_schema_enum() -> None:
+    """These strings are loaded straight into `page_outcome`; drift breaks it."""
+    import re
+    from pathlib import Path
+
+    sql = Path("migrations/0001_initial_schema.sql").read_text()
+    block = re.search(r"CREATE TYPE page_outcome AS ENUM \((.*?)\);", sql, re.S).group(
+        1
+    )
+    # Strip SQL comments first: they quote example detail values, which are not
+    # enum members. Without this the test fails for the wrong reason.
+    block = re.sub(r"--[^\n]*", "", block)
+    in_schema = set(re.findall(r"'([a-z_]+)'", block))
+    in_code = {
+        ingest.PAGE_STORED,
+        ingest.PAGE_SKIPPED_ROBOTS,
+        ingest.PAGE_DNS_FAILURE,
+        ingest.PAGE_TIMEOUT,
+        ingest.PAGE_TRANSPORT_ERROR,
+        ingest.PAGE_HTTP_ERROR,
+        ingest.PAGE_NON_HTML,
+        ingest.PAGE_THIN_EXTRACTION,
+        ingest.PAGE_DUPLICATE_CONTENT,
+        ingest.PAGE_BUDGET_EXHAUSTED,
+    }
+    assert in_code == in_schema
+
+
+def test_a_timeout_is_not_reported_as_a_transport_error(monkeypatch) -> None:
+    import httpx
+
+    client = _client_without_network()
+    monkeypatch.setattr(
+        client, "_request", lambda url: (_ for _ in ()).throw(httpx.ReadTimeout("slow"))
+    )
+
+    html, outcome = client.get("https://ex.com/a")
+
+    assert html is None
+    assert outcome.outcome == ingest.PAGE_TIMEOUT
+    assert outcome.detail == "ReadTimeout"
+
+
+def test_dns_failure_is_only_claimed_when_the_host_really_does_not_resolve(
+    monkeypatch,
+) -> None:
+    """httpx reports both as ConnectError, so resolution is checked separately.
+
+    Claiming `dns_failure` for a refused connection would be an invented
+    measurement (A4). Verified live 2026-09-02: a non-resolving domain gives
+    26/26 dns_failure, while 127.0.0.1:9 gives 26/26 transport_error.
+    """
+    import httpx
+
+    client = _client_without_network()
+    monkeypatch.setattr(
+        client,
+        "_request",
+        lambda url: (_ for _ in ()).throw(httpx.ConnectError("nope")),
+    )
+
+    monkeypatch.setattr(ingest, "host_resolves", lambda host: False)
+    assert client.get("https://ex.com/a")[1].outcome == ingest.PAGE_DNS_FAILURE
+
+    monkeypatch.setattr(ingest, "host_resolves", lambda host: True)
+    assert client.get("https://ex.com/a")[1].outcome == (ingest.PAGE_TRANSPORT_ERROR)
+
+
+def test_host_resolves_does_not_claim_failure_when_it_cannot_tell(
+    monkeypatch,
+) -> None:
+    def boom(*a, **kw):
+        raise OSError("resolver unavailable")
+
+    monkeypatch.setattr(ingest.socket, "getaddrinfo", boom)
+    assert ingest.host_resolves("ex.com") is True
+
+
+def test_a_non_200_carries_the_status_that_caused_it(monkeypatch) -> None:
+    client = _client_without_network()
+    monkeypatch.setattr(client, "_request", lambda url: _Response(404))
+
+    html, outcome = client.get("https://ex.com/a")
+
+    assert html is None
+    assert outcome.outcome == ingest.PAGE_HTTP_ERROR
+    assert outcome.http_status == 404
+
+
+def test_a_non_html_response_carries_the_content_type(monkeypatch) -> None:
+    client = _client_without_network()
+    monkeypatch.setattr(
+        client,
+        "_request",
+        lambda url: _Response(200, "application/rss+xml; charset=utf-8"),
+    )
+
+    html, outcome = client.get("https://ex.com/feed.xml")
+
+    assert html is None
+    assert outcome.outcome == ingest.PAGE_NON_HTML
+    assert outcome.detail == "application/rss+xml"
+
+
+def test_an_empty_crawl_blames_the_transport_not_robots_txt() -> None:
+    """A robots.txt that could not be fetched on a dead host is a symptom.
+
+    Reporting it as the cause sends the reader to check a robots policy on a
+    host that does not exist.
+    """
+    p = ingest.Prospect(
+        company_name="x",
+        domain="ex.com",
+        base_url="https://ex.com",
+        robots_reason=ingest.ROBOTS_FETCH_FAILED,
+        page_outcomes=[
+            {
+                "url": "https://ex.com/",
+                "outcome": ingest.PAGE_DNS_FAILURE,
+                "http_status": None,
+                "detail": "ex.com",
+            }
+        ],
+    )
+    assert ingest.PAGE_DNS_FAILURE in ingest.explain_empty_crawl(p)
+
+
+def test_an_empty_crawl_is_never_reported_without_a_reason() -> None:
+    p = ingest.Prospect(company_name="x", domain="ex.com", base_url="https://ex.com")
+    assert ingest.explain_empty_crawl(p).strip() != ""

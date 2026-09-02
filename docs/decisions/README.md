@@ -27,3 +27,4 @@ Every record states four things:
 | [0009](0009-retrieval-strategy.md) | Retrieval: naive vector search first, hybrid only on evidence | Accepted |
 | [0010](0010-keep-ingest-py-despite-build-order-violation.md) | Keep `ingest.py` despite the build-order violation | Accepted |
 | [0011](0011-extraction-escalates-with-reason-codes.md) | Extraction escalates through three passes and records which one won | Accepted |
+| [0012](0012-page-outcome-vocabulary-shared-with-the-schema.md) | Every URL gets one classified outcome, in the schema's own vocabulary | Accepted |

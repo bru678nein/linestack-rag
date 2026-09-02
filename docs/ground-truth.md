@@ -183,28 +183,32 @@ looks like a retrieval regression.
 
 ---
 
-## 6. Still blocked — one of two blockers cleared
+## 6. One blocker left
 
-**Cleared 2026-09-02.** The silent 30-word drop is fixed (ADR-0011). Extraction
-now escalates precision → recall → DOM fallback, every outcome carries a reason
-code, and dropped pages are recorded rather than vanishing. `has_team_page` for
-fly.io is `True`, as it always should have been.
+**Cleared 2026-09-02, both of the original two.**
 
-**Still blocking.** Do not start authoring yet:
+- The silent 30-word extraction drop is fixed (ADR-0011). Extraction escalates
+  precision → recall → DOM fallback, and `has_team_page` for fly.io is `True`,
+  as it always should have been.
+- Fetch failures are classified (ADR-0012). Every URL the crawl touches carries
+  one outcome in the schema's own vocabulary, so a missing `source_url` can be
+  explained: `http_error` with its status, `non_html` with its content-type,
+  `dns_failure`, `timeout`, `transport_error`, `skipped_robots`,
+  `duplicate_content`, `budget_exhausted`. A crawl that finds nothing now exits
+  non-zero and says why.
 
-1. **Failure reason codes for DNS, timeout, non-200 and non-HTML outcomes**
-   (`docs/open-questions.md` §1.2, A5). A missing `source_url` in a ground-truth
-   pair still cannot be explained: a page that 404ed, a page that timed out and
-   a page on a dead host are all a bare `None`. Extraction and robots.txt now
-   have reason codes; fetching does not.
-2. **The shuffled-roster defect** (§1.1a). `fly.io/about` returns a different
-   content hash on every crawl, so any pair citing it as `source_url` cannot be
-   reproduced, and `/about` and `/team` both sit in the corpus as near
-   duplicates. Ground truth written against that is not stable.
+**Still blocking.** One item, and it arrived while fixing the first:
 
-Writing ground truth over a corpus with those defects bakes them in as truth. A
-later fix then reads as a regression against a set that was wrong, and the
-person investigating has no way to tell which of the two is broken.
+**The shuffled-roster defect** (`docs/open-questions.md` §1.1a). `fly.io/about`
+returns a different `content_hash` on every crawl, so a pair citing it as
+`source_url` cannot be reproduced, and `/about` and `/team` both sit in the
+corpus as near-duplicates that dedup cannot see. Ground truth written against
+that is not stable, and instability in the reference set is worse than a known
+gap in it — a flapping pair teaches everyone to ignore failures.
+
+That defect is confined to pages whose content is shuffled server-side. Pairs
+that do **not** cite such a page are safe to write now. For the two validation
+prospects that means everything except `fly.io/about` and `fly.io/team`.
 
 Signal ground truth (§1 `signals:`) may be recorded now, since it is
 hand-checked against the live site and is what reveals the ingestion defects —

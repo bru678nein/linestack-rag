@@ -17,7 +17,8 @@ strategies in order and keeps the first whose output clears `MIN_WORDS` (30):
 Every outcome carries a reason code: `ok`, `recovered_recall`, `recovered_dom`,
 `thin`, `empty`. The winning code is stored on `Document.extract_reason` and
 travels with the document into the JSON artifact. Pages that clear no pass are
-recorded on `Prospect.dropped_pages` with their reason instead of vanishing.
+recorded on `Prospect.page_outcomes` as `thin_extraction`, with the reason in
+`detail`, instead of vanishing (ADR-0012).
 
 ## Why
 

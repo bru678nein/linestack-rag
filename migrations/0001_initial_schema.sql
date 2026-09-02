@@ -77,9 +77,10 @@ CREATE TYPE crawl_outcome AS ENUM (
 -- means six different things, and the evaluation set silently inherits
 -- ingestion bugs as facts about the company (docs/evaluation.md section 2.5).
 --
--- NOTE: this vocabulary is proposed, not validated. ingest.py currently
--- classifies robots.txt outcomes only; every other failure still collapses
--- into a bare None. See docs/open-questions.md section 1.2.
+-- Validated against live crawls on 2026-09-02: ingest.py emits these exact
+-- strings as its PAGE_* constants, and a unit test asserts the two sets are
+-- equal so they cannot drift. Eight of the ten were observed in live runs;
+-- 'timeout' and 'thin_extraction' are covered by unit tests. See ADR-0012.
 CREATE TYPE page_outcome AS ENUM (
     'stored',
     'skipped_robots',      -- a Disallow rule matched; recorded, never worked around (A6)
@@ -88,7 +89,9 @@ CREATE TYPE page_outcome AS ENUM (
     'transport_error',
     'http_error',          -- non-200; http_status carries which
     'non_html',            -- content-type was not HTML; detail carries which
-    'thin_extraction',     -- extractor produced too little text; detail carries the word count
+    'thin_extraction',     -- extractor produced too little text; detail carries
+                           -- 'empty' (no text at all, usually client-rendered)
+                           -- or 'thin' (under MIN_WORDS). See ADR-0011.
     'duplicate_content',   -- same content_hash as a page already stored
     'budget_exhausted'     -- queued but never fetched; the page budget ran out
 );

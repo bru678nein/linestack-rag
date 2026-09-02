@@ -109,6 +109,13 @@ ingested at all. Per prospect, per question, the harness records:
   why (A5)?
 - Page-kind mix against the quota caps (ADR-0007).
 
+**[verified] 2026-09-02.** The crawler now produces these rows. Every URL it
+touches gets one outcome in the `page_outcome` vocabulary — `stored`,
+`skipped_robots`, `dns_failure`, `timeout`, `transport_error`, `http_error`,
+`non_html`, `thin_extraction`, `duplicate_content`, `budget_exhausted` — on
+`Prospect.page_outcomes` (ADR-0012). The load into `crawl_page_outcomes` still
+has to be written; the data now exists to load.
+
 **A missing source URL with no reason code is a harness-blocking bug, not a
 retrieval miss.** Reporting recall over a corpus that silently lost pages is
 reporting a number about the crawler while calling it a number about retrieval —
