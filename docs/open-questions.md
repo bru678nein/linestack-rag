@@ -15,9 +15,8 @@ Three sections:
 
 All **[verified]** against live sites on 2026-09-01/02. Every defect listed
 here is now fixed. What remains is recorded inline under the entry it belongs
-to: §1.1b cannot see a roster of single-word names, §1.1c does not yet know
-which URL should win a genuine `kind` disagreement, and §1.3 is unblocked but
-not implemented.
+to: §1.1b cannot see a roster of single-word names, and §1.1c does not yet know
+which URL should win a genuine `kind` disagreement.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -188,23 +187,45 @@ Two things worth carrying forward:
   not be fetched at all" — a symptom presented as a cause. Transport failures now
   outrank robots.txt. Found by running it, not by reading it.
 
-### 1.3 No fast-fail on an unreachable host
+### 1.3 No fast-fail on an unreachable host — FIXED 2026-09-02
 
-A domain that does not resolve costs roughly 24 seed paths × 20 s timeout ≈ **8
-minutes** before the crawl gives up. **[computed]** from `SEED_PATHS` (24
-entries) and `TIMEOUT = 20.0`; consistent with an observed run exceeding 300 s.
-The per-path arithmetic is derived, not directly measured.
+A domain that does not resolve cost **26 attempts and 39.5 seconds**
+**[verified]**, and printed nothing between the robots line and the summary,
+because the crawl loop only prints when it stores a document. It read as a
+hang. The DNS lookup itself fails instantly; all 39 seconds were our own
+`DELAY_SECONDS` politeness, extended 26 times to a host that does not exist.
 
-A single failed resolution or connection to the base URL should abort the run
-with a reason code, rather than retrying the same dead host two dozen times.
+Fixed by ADR-0016. A transport failure on robots.txt — the first request of
+every crawl — aborts before any seed path is tried when the host does not
+resolve or refuses the connection. A host that *hangs* is bounded instead by
+`UNREACHABLE_STREAK` (3) consecutive transport failures with nothing fetched. A
+5xx robots.txt aborts once as `aborted_robots` rather than skipping 26 URLs one
+at a time.
 
-**Now unblocked.** §1.2 supplied the reason codes this needed to abort *with*,
-and the cost is no longer an estimate: **[verified] 2026-09-02**, a
-non-resolving domain produced 26 `dns_failure` outcomes and `127.0.0.1:9`
-produced 26 `transport_error` outcomes — 26 attempts each where one would have
-settled it. Both finished quickly because a refused connection and an NXDOMAIN
-both fail fast; the 8-minute case is the host that *hangs*, which is
-`timeout`, and remains **[computed]**, not measured.
+**[verified]** before and after:
+
+| Case | Before | After |
+| --- | --- | --- |
+| non-resolving domain | 26 attempts, 39.5 s | **1 attempt, 0.25 s** |
+| refused connection | 26 attempts | **1 attempt, 0.24 s** |
+| host that hangs | ~24 × `TIMEOUT` **[computed]** | 3 × `TIMEOUT` |
+
+Both still exit non-zero with a reason. Healthy crawls are unchanged.
+
+**Correction to the earlier estimate.** This entry previously gave the cost as
+"roughly 24 seed paths × 20 s ≈ 8 minutes", marked **[computed]**. That figure
+describes the *hanging* host, not the non-resolving one — a dead name fails
+fast, and its real cost was 39.5 s of self-inflicted delay. Both cases are now
+bounded, but they were never the same case.
+
+`Prospect.crawl_outcome` records how the crawl ended, in the `crawl_outcome`
+vocabulary the schema already had. `crawl_runs.outcome` exists to receive it,
+so no migration was needed.
+
+**Note on what was deliberately not done:** the delay is still applied to
+failed requests. Skipping it would have cut the 39.5 s on its own, but it
+removes backoff exactly when a host may be struggling, which is when it matters
+most (A6).
 
 ### 1.4 Page-kind misclassification — FIXED 2026-09-02
 

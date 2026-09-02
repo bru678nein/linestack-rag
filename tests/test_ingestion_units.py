@@ -797,3 +797,158 @@ def test_the_canonical_choice_does_not_prefer_a_more_specific_kind() -> None:
 
     assert specific.kind == "job_posting" and generic.kind == "website"
     assert ingest.canonical_document([specific, generic]) is generic
+
+
+# ---------------------------------------------------------------------------
+# Fast-fail on an unreachable host (Finding 1.3)
+# ---------------------------------------------------------------------------
+# Measured 2026-09-02: a non-resolving domain cost 26 attempts at DELAY_SECONDS
+# apart -- 39.5 s of politeness extended to a host that does not exist -- and
+# printed nothing until the summary, so it read as a hang. After the fix: 0.25 s
+# and one attempt.
+
+
+class _FakeClient:
+    """Stands in for PoliteClient. Records how many pages were requested."""
+
+    def __init__(
+        self,
+        base_url,
+        *,
+        robots_failure=None,
+        robots_reason=ingest.ROBOTS_OK,
+        page_outcome=None,
+    ):
+        self.base = base_url.rstrip("/")
+        self.domain = "ex.com"
+        self.robots_failure = robots_failure
+        self.robots_reason = robots_reason
+        self._page_outcome = page_outcome
+        self.requested: list[str] = []
+
+    def allowed(self, url):
+        return True
+
+    def get(self, url):
+        self.requested.append(url)
+        outcome = self._page_outcome or ingest.PageOutcome(
+            url, ingest.PAGE_TIMEOUT, detail="ReadTimeout"
+        )
+        return None, ingest.PageOutcome(url, outcome.outcome, detail=outcome.detail)
+
+    def close(self):
+        pass
+
+
+def test_the_crawl_outcome_vocabulary_matches_the_schema_enum() -> None:
+    import re
+    from pathlib import Path
+
+    sql = Path("migrations/0001_initial_schema.sql").read_text()
+    block = re.search(r"CREATE TYPE crawl_outcome AS ENUM \((.*?)\);", sql, re.S).group(
+        1
+    )
+    block = re.sub(r"--[^\n]*", "", block)
+    in_schema = set(re.findall(r"'([a-z_]+)'", block))
+    in_code = {
+        ingest.CRAWL_COMPLETED,
+        ingest.CRAWL_ABORTED_ROBOTS,
+        ingest.CRAWL_ABORTED_UNREACHABLE,
+        ingest.CRAWL_FAILED,
+    }
+    assert in_code == in_schema
+
+
+def test_a_host_that_does_not_resolve_costs_exactly_one_attempt(
+    monkeypatch,
+) -> None:
+    """Not 26. The resolver settles it, so no seed path can fare better."""
+    made: list[_FakeClient] = []
+
+    def fake(base_url):
+        c = _FakeClient(
+            base_url,
+            robots_reason=ingest.ROBOTS_FETCH_FAILED,
+            robots_failure=ingest.PageOutcome(
+                f"{base_url}/robots.txt", ingest.PAGE_DNS_FAILURE, detail="ex.com"
+            ),
+        )
+        made.append(c)
+        return c
+
+    monkeypatch.setattr(ingest, "PoliteClient", fake)
+    prospect = ingest.ingest("https://ex.com", verbose=False)
+
+    assert made[0].requested == [], "no seed path should have been fetched"
+    assert prospect.crawl_outcome == ingest.CRAWL_ABORTED_UNREACHABLE
+    assert len(prospect.page_outcomes) == 1
+    assert prospect.page_outcomes[0]["outcome"] == ingest.PAGE_DNS_FAILURE
+    assert ingest.PAGE_DNS_FAILURE in ingest.explain_empty_crawl(prospect)
+
+
+def test_a_refused_connection_also_aborts_before_the_seed_loop(
+    monkeypatch,
+) -> None:
+    made: list[_FakeClient] = []
+
+    def fake(base_url):
+        c = _FakeClient(
+            base_url,
+            robots_reason=ingest.ROBOTS_FETCH_FAILED,
+            robots_failure=ingest.PageOutcome(
+                f"{base_url}/robots.txt",
+                ingest.PAGE_TRANSPORT_ERROR,
+                detail="ConnectError",
+            ),
+        )
+        made.append(c)
+        return c
+
+    monkeypatch.setattr(ingest, "PoliteClient", fake)
+    prospect = ingest.ingest("https://ex.com", verbose=False)
+
+    assert made[0].requested == []
+    assert prospect.crawl_outcome == ingest.CRAWL_ABORTED_UNREACHABLE
+
+
+def test_a_host_that_hangs_is_bounded_by_the_failure_streak(
+    monkeypatch,
+) -> None:
+    """A timeout cannot be settled by one attempt the way a dead name can.
+
+    A single timeout may be transient, so the host is bounded rather than
+    diagnosed: UNREACHABLE_STREAK consecutive transport failures with nothing
+    fetched ends the crawl, instead of 24 seed paths x TIMEOUT.
+    """
+    made: list[_FakeClient] = []
+
+    def fake(base_url):
+        c = _FakeClient(base_url)  # every get() times out
+        made.append(c)
+        return c
+
+    monkeypatch.setattr(ingest, "PoliteClient", fake)
+    prospect = ingest.ingest("https://ex.com", verbose=False)
+
+    assert len(made[0].requested) == ingest.UNREACHABLE_STREAK
+    assert prospect.crawl_outcome == ingest.CRAWL_ABORTED_UNREACHABLE
+
+
+def test_a_five_hundred_robots_txt_says_so_once_not_once_per_url(
+    monkeypatch,
+) -> None:
+    """RFC 9309 s2.3.1.4 is a full disallow; skipping 26 URLs one at a time
+    reports a policy decision as if it were 26 separate events."""
+    made: list[_FakeClient] = []
+
+    def fake(base_url):
+        c = _FakeClient(base_url, robots_reason=ingest.ROBOTS_SERVER_ERROR)
+        made.append(c)
+        return c
+
+    monkeypatch.setattr(ingest, "PoliteClient", fake)
+    prospect = ingest.ingest("https://ex.com", verbose=False)
+
+    assert made[0].requested == []
+    assert prospect.crawl_outcome == ingest.CRAWL_ABORTED_ROBOTS
+    assert len(prospect.page_outcomes) == 1

@@ -107,8 +107,12 @@ deduplication let crawl order decide a page's `kind`.
 **Every defect recorded in `docs/open-questions.md` §1 is now fixed.** Three
 limitations remain, all documented under the entry they belong to and all
 visible in the output rather than silent: a roster of single-word names is
-counted as 0, no rule yet decides a genuine `kind` disagreement between two
-URLs for one page, and there is still no fast-fail on an unreachable host.
+counted as 0, and no rule yet decides a genuine `kind` disagreement between two
+URLs for one page.
+
+An unreachable host no longer costs a crawl 39.5 seconds of politeness extended
+to a domain that does not exist — **[verified]** 26 attempts → 1, 0.25 s
+(ADR-0016), still exiting non-zero with a reason.
 
 **Ground truth is unblocked** (`docs/ground-truth.md` §6). Migration `0002` is
 written but has not been applied to a database.

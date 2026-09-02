@@ -23,7 +23,9 @@ base_url
 PoliteClient                      one client per prospect
    ├── fetch /robots.txt          through OUR httpx client, OUR User-Agent
    ├── classify the outcome       ok | absent | unreadable | server_error | fetch_failed
-   └── rate limit                 1.5 s between requests to the same domain
+   ├── rate limit                 1.5 s between requests to the same domain
+   └── fast-fail                  dns_failure / transport_error here aborts the
+                                  whole crawl before any seed path (ADR-0016)
    │
    ▼
 crawl loop (budget: 40 pages)
@@ -56,6 +58,11 @@ page_outcomes[]                   one classified row per URL touched, stored
    ▼
 prospect_<domain>.json
 ```
+
+The crawl also records how it ended, as `crawl_outcome`: `completed`,
+`aborted_robots`, `aborted_unreachable`, or `failed`. A prospect with no
+documents is not one fact but several, and only some of them are about the
+company.
 
 ### 1.1 robots.txt is fetched through our own client
 

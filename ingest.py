@@ -101,6 +101,20 @@ PAGE_THIN_EXTRACTION = "thin_extraction"
 PAGE_DUPLICATE_CONTENT = "duplicate_content"
 PAGE_BUDGET_EXHAUSTED = "budget_exhausted"
 
+# How the crawl as a whole ended. These strings ARE the `crawl_outcome` enum in
+# migrations/0001_initial_schema.sql, the same shared-vocabulary rule as
+# PAGE_* above (ADR-0012).
+CRAWL_COMPLETED = "completed"
+CRAWL_ABORTED_ROBOTS = "aborted_robots"
+CRAWL_ABORTED_UNREACHABLE = "aborted_unreachable"
+CRAWL_FAILED = "failed"
+
+# Consecutive transport failures, with nothing yet fetched, before a host is
+# declared unreachable. A host that does not resolve is settled after one
+# attempt and does not wait for this; a host that HANGS cannot be, because a
+# single timeout may be transient. Three bounds that case at 3 x TIMEOUT.
+UNREACHABLE_STREAK = 3
+
 
 @dataclass
 class PageOutcome:
@@ -138,6 +152,8 @@ class PoliteClient:
         self.base = base_url.rstrip("/")
         self.domain = urllib.parse.urlparse(self.base).netloc.lower()
         self._last_hit = 0.0
+        # Set by _load_robots when robots.txt fails at the transport level.
+        self.robots_failure: PageOutcome | None = None
         # The client must exist before robots.txt is fetched: robots.txt is
         # fetched through it, with our real User-Agent. See _load_robots.
         self._client = httpx.Client(
@@ -153,6 +169,16 @@ class PoliteClient:
             time.sleep(wait)
         self._last_hit = time.monotonic()
         return self._client.get(url)
+
+    def _transport_outcome(self, url: str, exc: Exception) -> PageOutcome:
+        """Classify a failed request. DNS is confirmed with the resolver."""
+        if isinstance(exc, httpx.TimeoutException):
+            return PageOutcome(url, PAGE_TIMEOUT, detail=type(exc).__name__)
+        if isinstance(exc, httpx.ConnectError):
+            host = urllib.parse.urlparse(url).hostname or ""
+            if not host_resolves(host):
+                return PageOutcome(url, PAGE_DNS_FAILURE, detail=host)
+        return PageOutcome(url, PAGE_TRANSPORT_ERROR, detail=type(exc).__name__)
 
     def _load_robots(self) -> tuple[urllib.robotparser.RobotFileParser | None, str]:
         """
@@ -173,7 +199,12 @@ class PoliteClient:
         url = f"{self.base}/robots.txt"
         try:
             r = self._request(url)
-        except Exception:
+        except Exception as exc:
+            # Keep WHY it failed, not just that it did. robots.txt is the first
+            # request of every crawl, so its transport failure is the earliest
+            # evidence that the host is unreachable -- and the cheapest place
+            # to stop (see ingest()).
+            self.robots_failure = self._transport_outcome(url, exc)
             return None, ROBOTS_FETCH_FAILED
 
         if r.status_code in (401, 403):
@@ -208,18 +239,8 @@ class PoliteClient:
             return None, PageOutcome(url, PAGE_SKIPPED_ROBOTS)
         try:
             r = self._request(url)
-        except httpx.TimeoutException as exc:
-            return None, PageOutcome(url, PAGE_TIMEOUT,
-                                     detail=type(exc).__name__)
-        except httpx.ConnectError as exc:
-            host = urllib.parse.urlparse(url).hostname or ""
-            if not host_resolves(host):
-                return None, PageOutcome(url, PAGE_DNS_FAILURE, detail=host)
-            return None, PageOutcome(url, PAGE_TRANSPORT_ERROR,
-                                     detail=type(exc).__name__)
         except Exception as exc:
-            return None, PageOutcome(url, PAGE_TRANSPORT_ERROR,
-                                     detail=type(exc).__name__)
+            return None, self._transport_outcome(url, exc)
         if r.status_code != 200:
             return None, PageOutcome(url, PAGE_HTTP_ERROR,
                                      http_status=r.status_code)
@@ -758,6 +779,9 @@ class Prospect:
     signals: Signals = field(default_factory=Signals)
     crawled_at: str = ""
     robots_reason: str = ""
+    # How the crawl ended, in the schema's own `crawl_outcome` vocabulary.
+    # "No documents" is not the same fact as "we stopped looking" (A5).
+    crawl_outcome: str = CRAWL_COMPLETED
     # One classified outcome per URL the crawl touched, stored and failed
     # alike. Replaces the earlier `skipped_by_robots` and `dropped_pages`
     # lists: one vocabulary, one row per URL, matching `crawl_page_outcomes`
@@ -787,6 +811,38 @@ def ingest(base_url: str, company_name: str = "",
     outcomes: dict[str, PageOutcome] = {}
 
     kind_counts: dict[str, int] = {}
+    aborted = False
+
+    # Fast-fail. robots.txt is the first request of every crawl, so a transport
+    # failure on it is the earliest evidence the host is unreachable. A host
+    # that does not resolve is settled by one attempt -- checked against the
+    # resolver, not guessed -- and no seed path will fare better.
+    #
+    # Before this, a non-resolving domain cost 26 attempts at DELAY_SECONDS
+    # apart: [verified] 39.5 s of politeness extended to a host that does not
+    # exist. A host that HANGS was worse, at roughly 24 x TIMEOUT.
+    fail = client.robots_failure
+    if fail is not None and fail.outcome in (PAGE_DNS_FAILURE,
+                                             PAGE_TRANSPORT_ERROR):
+        client.close()
+        return _unreachable(base_url, company_name, domain, fail,
+                            CRAWL_ABORTED_UNREACHABLE,
+                            client.robots_reason, verbose)
+
+    # A 5xx robots.txt is a full disallow (RFC 9309 s2.3.1.4), so every URL
+    # would be skipped one at a time. Say so once instead.
+    if client.robots_reason == ROBOTS_SERVER_ERROR:
+        client.close()
+        return _unreachable(
+            base_url, company_name, domain,
+            PageOutcome(f"{base_url}/robots.txt", PAGE_SKIPPED_ROBOTS,
+                        detail="robots.txt returned 5xx: full disallow"),
+            CRAWL_ABORTED_ROBOTS, client.robots_reason, verbose)
+
+    # Consecutive transport failures with nothing fetched yet. A host that
+    # accepts connections and then hangs cannot be settled by one attempt the
+    # way a non-resolving one can, so it is bounded rather than diagnosed.
+    streak = 0
 
     while queue and len(docs) < max_pages:
         # Serve the highest-value kind that is still under its cap, oldest URL
@@ -806,7 +862,14 @@ def ingest(base_url: str, company_name: str = "",
         html, outcome = client.get(url)
         outcomes[url] = outcome
         if html is None:
+            if outcome.outcome in (PAGE_DNS_FAILURE, PAGE_TIMEOUT,
+                                   PAGE_TRANSPORT_ERROR):
+                streak += 1
+                if not docs and streak >= UNREACHABLE_STREAK:
+                    aborted = True
+                    break
             continue
+        streak = 0
 
         raw[url] = html
         doc, reason = extract(url, html)
@@ -877,6 +940,8 @@ def ingest(base_url: str, company_name: str = "",
         crawled_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         robots_reason=client.robots_reason,
         page_outcomes=[asdict(o) for o in outcomes.values()],
+        crawl_outcome=(CRAWL_ABORTED_UNREACHABLE if aborted
+                       else CRAWL_COMPLETED),
     )
 
 
@@ -889,6 +954,9 @@ def explain_empty_crawl(p: Prospect) -> str:
     are three different answers to question 1, and before this they were all
     reported as a successful crawl of nothing (A5).
     """
+    if p.crawl_outcome == CRAWL_ABORTED_ROBOTS:
+        return "robots.txt returned 5xx; RFC 9309 treats that as full disallow"
+
     tally: dict[str, int] = {}
     for o in p.page_outcomes:
         tally[o["outcome"]] = tally.get(o["outcome"], 0) + 1
@@ -909,6 +977,25 @@ def explain_empty_crawl(p: Prospect) -> str:
         return "no URL was even attempted"
     dominant, count = max(tally.items(), key=lambda kv: kv[1])
     return f"{count} of {len(p.page_outcomes)} URLs ended in {dominant}"
+
+
+def _unreachable(base_url: str, company_name: str, domain: str,
+                 outcome: PageOutcome, crawl_outcome: str,
+                 robots_reason: str, verbose: bool) -> Prospect:
+    """A crawl that stopped before it started, with the reason attached."""
+    if verbose:
+        print(f"  aborted: {crawl_outcome} ({outcome.outcome})")
+    return Prospect(
+        company_name=company_name or domain,
+        domain=domain,
+        base_url=base_url,
+        documents=[],
+        signals=compute_signals([], {}),
+        crawled_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        robots_reason=robots_reason,
+        page_outcomes=[asdict(outcome)],
+        crawl_outcome=crawl_outcome,
+    )
 
 
 def canonical_document(group: list[Document]) -> Document:
@@ -962,6 +1049,7 @@ if __name__ == "__main__":
             tally[o["outcome"]] = tally.get(o["outcome"], 0) + 1
         print("  outcomes:  " + ", ".join(
             f"{k} {v}" for k, v in sorted(tally.items())))
+        print(f"  crawl:     {prospect.crawl_outcome}")
         print(f"  team page: {s.has_team_page} ({s.people_listed} people, "
               f"{s.technical_roles_named} technical mentions)")
         print(f"  careers:   {s.has_careers_page} ({s.open_roles_seen} roles, "
