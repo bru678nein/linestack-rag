@@ -294,15 +294,24 @@ def test_a_bge_model_gets_the_query_prefix_and_documents_do_not() -> None:
 
     captured = {}
 
+    class _Vector(list):
+        """Stands in for a numpy row, including the .tolist() the code calls.
+
+        numpy arrives with the optional `local` extra, not with `dev`, and a
+        unit test that imports it fails on a CI runner that installed only the
+        default set -- which is exactly how this test first failed.
+        """
+
+        def tolist(self):
+            return list(self)
+
     class _Stub(LocalEmbedder):
         def _load(self):
             class _M:
                 @staticmethod
                 def encode(texts, **kw):
                     captured["texts"] = list(texts)
-                    import numpy as np
-
-                    return np.zeros((len(texts), 4))
+                    return [_Vector([0.0] * 4) for _ in texts]
 
             return _M()
 
