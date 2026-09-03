@@ -270,7 +270,7 @@ list of how to check them.
 | --- | --- | --- | --- |
 | 2.1 | The prospect-filtered candidate set is in the hundreds of chunks, so exact vector search is fast enough | ADR-0001 | Count chunks per prospect after the first real load; `EXPLAIN (ANALYZE)` the filtered query at p95 |
 | 2.2 | 800–1200-token chunks beat 400 on synthesis questions | ADR-0005 | Recall@k and faithfulness per configuration, on the ground-truth set. The most important unverified assumption in the design |
-| 2.3 | Job postings fit in one chunk | ADR-0005 | Token-count the postings in the frozen corpus |
+| ~~2.3~~ | ~~Job postings fit in one chunk~~ | ADR-0005 | **[verified] 2026-09-02** — the largest in the corpus, `fly.io/jobs/networking-engineer`, is **1,493 tiktoken tokens**. Above ADR-0005's guessed "typically under 1500", and about 5× under the 8191-token embedding limit, so the never-split rule holds with room. |
 | 2.4 | Quota split 0.45 / 0.30 / 0.25 matches where the four questions are answered | ADR-0007 | Recall per question across corpora crawled at different splits |
 | 2.5 | Naive vector search is insufficient, worst on question 4 | ADR-0009 | The first harness run |
 | 2.6 | A frozen corpus stays valid for about a quarter | evaluation.md §3 | Re-crawl and diff content hashes |

@@ -13,8 +13,72 @@ Status: Accepted · Date: 2026-09-02
   length.
 - Publication date is carried in chunk metadata.
 
-None of this is implemented. `linestack/ingestion/chunking.py` is its
-destination.
+Implemented in `linestack/ingestion/chunking.py`.
+
+## What the corpus turned out to look like — [verified] 2026-09-02
+
+"Split on heading structure" survived contact with the corpus only as a
+*preference*, not as the splitter. Measured over all 76 documents:
+
+| | |
+| --- | --- |
+| documents with markdown headings | **1 of 76** |
+| documents over 900 words (needing any split) | 24 of 76 |
+| documents that are a single line | 3 of 76 |
+
+`ingest.py` calls `trafilatura.extract` with no `output_format`, so the default
+is plain text and a heading survives only as a short line, indistinguishable
+from a short paragraph. Splitting on headings alone puts almost nothing in the
+band.
+
+A naive "short line is a heading" rule is worse than useless: `fly.io/blog` is
+an index page of 11,175 words where 806 of 1,156 lines match it, which would
+have produced 806 chunks of about 40 tokens. The rule therefore requires that a
+heading be **followed by prose** — a list of post titles is followed by another
+title. With that, the same page yields 21 chunks at a median of 891 tokens.
+
+So: atomic blocks (list runs and table rows never broken), packed greedily into
+the band, closing early when the next block opens a section.
+
+**Resulting distribution, real tiktoken counts:**
+
+| | fly.io | thoughtbot |
+| --- | --- | --- |
+| documents | 39 | 37 |
+| chunks | 111 | 43 |
+| median tokens | 876 | 482 |
+| largest chunk | 5,847 | 1,332 |
+| in the 800–1200 band | 56 | 10 |
+| over `chunk_max` | 13 | 1 |
+| **over the hard cap** | **0** | **0** |
+| blocks force-split | 1 | 0 |
+
+The many sub-band chunks are correct, not a defect: most documents are shorter
+than 800 tokens in total, and merging a short section with an unrelated one is
+what this ADR forbids.
+
+**Two things added that this ADR did not originally specify:**
+
+- **A hard cap** (`chunk_hard_max_tokens`, 6000). One atomic block can exceed
+  the embedding model's 8191-token input limit with no heading or paragraph
+  inside it to split on: `fly.io/docs/about/pricing` is a single table of
+  roughly 13,000 tokens. Above the cap a block is force-split at row
+  boundaries, and every force-split is counted rather than absorbed. The cap
+  reserves room for the header and the overlap tail, because a cap that the
+  packer can add 150 tokens on top of is not a cap.
+- **A provenance header** (`title · kind · published`) on every chunk. This ADR
+  requires the publication date "in chunk metadata"; `chunks` has no metadata
+  column and ADR-0009's frozen SELECT returns only id, content, kind and score,
+  so a header inside `content` is the only place it can reach generation
+  without editing either decision. The cost is real and recorded: it is
+  embedded, enters `content_tsv`, and counts toward `token_count`. Treat it as
+  a chunking parameter in any A3 before-and-after.
+
+**Overlap is word-level, not block-level.** The first implementation carried
+whole trailing blocks back under the 150-token budget, which delivers nothing:
+a 400-token paragraph never fits, so every boundary in ordinary prose got zero
+overlap. Caught by a test asserting that consecutive chunks share text — they
+shared three words, all from the header.
 
 ## Alternatives
 
