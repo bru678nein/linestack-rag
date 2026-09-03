@@ -157,3 +157,12 @@ embed:  ## Embed pending chunks: make embed PROSPECT=fly.io [DRY=1]
 # This is the first target that spends money; it can always say how much first.
 	@test -n "$(PROSPECT)" || { echo "usage: make embed PROSPECT=fly.io [DRY=1]"; exit 2; }
 	$(PY) -m linestack.retrieval.embedding --prospect $(PROSPECT) $(if $(DRY),--dry-run,)
+
+.PHONY: ask
+ask:  ## Retrieve for one question: make ask PROSPECT=fly.io Q="..."
+# Shows retrieved chunks and their scores. There is no generation yet, and that
+# is deliberate: A8 says the first hypothesis for a wrong answer is that the
+# right chunk was never retrieved, so this is where that gets checked by eye.
+	@test -n "$(PROSPECT)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"'; exit 2; }
+	@test -n "$(Q)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"'; exit 2; }
+	$(PY) -m linestack.retrieval.ask --prospect $(PROSPECT) --question "$(Q)" $(if $(K),-k $(K),)

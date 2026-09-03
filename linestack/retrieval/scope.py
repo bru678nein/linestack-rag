@@ -158,6 +158,52 @@ class ProspectScope:
             for r in rows
         ]
 
+    async def source_urls(self, chunk_ids: list[int]) -> dict[int, str]:
+        """Map chunk ids to the document URLs they came from.
+
+        A SEPARATE statement, deliberately. ADR-0009 freezes the ranking query
+        at `id, content, kind, score`, so a search result cannot carry a
+        citation on its own -- and widening that SELECT to add one would edit a
+        decision this project treats as frozen. Resolving the URLs in a second
+        lookup keeps the ranking query exactly what the ADR says while still
+        letting a caller show where a chunk came from.
+
+        Scoped like everything else here: a chunk belonging to another prospect
+        cannot be resolved through this object.
+        """
+        if not chunk_ids:
+            return {}
+        rows = (
+            await self._session.execute(
+                text(
+                    "SELECT c.id, d.source_url FROM chunks c "
+                    "  JOIN documents d ON d.id = c.document_id "
+                    " WHERE c.prospect_id = :p AND c.id = ANY(:ids)"
+                ),
+                {"p": self._prospect_id, "ids": chunk_ids},
+            )
+        ).all()
+        return {row.id: row.source_url for row in rows}
+
+    async def count_embedded(self) -> int:
+        """How many of this prospect's chunks already have a vector.
+
+        Lives here rather than at the call site because it is a chunk query,
+        and the chokepoint is not a style preference. The first version of
+        `ask.py` ran this SELECT inline and the static guard failed the build
+        -- correctly. The fix for that failure is always to move the query
+        here, never to add the module to an allowlist.
+        """
+        return int(
+            await self._session.scalar(
+                text(
+                    "SELECT count(*) FROM chunks "
+                    " WHERE prospect_id = :p AND embedding IS NOT NULL"
+                ),
+                {"p": self._prospect_id},
+            )
+        )
+
     async def count_chunks(self) -> int:
         return int(
             await self._session.scalar(

@@ -216,5 +216,13 @@ def test_the_document_model_matches_what_ingest_actually_writes(
 ) -> None:
     from linestack.ingestion.loader import ArtifactDocument
 
-    raw = json.loads((REPO_ROOT / name).read_text(encoding="utf-8"))
+    # The same skip guard every other test in this file uses. Without it this
+    # one read the file directly and failed on a clean checkout, where the
+    # artifacts do not exist because they are gitignored. It passed locally
+    # forever, which is exactly why CI on a fresh clone is worth having.
+    path = REPO_ROOT / name
+    if not path.exists():
+        pytest.skip(f"{name} is gitignored and not on disk; re-crawl to restore")
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
     assert set(raw["documents"][0]) == set(ArtifactDocument.model_fields)

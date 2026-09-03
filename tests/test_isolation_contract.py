@@ -159,12 +159,34 @@ def test_search_never_touches_a_session() -> None:
     """
     if not SEARCH_MODULE.exists():
         return
-    source = SEARCH_MODULE.read_text(encoding="utf-8")
-    for forbidden in ("AsyncSession", "session", "execute("):
-        assert forbidden not in source, (
-            f"search.py references {forbidden!r}. It takes a ProspectScope, "
-            f"never a session: the scope is what carries the prospect filter."
-        )
+
+    # Parsed, not grepped. A substring check for "session" fires on the word
+    # in a docstring, and a guard that trips on prose is a guard someone
+    # deletes -- the same mistake the Chunk guard above already made once.
+    import ast
+
+    tree = ast.parse(SEARCH_MODULE.read_text(encoding="utf-8"))
+    offenders: list[str] = []
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and ("sqlalchemy" in node.module or node.module.endswith(".db"))
+        ):
+            offenders.append(f"imports from {node.module}")
+        if isinstance(node, ast.Attribute) and node.attr in (
+            "execute",
+            "scalar",
+            "commit",
+            "flush",
+        ):
+            offenders.append(f"calls .{node.attr}()")
+
+    assert not offenders, (
+        f"search.py {offenders}. It takes a ProspectScope, never a database "
+        f"handle: the scope is what carries the prospect filter, and a query "
+        f"here is one edit away from losing it."
+    )
 
 
 # ---------------------------------------------------------------------------
