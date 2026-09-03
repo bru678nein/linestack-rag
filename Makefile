@@ -150,3 +150,10 @@ eval-report:  ## [not implemented] Delta table against the previous run
 ground-truth-validate:  ## [not implemented] Structurally validate the ground-truth set
 	@echo "Not implemented. Format: docs/ground-truth.md."
 	@exit 1
+
+.PHONY: embed
+embed:  ## Embed pending chunks: make embed PROSPECT=fly.io [DRY=1]
+# DRY=1 reports the pending chunk count and token total and makes no API call.
+# This is the first target that spends money; it can always say how much first.
+	@test -n "$(PROSPECT)" || { echo "usage: make embed PROSPECT=fly.io [DRY=1]"; exit 2; }
+	$(PY) -m linestack.retrieval.embedding --prospect $(PROSPECT) $(if $(DRY),--dry-run,)
