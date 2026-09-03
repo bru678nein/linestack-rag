@@ -245,8 +245,12 @@ def test_a_scaffold_does_not_validate(tmp_path: Path) -> None:
 
     report = _run(tmp_path)
 
+    # Asserts the INTENT, not the wording. This test pinned the word
+    # "placeholder" and broke when the messages were rewritten to be readable
+    # -- a test that fails on rephrasing tells you nothing about behaviour.
     assert not report.ok
-    assert any("placeholder" in str(f) for f in report.findings)
+    assert any("not written yet" in str(f) for f in report.findings)
+    assert any("signals" in str(f) for f in report.findings)
 
 
 def test_the_scaffold_does_not_fill_in_the_signals(tmp_path: Path) -> None:
