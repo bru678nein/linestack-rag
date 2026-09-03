@@ -225,4 +225,21 @@ def test_the_document_model_matches_what_ingest_actually_writes(
         pytest.skip(f"{name} is gitignored and not on disk; re-crawl to restore")
 
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert set(raw["documents"][0]) == set(ArtifactDocument.model_fields)
+    written = set(raw["documents"][0])
+    modelled = set(ArtifactDocument.model_fields)
+
+    # Asymmetric, deliberately. A key ingest writes that the model does not
+    # know is fatal -- `extra="forbid"` rejects the whole artifact -- so that
+    # direction is an equality. The other direction is not: a model field
+    # added later, with a default, is simply absent from an artifact frozen
+    # before it. `kind_conflicts` is exactly that, and requiring equality
+    # would mean every new field forces a re-crawl of the frozen corpus, which
+    # is the corpus the ground-truth answers cite (docs/ground-truth.md).
+    assert written - modelled == set(), (
+        f"{name} carries {written - modelled}, which ArtifactDocument forbids"
+    )
+    for missing in modelled - written:
+        assert ArtifactDocument.model_fields[missing].is_required() is False, (
+            f"ArtifactDocument requires {missing}, which {name} does not "
+            f"carry; the frozen corpus would have to be re-crawled"
+        )

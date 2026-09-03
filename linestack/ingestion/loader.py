@@ -70,6 +70,13 @@ class ArtifactDocument(BaseModel):
     content_hash: str
     stable_hash: str = ""
     duplicate_urls: list[str] = Field(default_factory=list)
+    # Kinds claimed by URLs that lost deduplication, when they disagree with
+    # `kind` (ingest.py, ADR-0019). Defaulted rather than required: the three
+    # frozen fixtures predate the field, and `extra="forbid"` would otherwise
+    # reject every artifact written after it. Not yet persisted -- `documents`
+    # has no column for it, and adding one before a single conflict has been
+    # observed is infrastructure ahead of measurement (A9).
+    kind_conflicts: list[str] = Field(default_factory=list)
 
 
 class ArtifactSignals(BaseModel):

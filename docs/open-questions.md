@@ -15,8 +15,9 @@ Three sections:
 
 All **[verified]** against live sites on 2026-09-01/02. Every defect listed
 here is now fixed. What remains is recorded inline under the entry it belongs
-to: §1.1b cannot see a roster of single-word names, and §1.1c does not yet know
-which URL should win a genuine `kind` disagreement.
+to: §1.1c does not yet know which URL should win a genuine `kind`
+disagreement, and §1.6's publication dates are still largely htmldate's
+fallback.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -114,11 +115,50 @@ nothing. Class names are a site's private vocabulary; repetition is not.
 basecamp is the negative control — `/about/team` redirects to a narrative page
 with no roster, so 0 is correct rather than a miss.
 
-**Still missed, [verified]:** `buttondown.com/about` lists its team by first
-name only ("Anita", "Ben", "Justin"). Both strategies return 0. Relaxing the
-pattern to a single capitalised word would count every navigation item
-("Features", "Pricing"), so this is recorded rather than papered over. A
-single-name roster is invisible to both strategies today.
+**The single-name roster is now counted too — FIXED 2026-09-03.**
+`buttondown.com/about` lists **14** people by first name only, and returned 0
+from both strategies for two stacked reasons: the names are one word each, so
+`PERSON_NAME_RE` matches none of them; and `/about` never matched
+`TEAM_PATH_RE`, so `count_people` was not called on the page at all. Fixing
+the count alone would have changed nothing.
+
+Fixed by ADR-0018, and *not* by loosening the name pattern. The objection
+recorded here was right that accepting one capitalised word counts every
+navigation item — and capitalisation turns out not to be the discriminator it
+looks like, because "Features" and "Pricing" are capitalised too.
+`count_people_by_portrait` keys on something a navigation item does not have:
+one **distinct** image per repeated sibling. A menu repeating one icon matches
+nothing; a roster giving every person a different photograph matches exactly.
+Dropping the name pattern rather than relaxing it is what makes the count 14
+and not 13 — one of the fourteen is listed as `nickd`, lowercase.
+
+`ABOUT_PATH_RE` admits an `/about` page as the team page, but only when
+`MIN_ROSTER` people are actually found on it. basecamp stays `False`.
+
+**[verified]** against hand-counted truth. All four pages are committed under
+`tests/fixtures/` exactly as fetched, and this table is now asserted on every
+test run rather than being a claim about a live fetch nobody could repeat:
+
+| Page | Truth | Structural | By class | By portrait | Reported |
+| --- | --- | --- | --- | --- | --- |
+| fly.io/team | 57 | **57** | 0 | 0 | **57** |
+| thoughtbot.com/team | 54 | **54** | 54 | 54 | **54** |
+| buttondown.com/about | 14 | 0 | 0 | **14** | **14** |
+| basecamp.com/about | 0 | 0 | 0 | 0 | **0** |
+
+**A third defect, found by running the fix.** **[verified] 2026-09-03:**
+buttondown publishes its newsletter archive under `/people/archive/…`, and
+**21** of those pages match `TEAM_PATH_RE` while `/about` does not. The old
+rule took the first matching page in document order, so it reported
+`has_team_page: True` with `team_page_url` pointing at a newsletter archive
+and `people_listed: 0` — a confident, cited, wrong answer, on a site nobody
+had crawled yet. `choose_roster_page()` now ranks candidates (most people
+wins, `/team` breaks a tie, then the URL) instead of taking the first.
+
+**Known limitation, deliberate:** a marketing grid of feature cards — distinct
+illustration, short caption, four of them — matches the portrait shape. It is
+bounded rather than prevented: the pass runs only where the other two found
+nothing, and only on a page already identified as a roster page. See ADR-0018.
 
 ### 1.1c Deduplication picked `kind` by crawl order — FIXED 2026-09-02
 
@@ -135,12 +175,43 @@ same page yields the same canonical URL on every crawl.
 prefer a more specific `kind`, because there is still no measurement saying
 which URL should win — and after the segment-matching fix, thoughtbot's two
 `career-paths` URLs both classify `website` and agree. Inventing a winner would
-be an assumption dressed as a rule. A genuine disagreement is now recorded on
-the `duplicate_content` outcome as `kind conflict X vs Y`, so the measurement
-will exist when one occurs (A3).
+be an assumption dressed as a rule.
 
-**Still open:** which URL should win a real `kind` disagreement. No instance
-observed on either validation site.
+**The conflict is no longer invisible — FIXED 2026-09-03.** A disagreement used
+to be recorded in exactly one place: a human-readable `detail` string on a
+`duplicate_content` page outcome. The surviving document — the one that carries
+`kind` into the database and into retrieval weighting (ADR-0004) — looked
+exactly like a document whose classification was never in question. "We chose
+this" and "we picked one of two" were the same value, which is what A4 exists
+to prevent.
+
+Fixed by ADR-0019: the losing kinds ride on `Document.kind_conflicts`, and the
+crawl prints the conflict in its run summary on the run that produces it.
+`deduplicate()` was extracted from `ingest()` so the branch could be tested at
+all — it was reachable only through a live crawl of a site that happened to
+have the defect, so it had never once executed.
+
+**The first instance, [verified] 2026-09-03.** The very next crawl found one:
+
+```
+kind?:  https://buttondown.com/ is website, also classified job_posting
+```
+
+`https://buttondown.com/refer/jobs` is a **referral link**. It serves the
+homepage byte for byte, and `jobs` is a referral code, not a statement about
+the content — the sibling aliases are `/refer/people` and `/refer/Equipo`.
+
+This is evidence against the rule that looked obvious. Preferring the more
+specific `kind` would have classified buttondown's homepage as a job posting
+and given it job-posting weight at retrieval time. `min(url)` was right, by
+determinism rather than by knowing anything.
+
+**Still open:** which URL should win. One instance is not a rule, and a rule
+written from one case is an assumption with a citation attached. But it points
+the same way as the measured failure behind ADR-0015, where substring matching
+over-classified two thoughtbot playbook articles as job postings: both errors
+run towards too much specificity, and neither runs the other way. The next
+instance will announce itself instead of having to be excavated.
 
 ### 1.6 Publication dates are largely htmldate's fallback, not real dates
 

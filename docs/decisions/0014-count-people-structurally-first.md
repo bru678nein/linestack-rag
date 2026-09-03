@@ -43,7 +43,7 @@ The class-based path is kept rather than deleted. It needs no name-shaped text,
 so it still covers rosters the structural pass cannot see — including the
 lowercase or single-word names that `PERSON_NAME_RE` rejects.
 
-## Known miss
+## Known miss — superseded 2026-09-03 by [ADR-0018](0018-count-a-roster-by-its-portraits.md)
 
 **[verified]** `buttondown.com/about` lists its team by first name only —
 "Anita", "Ben", "Justin". Both strategies return 0. Relaxing the name pattern
@@ -51,6 +51,14 @@ to a single capitalised word would not fix this, it would count every
 navigation item ("Features", "Pricing", "Changelog"), so it is recorded rather
 than papered over. A single-name roster is currently invisible to both
 strategies.
+
+**The objection above was right, and the conclusion drawn from it was too
+narrow.** Relaxing the name pattern is indeed the wrong fix — but the reason
+is stronger than stated here: capitalisation does not separate a person from a
+navigation item at all, because "Features" and "Pricing" are capitalised too.
+ADR-0018 counts the page by a different property entirely, one distinct
+portrait per repeated sibling, and reaches 14 of 14 — including the one member
+listed as `nickd`, which no capitalisation rule can reach.
 
 ## Alternatives
 

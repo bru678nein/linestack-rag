@@ -106,9 +106,17 @@ deduplication let crawl order decide a page's `kind`.
 
 **Every defect recorded in `docs/open-questions.md` §1 is now fixed.** Three
 limitations remain, all documented under the entry they belong to and all
-visible in the output rather than silent: a roster of single-word names is
-counted as 0, and no rule yet decides a genuine `kind` disagreement between two
-URLs for one page.
+visible in the output rather than silent:
+
+- No rule yet decides a genuine `kind` disagreement between two URLs for one
+  page. The conflict is recorded on the document and printed by the crawl, and
+  the first observed instance argues against the obvious rule (§1.1c,
+  ADR-0019).
+- Publication dates are largely `htmldate`'s coarse fallback — 31 of 76
+  documents share one date — and `latest_post_date` rests on them (§1.6).
+- A roster of single-word names is now counted by its portraits, at the cost
+  of a shape a marketing grid of feature cards could also match. Bounded, not
+  prevented (§1.1b, ADR-0018).
 
 An unreachable host no longer costs a crawl 39.5 seconds of politeness extended
 to a domain that does not exist — **[verified]** 26 attempts → 1, 0.25 s

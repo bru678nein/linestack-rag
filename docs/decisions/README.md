@@ -33,3 +33,5 @@ Every record states four things:
 | [0015](0015-classify-by-path-segment-not-substring.md) | Classify by whole path segments; no title; deterministic canonical URL | Accepted |
 | [0016](0016-fast-fail-on-an-unreachable-host.md) | Stop crawling a host that is not answering | Accepted |
 | [0017](0017-local-embeddings-by-default.md) | Local embeddings by default; OpenAI as the alternative | Accepted |
+| [0018](0018-count-a-roster-by-its-portraits.md) | Count a roster by its portraits; choose the roster page by evidence | Accepted |
+| [0019](0019-a-contested-kind-is-recorded-not-resolved.md) | A contested `kind` is recorded on the document, not resolved | Accepted |

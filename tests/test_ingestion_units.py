@@ -9,6 +9,8 @@ No network, no database. The HTML fixtures below reproduce the *shape* of the
 markup that broke each function; they are not copies of anyone's pages.
 """
 
+import pathlib
+
 import pytest
 
 import ingest
@@ -745,6 +747,216 @@ def test_two_repeated_names_are_a_coincidence_not_a_roster() -> None:
     assert ingest.count_people_structurally(html) == 0
 
 
+# ---------------------------------------------------------------------------
+# Rosters of single names (Finding 1.1b)
+# ---------------------------------------------------------------------------
+# These four files are the pages the section 1.1b table is measured on, frozen
+# 2026-09-03 exactly as fetched. The table used to be a claim about a live
+# fetch nobody could repeat; now the numbers in it are asserted on every run,
+# and a site redesign shows up as a failing test instead of as a table that
+# quietly stopped being true.
+
+FIXTURES = pathlib.Path(__file__).resolve().parent / "fixtures"
+
+
+def _fixture(name: str) -> str:
+    return (FIXTURES / f"{name}.html").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "page, truth, structural, by_class, by_portrait",
+    [
+        # page              truth  struct  class  portrait
+        ("fly_io_team", 57, 57, 0, 0),
+        ("thoughtbot_team", 54, 54, 54, 54),
+        ("buttondown_about", 14, 0, 0, 14),
+        ("basecamp_about", 0, 0, 0, 0),
+    ],
+)
+def test_the_roster_counts_match_hand_counted_truth(
+    page: str, truth: int, structural: int, by_class: int, by_portrait: int
+) -> None:
+    """Section 1.1b's table, asserted rather than asserted-in-prose.
+
+    Each strategy is checked separately as well as the combination, because
+    "count_people returns 54" hides which strategy earned it -- and the whole
+    argument for keeping three of them is that they fail on different pages.
+    """
+    html = _fixture(page)
+
+    assert ingest.count_people_structurally(html) == structural
+    assert ingest.count_people_by_class(html) == by_class
+    assert ingest.count_people_by_portrait(html) == by_portrait
+    assert ingest.count_people(html) == truth
+
+
+def test_a_first_name_only_roster_is_counted_by_its_portraits() -> None:
+    """buttondown.com/about, the miss section 1.1b recorded rather than fixed.
+
+    Names are one word each and one of them ("nickd") is not capitalised, so
+    no name pattern reaches all 14. The image does.
+    """
+    html = _fixture("buttondown_about")
+
+    assert ingest.count_people_structurally(html) == 0, "precondition"
+    assert ingest.count_people_by_class(html) == 0, "precondition"
+    assert ingest.count_people_by_portrait(html) == 14
+
+
+def test_a_repeated_icon_is_not_a_roster_of_portraits() -> None:
+    """The rule is one DISTINCT image each. A menu repeating one icon is the
+    shape this pass exists to refuse, and it is why `set(sources)` is compared
+    against the group size rather than merely being non-trivial."""
+    items = "".join(
+        f'<li><img src="/chevron.svg"/><span>{w}</span></li>'
+        for w in ("Features", "Pricing", "Resources", "Changelog")
+    )
+    html = f"<html><body><section><ul>{items}</ul></section></body></html>"
+
+    assert ingest.count_people_by_portrait(html) == 0
+
+
+def test_an_item_without_a_portrait_is_not_counted() -> None:
+    """Section 1.1b's original objection, still enforced: a capitalised word
+    on its own is a navigation label, not a person."""
+    items = "".join(
+        f"<li><span>{w}</span></li>"
+        for w in ("Features", "Pricing", "Resources", "Changelog")
+    )
+    html = f"<html><body><section><ul>{items}</ul></section></body></html>"
+
+    assert ingest.count_people_by_portrait(html) == 0
+
+
+def test_two_portraits_are_a_coincidence_not_a_roster() -> None:
+    cards = "".join(
+        f'<div><img src="/{n}.png"/><span>{n}</span></div>' for n in ("ada", "grace")
+    )
+    html = f"<html><body><section>{cards}</section></body></html>"
+
+    assert ingest.count_people_by_portrait(html) == 0
+
+
+def test_the_portrait_pass_runs_last() -> None:
+    """Order is the safety property. The portrait shape is the loosest of the
+    three, so it must only ever see pages the other two gave up on -- a page
+    where structure already found a roster must not be re-counted by it."""
+    html = _fixture("fly_io_team")
+
+    assert ingest.count_people_structurally(html) == 57
+    assert ingest.count_people_by_portrait(html) == 0, "precondition"
+    assert ingest.count_people(html) == 57
+
+
+# ---------------------------------------------------------------------------
+# Which page the team signals describe (Finding 1.1b)
+# ---------------------------------------------------------------------------
+
+
+def _roster_signals(url: str, fixture: str, aliases: tuple[str, ...] = ()):
+    doc = ingest.Document(
+        url=url, kind=ingest.classify(url), title="", text="engineer"
+    ).finalise()
+    doc.duplicate_urls = list(aliases)
+    html = _fixture(fixture)
+    raw = {url: html, **{a: html for a in aliases}}
+    return ingest.compute_signals([doc], raw)
+
+
+def test_a_roster_on_an_about_path_is_found() -> None:
+    """buttondown keeps its team on /about, which TEAM_PATH_RE never matched,
+    so the roster was unreachable even once it was countable."""
+    s = _roster_signals("https://buttondown.com/about", "buttondown_about")
+
+    assert s.has_team_page is True
+    assert s.people_listed == 14
+    assert s.team_page_url == "https://buttondown.com/about"
+
+
+def test_a_narrative_about_page_is_still_not_a_team_page() -> None:
+    """The negative control for admitting /about at all. basecamp.com/about is
+    a company story with nobody named on it, and a `has_team_page` that is
+    true for every company tells a qualifier nothing."""
+    s = _roster_signals("https://basecamp.com/about", "basecamp_about")
+
+    assert s.has_team_page is False
+    assert s.people_listed == 0
+    assert s.team_page_url is None
+
+
+def test_a_team_path_is_a_team_page_even_with_no_countable_roster() -> None:
+    """Deliberately asymmetric with the /about rule. Failing to parse a roster
+    is a fact about our extractor; reporting it as `has_team_page: False`
+    states it as a fact about the company (section 1.1)."""
+    doc = ingest.Document(
+        url="https://ex.com/team", kind="website", title="", text=""
+    ).finalise()
+    s = ingest.compute_signals([doc], {"https://ex.com/team": "<html></html>"})
+
+    assert s.has_team_page is True
+    assert s.people_listed == 0
+
+
+def test_the_roster_page_is_found_through_a_duplicate_url() -> None:
+    """fly.io serves one roster at /about and /team. Which URL survived
+    deduplication is an accident of crawl order (ADR-0013)."""
+    s = _roster_signals("https://fly.io/about", "fly_io_team", ("https://fly.io/team",))
+
+    assert s.people_listed == 57
+    assert s.team_page_url == "https://fly.io/team"
+
+
+def test_a_team_path_that_is_not_a_roster_loses_to_one_that_is() -> None:
+    """buttondown's real shape, [verified] 2026-09-03: it publishes its
+    newsletter archive under /people/archive/..., and 21 of those pages match
+    TEAM_PATH_RE while /about does not.
+
+    The previous rule took the first matching page in document order, so it
+    reported has_team_page: True with team_page_url pointing at a newsletter
+    archive and people_listed: 0 -- a confident, cited, wrong answer. This is
+    the case that made choose_roster_page rank candidates instead of taking
+    the first one.
+    """
+    archives = [
+        ingest.Document(
+            url=f"https://ex.com/people/archive/post-{i}",
+            kind="website",
+            title="",
+            text="",
+        ).finalise()
+        for i in range(3)
+    ]
+    about = ingest.Document(
+        url="https://ex.com/about", kind="website", title="", text=""
+    ).finalise()
+    raw = {d.url: "<html><body><p>a newsletter</p></body></html>" for d in archives}
+    raw["https://ex.com/about"] = _fixture("buttondown_about")
+
+    s = ingest.compute_signals([*archives, about], raw)
+
+    assert s.team_page_url == "https://ex.com/about"
+    assert s.people_listed == 14
+
+
+def test_the_roster_page_choice_does_not_depend_on_crawl_order() -> None:
+    """Same requirement section 1.1c settled for canonical_document: most
+    people wins, a /team path breaks a tie, the URL breaks what is left."""
+    thin = ingest.Document(
+        url="https://ex.com/about", kind="website", title="", text=""
+    ).finalise()
+    rich = ingest.Document(
+        url="https://ex.com/people", kind="website", title="", text=""
+    ).finalise()
+    raw = {
+        "https://ex.com/about": _fixture("buttondown_about"),
+        "https://ex.com/people": _fixture("thoughtbot_team"),
+    }
+
+    for order in ([thin, rich], [rich, thin]):
+        s = ingest.compute_signals(order, raw)
+        assert (s.team_page_url, s.people_listed) == ("https://ex.com/people", 54)
+
+
 def test_a_paragraph_starting_with_a_name_is_not_a_card() -> None:
     """Bounded by word count, so prose beginning with a name does not count."""
     prose = " ".join(f"word{i}" for i in range(40))
@@ -765,6 +977,12 @@ def _doc(url: str, text: str = "shared roster text here") -> ingest.Document:
     return ingest.Document(
         url=url, kind=ingest.classify(url), title="", text=text
     ).finalise()
+
+
+def _dedup(docs: list[ingest.Document]) -> list[ingest.Document]:
+    """Run deduplication and throw the outcomes away, for the tests that only
+    care about what survives."""
+    return ingest.deduplicate(docs, {})
 
 
 def test_the_canonical_url_does_not_depend_on_crawl_order() -> None:
@@ -797,6 +1015,42 @@ def test_the_canonical_choice_does_not_prefer_a_more_specific_kind() -> None:
 
     assert specific.kind == "job_posting" and generic.kind == "website"
     assert ingest.canonical_document([specific, generic]) is generic
+
+
+def test_a_contested_kind_is_distinguishable_from_a_settled_one() -> None:
+    """Section 1.1c's open question is which URL should win. That is still
+    open. What is fixed is that the uncertainty used to be invisible: the
+    surviving document carried a contested `kind` that looked exactly like an
+    uncontested one, and the only trace was a sentence inside a page-outcome
+    detail string.
+
+    `kind` is weighted at retrieval time (ADR-0004), so "we chose this" and
+    "we picked one of two" must not be the same value (A4).
+    """
+    docs = [
+        _doc("https://ex.com/careers/x", "same words here"),
+        _doc("https://ex.com/blog/x", "same words here"),
+    ]
+    prospect = _dedup(docs)
+
+    assert len(prospect) == 1
+    survivor = prospect[0]
+    assert survivor.url == "https://ex.com/blog/x", "min(url) is unchanged"
+    assert survivor.kind == "blog_post"
+    assert survivor.kind_conflicts == ["job_posting"]
+
+
+def test_agreeing_duplicates_record_no_conflict() -> None:
+    """Empty means uncontested, so it has to actually be empty in the normal
+    case. A field that is always populated says nothing."""
+    docs = [
+        _doc("https://ex.com/about", "same words here"),
+        _doc("https://ex.com/about-us", "same words here"),
+    ]
+    survivor = _dedup(docs)[0]
+
+    assert survivor.duplicate_urls == ["https://ex.com/about-us"]
+    assert survivor.kind_conflicts == []
 
 
 # ---------------------------------------------------------------------------

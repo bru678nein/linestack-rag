@@ -279,6 +279,13 @@ class Document:
     # reads the path, not the text -- and discarding them turns a real team
     # page into a missing one. See ADR-0013.
     duplicate_urls: list[str] = field(default_factory=list)
+    # Kinds claimed by the URLs that lost deduplication, when they disagree
+    # with `kind`. Empty is the normal case and means the classification is
+    # uncontested; a non-empty list means two of the site's own URLs classify
+    # one page differently and `kind` is the alphabetically-first URL's claim,
+    # not a decision between them. Downstream weights `kind` (ADR-0004), so
+    # "contested" and "settled" must be distinguishable (A4). See ADR-0019.
+    kind_conflicts: list[str] = field(default_factory=list)
 
     def finalise(self) -> "Document":
         self.content_hash = hashlib.sha256(self.text.encode()).hexdigest()[:16]
@@ -475,6 +482,16 @@ class Signals:
 
 TEAM_PATH_RE = re.compile(r"/(team|equipo|people|leadership|nosotros)")
 
+# Paths that MIGHT hold a roster without saying so. A page here counts as the
+# team page only if a roster is actually found on it, because these words are
+# also the URL of a narrative company story with nobody named on it --
+# basecamp.com/about is exactly that, and is the negative control for this
+# rule. TEAM_PATH_RE needs no such proof: a page at /team is a team page even
+# when its roster is markup we cannot parse, and calling it one is the honest
+# answer. See ADR-0018.
+ABOUT_PATH_RE = re.compile(
+    r"/(about|about-us|company|quienes-somos|sobre-nosotros)")
+
 PERSON_SELECTORS = ("[class*=team]", "[class*=member]", "[class*=staff]",
                     "[class*=person]", "[class*=bio]", "[class*=profile]")
 
@@ -513,13 +530,20 @@ def count_people(html: str) -> int:
     one has the better record. The class-based path is kept because it needs no
     name-shaped text, and so still covers rosters this one cannot see.
 
-    **Known miss, [verified]:** buttondown.com/about lists its team by first
-    name only ("Anita", "Ben", "Justin"). Both strategies return 0. Requiring
-    only one capitalised word would not fix it, it would count every navigation
-    item ("Features", "Pricing"), so this is recorded rather than papered over.
+    **Fixed 2026-09-03, [verified]:** buttondown.com/about lists its team by
+    first name only, and both strategies returned 0. The earlier note here
+    reasoned that relaxing the pattern to a single capitalised word would
+    count every navigation item ("Features", "Pricing") -- true, and the
+    reason the fix is not a looser name pattern. `count_people_by_portrait`
+    keys on a different property entirely: one distinct image per repeated
+    sibling. Navigation items do not carry a portrait each.
+
+    Order is deliberate: the two strategies with the longest verified record
+    run first, and the portrait pass only sees pages where both found nothing.
     """
     return (count_people_structurally(html)
-            or count_people_by_class(html))
+            or count_people_by_class(html)
+            or count_people_by_portrait(html))
 
 
 def count_people_structurally(html: str) -> int:
@@ -548,6 +572,66 @@ def count_people_structurally(html: str) -> int:
         for count in by_tag.values():
             if count >= MIN_ROSTER:
                 best = max(best, count)
+    return best
+
+
+def count_people_by_portrait(html: str) -> int:
+    """
+    Count repeated sibling elements that each carry their own portrait.
+
+    The last resort, for a roster whose entries are named by first name only.
+    **[verified]** 2026-09-03: buttondown.com/about lists 14 people as
+    "Anita", "Ben", "Justin", "nickd" -- one word each, one of them not even
+    capitalised. `count_people_structurally` needs two capitalised words and
+    `count_people_by_class` needs a person-ish class name; buttondown offers
+    neither, and both returned 0 for a page listing 14 people.
+
+    The discriminator is NOT a looser name pattern. Section 1.1b was right
+    that accepting one capitalised word counts every navigation item, and
+    capitalisation buys nothing against a navigation bar anyway -- "Features"
+    and "Pricing" are capitalised too. What a navigation item does not have is
+    a portrait of its own. So: repeated siblings of the same tag, each holding
+    exactly one image, each image DISTINCT, and almost no text. A CMS emitting
+    a roster gives every person a different photograph; a menu that repeats an
+    icon, or repeats none, matches nothing here.
+
+    `nickd` is the point of dropping the capitalisation requirement entirely
+    rather than relaxing it to one word: the image is doing the work, so the
+    text only has to be short. That is what makes the count 14 and not 13.
+
+    **Known limitation, deliberate.** A marketing grid of feature cards --
+    distinct illustration, two-word caption, four of them -- matches this
+    shape and would be counted as people. Two things bound it: the pass runs
+    only when the other two strategies both found nothing, and `count_people`
+    is only ever called on a page already identified as a roster page
+    (compute_signals). It is a fallback on a narrow surface, not a detector
+    turned loose on a whole site.
+    """
+    tree = HTMLParser(html)
+    for tag in DOM_NOISE_TAGS:
+        for node in tree.css(tag):
+            node.decompose()
+
+    # Same parent-side grouping as count_people_structurally, and for the same
+    # reason: selectolax gives no stable identity to a repeated `.parent`.
+    _, hi = PERSON_CARD_WORDS
+    best = 0
+    for parent in tree.css("*"):
+        by_tag: dict[str, list[str]] = {}
+        for child in parent.iter():
+            images = child.css("img")
+            if len(images) != 1:
+                continue
+            text = re.sub(r"\s+", " ", child.text(separator=" ")).strip()
+            if not text or len(text.split()) > hi:
+                continue
+            by_tag.setdefault(child.tag, []).append(
+                images[0].attributes.get("src") or "")
+        for sources in by_tag.values():
+            # All distinct, not merely mostly: a repeated src is a shared icon,
+            # which is the shape this pass exists to refuse.
+            if len(sources) >= MIN_ROSTER and len(set(sources)) == len(sources):
+                best = max(best, len(sources))
     return best
 
 
@@ -655,23 +739,83 @@ def listing_role_links(html: str, listing_url: str) -> list[str]:
     return out
 
 
+@dataclass
+class RosterPage:
+    """The page `has_team_page` and `people_listed` both describe."""
+    url: str
+    document: "Document"
+    people: int
+    on_team_path: bool
+
+
+def choose_roster_page(docs: list[Document],
+                       raw: dict[str, str]) -> RosterPage | None:
+    """
+    Pick the one page the team signals describe, or None.
+
+    Two rules, and the asymmetry between them is the whole point.
+
+    A URL the site files under /team (TEAM_PATH_RE) is a team page whether or
+    not we can parse its roster. Reporting `has_team_page: False` because the
+    markup defeated us would be an ingestion artifact reported as a fact about
+    the company -- the same defect as section 1.1.
+
+    A URL under /about qualifies only on evidence: MIN_ROSTER people actually
+    found on it. **[verified]** 2026-09-03, this is what separates
+    buttondown.com/about (14 people, a roster) from basecamp.com/about (a
+    narrative story, nobody named). Admitting /about unconditionally would
+    turn basecamp's correct `has_team_page: False` into a false positive, and
+    a signal that is true for everyone is worth nothing to qualification.
+
+    Every URL that served a document is considered, not just the one that
+    survived deduplication: fly.io's roster is at /about and /team both, and
+    which one won dedup is an accident of crawl order (ADR-0013).
+
+    The choice is deterministic and independent of crawl order, the same
+    requirement section 1.1c settled for canonical_document: most people wins,
+    a /team path breaks a tie, and the alphabetically first URL breaks what is
+    left.
+    """
+    candidates: list[RosterPage] = []
+    seen: set[str] = set()
+    for d in docs:
+        for url in (d.url, *d.duplicate_urls):
+            if url in seen:
+                continue
+            path = urllib.parse.urlparse(url).path.lower()
+            on_team_path = bool(TEAM_PATH_RE.search(path))
+            if not on_team_path and not ABOUT_PATH_RE.search(path):
+                continue
+            seen.add(url)
+            people = count_people(raw.get(url, ""))
+            if on_team_path or people >= MIN_ROSTER:
+                candidates.append(RosterPage(url, d, people, on_team_path))
+
+    if not candidates:
+        return None
+    # Sorted by URL first, so that `max` -- which returns the FIRST maximal
+    # element -- resolves a remaining tie to the alphabetically first URL.
+    candidates.sort(key=lambda c: c.url)
+    return max(candidates, key=lambda c: (c.people, c.on_team_path))
+
+
 def compute_signals(docs: list[Document], raw: dict[str, str]) -> Signals:
     s = Signals(pages_crawled=len(docs))
     s.total_words = sum(len(d.text.split()) for d in docs)
 
+    roster = choose_roster_page(docs, raw)
+    if roster:
+        s.has_team_page = True
+        s.team_page_url = roster.url
+        s.people_listed = roster.people
+
     for d in docs:
-        # Every URL that served this document, not just the surviving one. A
-        # page reachable at both /about and /team is a team page, and which of
-        # the two won deduplication is an accident of crawl order.
-        team_url = next(
-            (u for u in (d.url, *d.duplicate_urls)
-             if TEAM_PATH_RE.search(urllib.parse.urlparse(u).path.lower())),
-            None)
-        if team_url:
-            if not s.has_team_page:
-                s.has_team_page = True
-                s.team_page_url = team_url
-                s.people_listed = count_people(raw.get(team_url, ""))
+        # Role words are counted on the roster page and on any page the site
+        # itself files under /team, which are not always the same document.
+        on_team_path = any(
+            TEAM_PATH_RE.search(urllib.parse.urlparse(u).path.lower())
+            for u in (d.url, *d.duplicate_urls))
+        if on_team_path or (roster and d is roster.document):
             s.technical_roles_named += len(TECH_ROLE_RE.findall(d.text))
 
         if d.kind == "blog_post":
@@ -900,36 +1044,7 @@ def ingest(base_url: str, company_name: str = "",
                                                   PAGE_BUDGET_EXHAUSTED))
 
     # Drop near-duplicate pages (same content on /about and /about-us).
-    # Keyed on stable_hash, not content_hash: a site that shuffles repeated
-    # records serves one page under two URLs with two different exact hashes,
-    # and exact-hash dedup keeps both (ADR-0013).
-    groups: dict[str, list[Document]] = {}
-    for d in docs:
-        groups.setdefault(d.stable_hash, []).append(d)
-
-    docs = []
-    for group in groups.values():
-        canonical = canonical_document(group)
-        for other in group:
-            if other is canonical:
-                continue
-            canonical.duplicate_urls.append(other.url)
-            # Same words, different exact hash, proves the source reorders its
-            # content between requests. Worth recording rather than collapsing
-            # into a plain duplicate: it is the observable evidence of an A7
-            # violation on that URL, and the only place we can see it without
-            # fetching the same URL twice.
-            how = ("reordered" if other.content_hash != canonical.content_hash
-                   else "identical")
-            # A disagreement about `kind` between two URLs for one page is the
-            # measurement §1.1c said it did not have. Record it; do not invent
-            # a winner. No instance has been observed on either validation site.
-            if other.kind != canonical.kind:
-                how += f", kind conflict {other.kind} vs {canonical.kind}"
-            outcomes[other.url] = PageOutcome(other.url, PAGE_DUPLICATE_CONTENT,
-                                              http_status=200,
-                                              detail=f"{how} of {canonical.url}")
-        docs.append(canonical)
+    docs = deduplicate(docs, outcomes)
 
     return Prospect(
         company_name=company_name or domain,
@@ -943,6 +1058,60 @@ def ingest(base_url: str, company_name: str = "",
         crawl_outcome=(CRAWL_ABORTED_UNREACHABLE if aborted
                        else CRAWL_COMPLETED),
     )
+
+
+def deduplicate(docs: list[Document],
+                outcomes: dict[str, PageOutcome]) -> list[Document]:
+    """
+    Collapse URLs serving the same page into one document, recording what was
+    lost. Mutates `outcomes`, and returns the survivors.
+
+    Extracted from `ingest()` so it can be tested at all. It was reachable
+    only through a live crawl, which meant the kind-conflict branch below --
+    the whole point of section 1.1c -- had never once executed. A branch that
+    has never run is not known to work, the same standard the isolation guards
+    are held to.
+    """
+    # Keyed on stable_hash, not content_hash: a site that shuffles repeated
+    # records serves one page under two URLs with two different exact hashes,
+    # and exact-hash dedup keeps both (ADR-0013).
+    groups: dict[str, list[Document]] = {}
+    for d in docs:
+        groups.setdefault(d.stable_hash, []).append(d)
+
+    survivors: list[Document] = []
+    for group in groups.values():
+        canonical = canonical_document(group)
+        for other in group:
+            if other is canonical:
+                continue
+            canonical.duplicate_urls.append(other.url)
+            # Same words, different exact hash, proves the source reorders its
+            # content between requests. Worth recording rather than collapsing
+            # into a plain duplicate: it is the observable evidence of an A7
+            # violation on that URL, and the only place we can see it without
+            # fetching the same URL twice.
+            how = ("reordered" if other.content_hash != canonical.content_hash
+                   else "identical")
+            # A disagreement about `kind` between two URLs for one page is
+            # the measurement §1.1c said it did not have. Record it; do not
+            # invent a winner. It used to be recorded ONLY here, inside a
+            # human-readable detail string on a page outcome -- which meant
+            # the surviving document carried a contested `kind` that looked
+            # exactly like a settled one, and the only trace was a sentence
+            # nobody parses. The conflict now rides on the document itself as
+            # well, so `kind` being uncertain is a fact the artifact states
+            # rather than one a reader has to reconstruct (A4, A5).
+            if other.kind != canonical.kind:
+                how += f", kind conflict {other.kind} vs {canonical.kind}"
+                if other.kind not in canonical.kind_conflicts:
+                    canonical.kind_conflicts.append(other.kind)
+                    canonical.kind_conflicts.sort()
+            outcomes[other.url] = PageOutcome(other.url, PAGE_DUPLICATE_CONTENT,
+                                              http_status=200,
+                                              detail=f"{how} of {canonical.url}")
+        survivors.append(canonical)
+    return survivors
 
 
 def explain_empty_crawl(p: Prospect) -> str:
@@ -1010,11 +1179,24 @@ def canonical_document(group: list[Document]) -> Document:
     The order is now the URL itself, so the same page yields the same canonical
     URL on every crawl. That is a determinism fix, NOT a semantic one -- it
     makes no claim that the alphabetically first URL is the *right* one, and
-    deliberately does not prefer a more specific `kind`. There is no
-    measurement saying which URL should win: neither validation site has ever
-    produced two URLs for one page that disagree about `kind`. When one does,
-    the disagreement is recorded on the duplicate_content outcome, and that
-    measurement can decide the rule (A3).
+    deliberately does not prefer a more specific `kind`.
+
+    Preferring the more specific kind is the obvious-sounding rule, and it is
+    the one this function must not adopt. `kind` is denormalised onto chunks
+    for source weighting (ADR-0004), and the measured failure this project has
+    actually seen runs the other way: substring matching over-classified two
+    thoughtbot playbook articles as job postings, which KIND_PATTERNS calls a
+    retrieval defect rather than a cosmetic one. A rule that resolves every
+    tie towards the more specific kind is a rule that prefers exactly that
+    error. There is no measurement for the opposite direction either, so
+    neither is chosen.
+
+    What DID change is that the uncertainty is no longer invisible. A losing
+    URL's kind is recorded on `Document.kind_conflicts`, so a contested `kind`
+    is distinguishable from a settled one by anything reading the artifact,
+    and the crawl says so on the run that produces it. Which URL *should* win
+    stays open, deliberately -- but it can no longer pass unnoticed, which is
+    what kept it from ever being measured (A3, A5). See ADR-0019.
     """
     return min(group, key=lambda d: d.url)
 
@@ -1050,6 +1232,14 @@ if __name__ == "__main__":
         print("  outcomes:  " + ", ".join(
             f"{k} {v}" for k, v in sorted(tally.items())))
         print(f"  crawl:     {prospect.crawl_outcome}")
+        # Printed only when it happens, and it has never happened. The first
+        # crawl that produces one is the measurement docs/open-questions.md
+        # section 1.1c has been waiting for, and it should not have to be dug
+        # out of the artifact afterwards.
+        contested = [d for d in prospect.documents if d.kind_conflicts]
+        for d in contested:
+            print(f"  kind?:     {d.url} is {d.kind}, also classified "
+                  f"{', '.join(d.kind_conflicts)} -- section 1.1c")
         print(f"  team page: {s.has_team_page} ({s.people_listed} people, "
               f"{s.technical_roles_named} technical mentions)")
         print(f"  careers:   {s.has_careers_page} ({s.open_roles_seen} roles, "
