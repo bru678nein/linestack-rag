@@ -245,12 +245,16 @@ def test_a_scaffold_does_not_validate(tmp_path: Path) -> None:
 
     report = _run(tmp_path)
 
-    # Asserts the INTENT, not the wording. This test pinned the word
-    # "placeholder" and broke when the messages were rewritten to be readable
-    # -- a test that fails on rephrasing tells you nothing about behaviour.
-    assert not report.ok
-    assert any("not written yet" in str(f) for f in report.findings)
-    assert any("signals" in str(f) for f in report.findings)
+    # A scaffold is IN PROGRESS, not broken: its unwritten fields are warnings,
+    # so committing one mid-session does not turn the build red. The harness
+    # refuses to run on unwritten pairs, which is where that gate belongs.
+    #
+    # Asserts the intent, not the wording. This test pinned the literal word
+    # "placeholder" and broke when the messages were rewritten -- a test that
+    # fails on rephrasing reports a style change as a defect.
+    assert report.ok, "an unfinished file must not fail the build"
+    assert any("not written yet" in str(w) for w in report.warnings)
+    assert any("hand-check" in str(w) for w in report.warnings)
 
 
 def test_the_scaffold_does_not_fill_in_the_signals(tmp_path: Path) -> None:

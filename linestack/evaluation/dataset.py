@@ -93,7 +93,9 @@ class ValidationReport:
             lines.append(f"  warning:  {finding}")
         for finding in self.findings:
             lines.append(f"  ERROR:    {finding}")
-        if self.ok:
+        if self.ok and self.warnings:
+            lines.append("  structurally valid; unfinished work listed above")
+        elif self.ok:
             lines.append("  structurally valid")
         else:
             lines += [
@@ -128,8 +130,28 @@ def validate_directory(
 
 
 def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
+    """Validate one file.
+
+    A file still carrying TODO placeholders is IN PROGRESS, and its unwritten
+    fields are warnings. A file with anything else wrong is BROKEN, and those
+    are errors.
+
+    The distinction is not politeness. Writing this set takes hours per
+    prospect across many sittings, and a half-written file committed at the end
+    of one of them must not turn the build red -- this module's own comment
+    says a build that goes red on the first day is a build everyone learns to
+    ignore, and committing a scaffold did exactly that within the hour.
+
+    Nothing is lost: the harness refuses to RUN on a set with unwritten pairs,
+    which is where that check belongs. CI's job here is to catch a malformed
+    file, not to nag about unfinished work it can see is unfinished.
+    """
+
     def fail(where: str, message: str) -> None:
         report.findings.append(Finding(path.name, where, message))
+
+    def pending(where: str, message: str) -> None:
+        report.warnings.append(Finding(path.name, where, message))
 
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -151,7 +173,7 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
         if not value:
             fail("prospect", f"{key} is required")
         elif isinstance(value, str) and TODO in value:
-            fail("prospect", f"{key} still holds the {TODO} placeholder")
+            pending("prospect", f"{key} not filled in yet")
 
     signals = data.get("signals")
     if isinstance(signals, dict):
@@ -169,15 +191,13 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
             # it is named separately rather than lumped in with the claim.
             numbers = [k for k in unfilled if k != "notes"]
             if numbers:
-                fail(
+                pending(
                     "signals",
-                    f"{', '.join(numbers)} still hold {TODO}. Hand-check these "
-                    f"against the LIVE site; the crawler's values are shown "
-                    f"beside each one and are the claim under test, not the "
-                    f"answer (docs/ground-truth.md §2 step 3).",
+                    f"still to hand-check against the live site: "
+                    f"{', '.join(numbers)} (docs/ground-truth.md §2 step 3)",
                 )
             if "notes" in unfilled:
-                fail("signals.notes", f"still holds {TODO}: record how you checked")
+                pending("signals.notes", "record how you checked")
 
     domain = str(prospect.get("domain", "")).lower()
     if domain and not _DOMAIN_RE.match(domain):
@@ -212,7 +232,7 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
             elif isinstance(question[key], str) and TODO in question[key]:
                 unfilled.append(key)
         if unfilled:
-            fail(
+            pending(
                 f"{where} ({question.get('id', '?')})",
                 f"not written yet: {', '.join(unfilled)}",
             )

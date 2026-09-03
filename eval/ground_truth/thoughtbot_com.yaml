@@ -14,7 +14,7 @@ prospect:
   crawled_at: "2026-09-02T18:54:28+00:00"
   corpus_artifact: prospect_thoughtbot_com.json
   author: TODO your email
-  written_at: TODO yyyy-mm-dd
+  written_at: "2026-09-03"
 
 # Hand-check these against the LIVE site and replace each TODO.
 # The values the crawler reported are shown beside each one: they are
@@ -23,9 +23,9 @@ prospect:
 signals:
   has_team_page: true
   people_listed: 54
-  open_roles_seen: TODO          # the crawler says: 0
-  technical_roles_open: TODO          # the crawler says: 0
-  latest_post_date: TODO          # the crawler says: 2026-09-02
+  open_roles_seen: 0
+  technical_roles_open: 0
+  latest_post_date: "2026-09-02"
   notes: >
     people_listed counted by hand on the live https://thoughtbot.com/team on
     2026-09-03: 54 person cards. It agrees with the crawler and with the
@@ -37,8 +37,18 @@ signals:
     /people is the one path thoughtbot's robots.txt disallows, so /team is the
     page to check.
 
-    TODO open_roles_seen, technical_roles_open and latest_post_date still need
-    checking against the live site.
+    open_roles_seen and technical_roles_open checked on the live
+    https://thoughtbot.com/jobs on 2026-09-03. The page states it outright:
+    "Our Open Positions / We currently have no open positions." Zero, and so
+    zero technical ones. This is the signal the crawler once reported as 4
+    roles / 3 technical, by counting pages classified job_posting instead of
+    role identities.
+
+    latest_post_date verified as 2026-09-02 on the live blog, which is also the
+    day of the crawl. Checked deliberately BECAUSE it looked suspicious: 31 of
+    the corpus's 76 documents carry htmldate's fallback dates
+    (docs/open-questions.md §1.6), so a date equal to the crawl date is exactly
+    the shape of a bad one. Here it happens to be right.
 
 questions:
   - id: q1_what_and_to_whom
