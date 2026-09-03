@@ -10,6 +10,14 @@ name: CI
 # its LLM-judged metrics vary run to run, which would produce flaky builds and
 # train everyone to ignore red. It is a separate, manually triggered job
 # (docs/evaluation.md section 6).
+#
+# Every job runs the SAME make targets a developer runs locally. The first
+# version of this file called `uv pip install --system`, `ruff` and `pytest`
+# directly, which failed on the runner -- uv refuses to install into a Python
+# it manages itself ("the interpreter ... is externally managed", PEP 668) --
+# and, more importantly, meant CI was exercising different commands from the
+# ones anyone actually types. A green CI that runs something else is not
+# evidence about the thing you run.
 
 on:
   push:
@@ -32,9 +40,8 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: uv pip install --system -e ".[dev]"
-      - run: ruff check .
-      - run: ruff format --check .
+      - run: make install
+      - run: make lint
 
   test:
     runs-on: ubuntu-latest
@@ -43,9 +50,9 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: uv pip install --system -e ".[dev]"
+      - run: make install
       - name: Unit tests
-        run: pytest -m "not integration and not evaluation"
+        run: make test
 
   migrate:
     # The migration is the only place A1 is enforced by the database
@@ -68,23 +75,32 @@ jobs:
           --health-retries 10
     env:
       PGPASSWORD: linestack
+      # Both, deliberately. The async engine reads DATABASE_URL and the
+      # isolation test reads DATABASE_URL_SYNC; setting only one leaves the
+      # other pointing at a default, and the tests then connect somewhere else
+      # without saying so. That has already happened on a developer machine.
+      DATABASE_URL: postgresql+asyncpg://linestack:linestack@localhost:5432/linestack
       DATABASE_URL_SYNC: postgresql://linestack:linestack@localhost:5432/linestack
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: uv pip install --system -e ".[dev]"
+      - run: make install
       - name: Apply migrations
+        # Not `make migrate`: that target runs psql inside the compose
+        # container, and here Postgres is a service container reached over the
+        # port. The database is fresh every run, so applying every file in
+        # order is correct -- there is nothing to skip.
         run: |
           for f in migrations/*.sql; do
             echo "applying $f"
             psql "$DATABASE_URL_SYNC" -v ON_ERROR_STOP=1 -f "$f"
           done
-      - name: Migrations are idempotent enough to re-apply on a clean database
+      - name: Every migration is recorded
         run: psql "$DATABASE_URL_SYNC" -v ON_ERROR_STOP=1 -c "SELECT version FROM schema_migrations ORDER BY version"
-      - name: Schema and isolation tests
-        run: pytest -m integration
+      - name: Schema, isolation and loader tests
+        run: make test-integration
 
   ground-truth:
     # Structural validation only: required fields, resolvable prospect
@@ -96,16 +112,16 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: uv pip install --system -e ".[dev]"
+      - run: make install
       - name: Validate the ground-truth set
         run: |
           if [ -z "$(ls -A eval/ground_truth/*.yaml 2>/dev/null)" ]; then
             echo "No ground-truth files yet; nothing to validate."
-            echo "See docs/ground-truth.md -- authoring is blocked on the"
-            echo "ingestion defects in docs/open-questions.md section 1."
+            echo "See docs/ground-truth.md. Authoring is unblocked as of"
+            echo "2026-09-02; the harness that consumes it is not written yet."
             exit 0
           fi
-          python -m linestack.evaluation.dataset --validate eval/ground_truth
+          .venv/bin/python -m linestack.evaluation.dataset --validate eval/ground_truth
 
   evaluation:
     # Manual only, and currently a no-op. Enable the body once the harness and
@@ -119,4 +135,4 @@ jobs:
         run: |
           echo "The evaluation harness does not exist yet."
           echo "Design: docs/evaluation.md. Dataset: docs/ground-truth.md."
-          echo "Blocked on the ingestion defects in docs/open-questions.md."
+          echo "Ground-truth authoring is unblocked; the harness is the gap."
