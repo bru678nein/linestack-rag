@@ -332,17 +332,47 @@ document owned by prospect A is rejected with a foreign-key violation.
 `tests/test_isolation_contract.py::test_database_rejects_a_chunk_from_the_wrong_prospect`,
 run with `make up && make migrate && make test-integration`.
 
-### 4.2 One chokepoint for chunk queries — [planned]
+### 4.2 One chokepoint for chunk queries — [verified]
 
-`linestack/retrieval/scope.py` will expose a single object whose constructor
-requires a `prospect_id` and which is the only place in the codebase that builds
-a query against `chunks`. Every retrieval function takes that object, not a raw
-session. A query that does not go through it does not compile, because there is
-no other function that returns chunk rows.
+`linestack/retrieval/scope.py` exposes `ProspectScope`, whose constructor takes
+a `prospect_id`, and it is the only place in the codebase that builds a query
+against `chunks`. Every retrieval function takes that object, not a raw session.
 
-This is weaker than 4.1 — it is enforced by review and by a test that greps for
-`chunks` outside the scope module, not by the database. It is listed second for
-that reason.
+**`prospect_id` is never a method argument.** It is read from `self` by every
+method, so there is no call site at which the wrong one can be passed — the
+isolation is a shape, not a discipline. A unit test asserts no public method
+grows such a parameter.
+
+The scope owns the write side too (`replace_document_chunks`,
+`write_embeddings`), not only reads. The loader owns the *decision* of what to
+write; the scope owns the SQL. Splitting it the other way would put chunk
+queries in two modules, which is what the chokepoint exists to prevent.
+`replace_document_chunks` additionally asserts the target document belongs to
+the scope's prospect before deleting anything: the composite key of §4.1 stops
+a bad INSERT, but a DELETE against another prospect's document violates no
+constraint, so the two mechanisms are not redundant.
+
+This is still weaker than §4.1 — it is enforced by tests rather than by the
+database — and is listed second for that reason. Three guards enforce it, and
+**each was verified by deliberately breaking it** (a guard that has never fired
+is not known to work):
+
+| Guard | Catches | Verified by |
+| --- | --- | --- |
+| raw-SQL grep | `from chunks` / `join chunks` outside scope.py | pre-existing |
+| Chunk-import AST check | `select(Chunk)` — an ORM query the grep cannot see | adding the import to `loader.py`; it failed |
+| no-session check | a session reaching `search.py` | adding `AsyncSession` to it; it failed |
+
+The AST check replaced a regex for the word `Chunk`, which matched
+`chunking.py`'s own docstring. A guard that fires on prose is a guard someone
+deletes.
+
+**[verified] 2026-09-02** against a live database with two prospects' chunks in
+the table at once: at k = 1, 3, 5 and 10 a scope returns only its own prospect's
+rows, with the *other* prospect's chunk deliberately the closer vector match.
+Removing the `WHERE prospect_id` clause — leaving the query otherwise valid —
+makes that test fail with `at k=1 the scope returned ['theirs']`, so the test is
+known to detect the leak rather than to pass by luck of ordering.
 
 ### 4.3 Row-level security — [not adopted]
 

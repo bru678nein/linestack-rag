@@ -90,6 +90,83 @@ def test_only_the_scope_module_queries_chunks() -> None:
     assert not offenders, f"chunk queries outside scope.py: {offenders}"
 
 
+# The regex above only catches raw SQL. Once linestack/models.py exists, a
+# SQLAlchemy ORM query -- select(Chunk).where(...) -- matches neither
+# "from chunks" nor "join chunks", so the guard above would pass while a
+# second module queried chunks freely. Verified 2026-09-02: adding
+# `select(Chunk)` to loader.py left the SQL guard green.
+MODELS_MODULE = PACKAGE / "models.py"
+
+
+def _imports_the_chunk_model(source: str) -> bool:
+    """Whether this module actually imports Chunk, by parsing rather than grep.
+
+    A regex for the word "Chunk" matches prose: chunking.py's own docstring
+    says "Chunk" and tripped an earlier version of this test. A guard that
+    fires on a docstring is a guard someone deletes, so this one reads the
+    import statements instead.
+    """
+    import ast
+
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:  # pragma: no cover - a broken file fails elsewhere
+        return False
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and "models" in node.module
+            and any(alias.name == "Chunk" for alias in node.names)
+        ):
+            return True
+        if isinstance(node, ast.Attribute) and node.attr == "Chunk":
+            return True
+    return False
+
+
+def test_only_the_scope_module_imports_the_chunk_model() -> None:
+    """The ORM half of the chunk-query rule.
+
+    The regex guard above only catches raw SQL. A SQLAlchemy ORM query --
+    select(Chunk).where(...) -- matches neither "from chunks" nor "join
+    chunks", so without this a second module could query chunks freely while
+    the SQL guard stayed green.
+
+    models.py may import nothing (it defines Chunk); scope.py is the
+    chokepoint. A third module importing it is a second place that can build a
+    chunk query. If this fails, move the query into scope.py -- do not add the
+    module to an allowlist. See docs/open-questions.md section 3.3.
+    """
+    offenders = [
+        path.relative_to(REPO_ROOT)
+        for path in PACKAGE.rglob("*.py")
+        if path not in {SCOPE_MODULE, MODELS_MODULE}
+        and _imports_the_chunk_model(path.read_text(encoding="utf-8"))
+    ]
+    assert not offenders, f"the Chunk model is imported outside scope.py: {offenders}"
+
+
+SEARCH_MODULE = PACKAGE / "retrieval" / "search.py"
+
+
+def test_search_never_touches_a_session() -> None:
+    """search.py orders the call; it does not make one.
+
+    A session in search.py is a query one edit away from existing, and it
+    would be the natural place to add "just one more filter" -- which is
+    exactly how a prospect filter gets forgotten.
+    """
+    if not SEARCH_MODULE.exists():
+        return
+    source = SEARCH_MODULE.read_text(encoding="utf-8")
+    for forbidden in ("AsyncSession", "session", "execute("):
+        assert forbidden not in source, (
+            f"search.py references {forbidden!r}. It takes a ProspectScope, "
+            f"never a session: the scope is what carries the prospect filter."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Module contract
 # ---------------------------------------------------------------------------
