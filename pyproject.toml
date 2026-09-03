@@ -88,6 +88,20 @@ eval = [
                                   #           linestack/evaluation/metrics.py.
 ]
 
+# Local embeddings, as an alternative to the OpenAI API. Not installed by
+# default: it pulls torch, which is 529 MB of the ~630 MB download and most of
+# the 784 MB the venv grows by. VERIFIED 2026-09-03 on an M5 MacBook Air --
+# installs in 7.5 s, embeds the 154-chunk corpus in 1.84 s using 0.2 of 10
+# cores (the work goes to the GPU via MPS), 459 MB peak RSS, 8 ms for a single
+# question. Declared so that measurement is reproducible; adopting it as the
+# project's embedder is a separate decision, not yet taken -- bge-small is 384
+# dimensions against the schema's halfvec(1536).
+local = [
+    "sentence-transformers==6.0.1",  # VERIFIED  exercised for the retrieval
+                                     #           measurement in
+                                     #           docs/open-questions.md 2.5
+]
+
 dev = [
     "pytest==9.1.1",              # RESOLVED
     "pytest-asyncio==1.4.0",      # RESOLVED  async session and API tests

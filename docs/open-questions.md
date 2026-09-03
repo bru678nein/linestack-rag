@@ -301,13 +301,74 @@ list of how to check them.
 | 2.2 | 800–1200-token chunks beat 400 on synthesis questions | ADR-0005 | Recall@k and faithfulness per configuration, on the ground-truth set. The most important unverified assumption in the design |
 | ~~2.3~~ | ~~Job postings fit in one chunk~~ | ADR-0005 | **[verified] 2026-09-02** — the largest in the corpus, `fly.io/jobs/networking-engineer`, is **1,493 tiktoken tokens**. Above ADR-0005's guessed "typically under 1500", and about 5× under the 8191-token embedding limit, so the never-split rule holds with room. |
 | 2.4 | Quota split 0.45 / 0.30 / 0.25 matches where the four questions are answered | ADR-0007 | Recall per question across corpora crawled at different splits |
-| 2.5 | Naive vector search is insufficient, worst on question 4 | ADR-0009 | The first harness run |
+| 2.5 | Naive vector search is insufficient, worst on question 4 | ADR-0009 | **Partly measured 2026-09-03 — see below.** Insufficiency confirmed; "worst on question 4" not confirmed, it was worst on question 2. |
 | 2.6 | A frozen corpus stays valid for about a quarter | evaluation.md §3 | Re-crawl and diff content hashes |
 | 2.7 | 48 pairs can detect a 10-point recall change | evaluation.md §7 | Not computed. Do the power calculation, or accept it as a rough set and say so |
 | 2.8 | `ragas` faithfulness handles computed signals in the context sensibly | evaluation.md §7 | Run one pair with and without signals injected and compare |
 | 2.9 | Pinned dependency versions install and work together | pyproject.toml | See §3.1 — several are resolved from PyPI but never installed |
 | 2.10 | The signal set will stabilise, at which point queried fields leave JSONB | architecture.md §3.1 | The first time a signal appears in a `WHERE` clause |
 | 2.11 | No fifth bug of the same class remains in `ingest.py` | ADR-0010 | There is no harness. The five defects above argue against this one |
+
+---
+
+### 2.5 (detail) The first real evidence that ranking, not ingestion, is the problem
+
+**[verified] 2026-09-03**, on fly.io's 111 chunks, embedded locally with
+`BAAI/bge-small-en-v1.5` (384 dimensions) because no OpenAI key was configured.
+
+The team roster — `fly.io/about`, 57 named people with job titles, one chunk —
+is what question 2 asks for. Where it ranks:
+
+| question as put to the system | roster rank | score spread |
+| --- | --- | --- |
+| `"What evidence is there of in-house technical capacity?"` | **110 of 111** | 0.146 |
+| `"who works here, employees and their roles"` | **4 of 111** | 0.235 |
+
+The top hit for the first phrasing is a blog post about calibrating trust in AI
+software. The right chunk is in the corpus — it is the same page ADR-0011 was
+written to recover — and the ranking puts it second from last.
+
+This is A8 stated as a measurement rather than a principle: the first hypothesis
+for a wrong answer is that the right chunk was never retrieved, and here it was
+retrieved 110th. It is also precisely the trigger ADR-0009 names for adopting
+hybrid search — recall@5 below 0.8 on a question, with manual inspection showing
+matter present in the corpus that vector search ranked outside the top 5.
+
+**The likely cause is vocabulary.** The page says names and titles — "Developer",
+"Support Engineer". It never says "capacity", "in-house" or "evidence". The
+score spread collapses accordingly: 0.146 across all 111 chunks for the
+project's phrasing against 0.235 for the page's own, so with the question as
+written almost nothing is distinguishable from anything else.
+
+**A hypothesis this measurement killed.** The provenance header added in
+ADR-0005 (`title · kind · published`) looked like the culprit, especially with
+htmldate's junk dates visible inside it — one chunk carries `1998-01-01`.
+Re-embedding every chunk with the header stripped leaves the roster at **110**.
+It widens the spread slightly (0.146 → 0.191) and moves nothing. The header is
+not the problem.
+
+**What this does NOT establish**, and the distinction matters before anyone
+ships a fix:
+
+- It is **one embedding model**, and not the configured one. `bge-small` is 384
+  dimensions; the schema and ADR-0009 assume `text-embedding-3-small` at 1536.
+  A different model could rank differently.
+- It is **one phrasing of one question on one prospect**. Four questions across
+  twelve prospects is what `docs/ground-truth.md` specifies, and none of it is
+  written.
+- It says nothing about **which** fix works. Hybrid search is the natural
+  candidate and ADR-0009 puts it first, but "a lexical term was missed" is a
+  diagnosis reached by eye, not a measured comparison.
+
+So this is evidence that the harness is worth building, not a licence to skip
+it. Under A3 the fix ships with a recorded before-and-after, and the "before"
+does not exist yet.
+
+**Method note.** A first pass at this measurement reported "27 roster chunks" and
+was wrong: it matched `/about` as a substring, catching `/docs/about/pricing`
+and friends. The roster is a single chunk. The numbers above are from the
+corrected run — recorded because a plausible-looking measurement that is quietly
+wrong is the failure mode this document exists to prevent.
 
 ---
 

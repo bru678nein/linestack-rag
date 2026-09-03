@@ -57,8 +57,16 @@ reconstructing three stages of scoring.
 **[assumed]** naive vector search will be visibly insufficient — most likely on
 question 4 ("what pain do they state explicitly"), where the wording in the
 question and the wording on the page have little lexical overlap, and on exact
-product or framework names. That expectation is what the harness is for. It is
-an expectation, not a finding.
+product or framework names. That expectation is what the harness is for.
+
+**Partly measured, 2026-09-03.** The insufficiency is real and showed up before
+the harness existed; the guess about *which* question was wrong. On fly.io's
+111 chunks, question **2** — "What evidence is there of in-house technical
+capacity?" — ranks the team roster, 57 named people with job titles, at
+**110 of 111**. Reworded in the page's own vocabulary it ranks **4 of 111**.
+Details and caveats in `docs/open-questions.md` §2.5. This is one model, one
+phrasing, no ground truth: enough to know a problem exists, not enough to know
+which fix is right.
 
 ## What would reverse it
 
