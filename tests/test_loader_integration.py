@@ -8,6 +8,7 @@ Requires: make up && make migrate.
 """
 
 import datetime as dt
+import itertools
 from pathlib import Path
 
 import pytest
@@ -30,11 +31,32 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 NOW = dt.datetime(2026, 9, 3, tzinfo=dt.UTC)
 
 
-def _artifact(name: str):
+_SEQUENCE = itertools.count()
+
+
+def _artifact(name: str, *, isolate: bool = True):
+    """A frozen artifact, re-identified so it cannot collide with real data.
+
+    The domain and crawled_at are rewritten per test. Without that these tests
+    depend on nobody having run `make load` for the same prospect -- which is
+    exactly what happened on 2026-09-02: a demonstration load committed fly.io
+    and thoughtbot rows, and two tests asserting `crawl_run_existed is False`
+    started failing on state rather than on a defect.
+
+    (prospect_id, started_at) is the crawl_runs natural key from migration
+    0003, so varying both is what makes a run unique.
+    """
     path = REPO_ROOT / name
     if not path.exists():
         pytest.skip(f"{name} is gitignored and not on disk; re-crawl to restore")
-    return read_artifact(path)
+    artifact = read_artifact(path)
+    if isolate:
+        nth = next(_SEQUENCE)
+        artifact.domain = f"test-{nth}-{artifact.domain}"
+        artifact.crawled_at = (
+            artifact.crawled_at_utc - dt.timedelta(seconds=nth + 1)
+        ).isoformat()
+    return artifact
 
 
 async def test_a_full_crawl_loads_with_the_counts_the_artifact_reports(
