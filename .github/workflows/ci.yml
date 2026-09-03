@@ -114,14 +114,10 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: make install
       - name: Validate the ground-truth set
-        run: |
-          if [ -z "$(ls -A eval/ground_truth/*.yaml 2>/dev/null)" ]; then
-            echo "No ground-truth files yet; nothing to validate."
-            echo "See docs/ground-truth.md. Authoring is unblocked as of"
-            echo "2026-09-02; the harness that consumes it is not written yet."
-            exit 0
-          fi
-          .venv/bin/python -m linestack.evaluation.dataset --validate eval/ground_truth
+        # The same target a developer runs. It handles the empty case itself:
+        # the set is written by hand over hours, and a build that goes red on
+        # the first day is a build everyone learns to ignore.
+        run: make ground-truth-validate
 
   evaluation:
     # Manual only, and currently a no-op. Enable the body once the harness and

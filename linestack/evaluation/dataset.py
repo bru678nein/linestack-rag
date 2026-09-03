@@ -10,4 +10,282 @@ Does not own: judging answers. That is metrics.py.
 
 A reference answer whose corpus_artifact is missing is unfalsifiable and must
 be rejected rather than skipped.
+
+WHAT THIS CAN AND CANNOT CATCH, because the difference decides how much the
+green tick is worth. It catches shape: a missing field, a question id that is
+not one of the four, an `expected_outcome` that is neither of the two words, a
+`source_urls` entry that is not a URL or points at another company's domain, a
+`corpus_artifact` that is not on disk. It cannot catch a reference answer that
+is simply wrong, one written from the live site rather than the frozen corpus,
+or one a model wrote. Those are the failures `docs/ground-truth.md` §2 and §4
+guard against, and they are guarded by discipline rather than by this file.
 """
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from urllib.parse import urlparse
+
+import yaml
+
+from linestack.config import settings
+
+# The four questions are fixed. A fifth is generated but never evaluated, and a
+# typo'd id would otherwise create a silent fifth column in every metric.
+QUESTION_IDS = (
+    "q1_what_and_to_whom",
+    "q2_technical_capacity",
+    "q3_growth_signals",
+    "q4_stated_pain",
+)
+
+OUTCOMES = ("answerable", "insufficient_evidence")
+
+REQUIRED_PROSPECT_FIELDS = ("company_name", "domain", "corpus_artifact")
+REQUIRED_QUESTION_FIELDS = ("id", "question", "reference", "source_urls")
+
+# docs/ground-truth.md §3: pairs the corpus genuinely cannot answer "should be
+# roughly a quarter" of the set. Below this, the set rewards fluency.
+MIN_INSUFFICIENT_SHARE = 0.15
+
+_DOMAIN_RE = re.compile(r"^[a-z0-9.-]+\.[a-z]{2,}$")
+
+
+@dataclass
+class Finding:
+    """One problem, located precisely enough to fix without hunting."""
+
+    path: str
+    where: str
+    message: str
+
+    def __str__(self) -> str:
+        return f"{self.path}: {self.where}: {self.message}"
+
+
+@dataclass
+class ValidationReport:
+    files: int = 0
+    pairs: int = 0
+    insufficient: int = 0
+    findings: list[Finding] = field(default_factory=list)
+    warnings: list[Finding] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not self.findings
+
+    def as_lines(self) -> list[str]:
+        lines = [
+            f"  files:    {self.files}",
+            f"  pairs:    {self.pairs}",
+            f"  of which insufficient_evidence: {self.insufficient}"
+            + (f" ({self.insufficient / self.pairs:.0%})" if self.pairs else ""),
+        ]
+        for finding in self.warnings:
+            lines.append(f"  warning:  {finding}")
+        for finding in self.findings:
+            lines.append(f"  ERROR:    {finding}")
+        lines.append(
+            "  structurally valid" if self.ok else f"  {len(self.findings)} errors"
+        )
+        return lines
+
+
+def validate_directory(
+    directory: str | Path, repo_root: Path | None = None
+) -> ValidationReport:
+    """Validate every ground-truth file in a directory.
+
+    An empty directory is not an error. The set is written by hand over hours,
+    so CI has to stay green while it is being written -- otherwise the first
+    commit of the first file turns the build red for a week and everyone learns
+    to ignore it.
+    """
+    directory = Path(directory)
+    root = repo_root or Path(directory).resolve().parent.parent
+    report = ValidationReport()
+
+    for path in sorted(directory.glob("*.yaml")):
+        report.files += 1
+        _validate_file(path, root, report)
+
+    _check_the_set_as_a_whole(directory, report)
+    return report
+
+
+def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
+    def fail(where: str, message: str) -> None:
+        report.findings.append(Finding(path.name, where, message))
+
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        fail("file", f"is not valid YAML: {str(exc).splitlines()[0]}")
+        return
+
+    if not isinstance(data, dict):
+        fail("file", "does not contain a mapping at the top level")
+        return
+
+    prospect = data.get("prospect")
+    if not isinstance(prospect, dict):
+        fail("prospect", "missing or not a mapping")
+        return
+
+    for key in REQUIRED_PROSPECT_FIELDS:
+        if not prospect.get(key):
+            fail("prospect", f"{key} is required")
+
+    domain = str(prospect.get("domain", "")).lower()
+    if domain and not _DOMAIN_RE.match(domain):
+        fail("prospect.domain", f"{domain!r} does not look like a domain")
+
+    # The artifact is what makes a reference answer falsifiable. Without it,
+    # nobody can tell whether an answer was wrong or the corpus had changed.
+    artifact = prospect.get("corpus_artifact")
+    if artifact and not (root / str(artifact)).exists():
+        fail(
+            "prospect.corpus_artifact",
+            f"{artifact} is not on disk. A reference answer without its frozen "
+            f"corpus is unfalsifiable (docs/ground-truth.md §1).",
+        )
+
+    questions = data.get("questions")
+    if not isinstance(questions, list) or not questions:
+        fail("questions", "missing, empty, or not a list")
+        return
+
+    seen: set[str] = set()
+    for index, question in enumerate(questions):
+        where = f"questions[{index}]"
+        if not isinstance(question, dict):
+            fail(where, "is not a mapping")
+            continue
+
+        for key in REQUIRED_QUESTION_FIELDS:
+            if key not in question:
+                fail(where, f"{key} is required")
+
+        qid = question.get("id")
+        if qid not in QUESTION_IDS:
+            fail(where, f"id {qid!r} is not one of {list(QUESTION_IDS)}")
+        elif qid in seen:
+            fail(where, f"id {qid!r} appears twice in this file")
+        else:
+            seen.add(qid)
+
+        outcome = question.get("expected_outcome", "answerable")
+        if outcome not in OUTCOMES:
+            fail(where, f"expected_outcome {outcome!r} is not one of {list(OUTCOMES)}")
+
+        report.pairs += 1
+        if outcome == "insufficient_evidence":
+            report.insufficient += 1
+
+        _validate_sources(question, where, domain, outcome, path, report)
+
+    missing = [q for q in QUESTION_IDS if q not in seen]
+    if missing and not report.findings:
+        report.warnings.append(
+            Finding(path.name, "questions", f"no pair yet for {missing}")
+        )
+
+
+def _validate_sources(
+    question: dict,
+    where: str,
+    domain: str,
+    outcome: str,
+    path: Path,
+    report: ValidationReport,
+) -> None:
+    """source_urls is what recall is computed against, so it has to be exact."""
+
+    def fail(message: str) -> None:
+        report.findings.append(Finding(path.name, f"{where}.source_urls", message))
+
+    urls = question.get("source_urls")
+    if urls is None:
+        return
+    if not isinstance(urls, list):
+        fail("must be a list (it may be empty)")
+        return
+
+    if not urls and outcome != "insufficient_evidence":
+        fail(
+            "is empty, but expected_outcome is 'answerable'. An answerable "
+            "question with no evidence makes recall unmeasurable; mark it "
+            "insufficient_evidence instead (docs/ground-truth.md §3)."
+        )
+
+    for url in urls:
+        parsed = urlparse(str(url))
+        if parsed.scheme not in ("http", "https") or not parsed.netloc:
+            fail(f"{url!r} is not an absolute http(s) URL")
+            continue
+        # A5/A1 in the dataset: a reference answer citing another company's
+        # page makes recall unmeasurable and quietly crosses prospects.
+        host = parsed.netloc.lower().removeprefix("www.")
+        if domain and host != domain and not host.endswith("." + domain):
+            fail(
+                f"{url!r} is not on {domain}. Evidence must come from the "
+                f"prospect's own frozen corpus (docs/ground-truth.md §4)."
+            )
+
+
+def _check_the_set_as_a_whole(directory: Path, report: ValidationReport) -> None:
+    """Properties of the set, not of any one file.
+
+    Warnings rather than errors: the set is written over hours, and a rule about
+    its final shape must not fail the build while it is half-written.
+    """
+    if not report.pairs:
+        return
+
+    share = report.insufficient / report.pairs
+    if share < MIN_INSUFFICIENT_SHARE:
+        report.warnings.append(
+            Finding(
+                str(directory),
+                "set",
+                f"only {share:.0%} of pairs are insufficient_evidence. "
+                f"docs/ground-truth.md §3 wants roughly a quarter: without "
+                f"them every metric rewards fluency, and a system that answers "
+                f"all 48 questions confidently scores well for the exact "
+                f"failure this project exists to prevent.",
+            )
+        )
+
+
+def _main(argv: list[str]) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="linestack.evaluation.dataset")
+    parser.add_argument(
+        "--validate",
+        default=settings.eval_ground_truth_dir,
+        help="directory of ground-truth YAML files",
+    )
+    args = parser.parse_args(argv)
+
+    directory = Path(args.validate)
+    if not directory.exists():
+        print(f"  {directory} does not exist")
+        return 2
+
+    report = validate_directory(directory)
+    print(f"\n=== {directory}")
+    for line in report.as_lines():
+        print(line)
+    if not report.files:
+        print("  nothing to validate yet; see docs/ground-truth.md §2")
+    return 0 if report.ok else 1
+
+
+if __name__ == "__main__":
+    import sys
+
+    raise SystemExit(_main(sys.argv[1:]))

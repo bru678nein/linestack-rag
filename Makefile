@@ -147,9 +147,12 @@ eval-report:  ## [not implemented] Delta table against the previous run
 	@exit 1
 
 .PHONY: ground-truth-validate
-ground-truth-validate:  ## [not implemented] Structurally validate the ground-truth set
-	@echo "Not implemented. Format: docs/ground-truth.md."
-	@exit 1
+ground-truth-validate:  ## Structurally validate the ground-truth set
+# Structural only: required fields, the four question ids, resolvable corpus
+# artifacts, source URLs on the prospect's own domain. No model calls, no cost,
+# so CI runs it on every push. It cannot tell whether a reference answer is
+# RIGHT -- that is docs/ground-truth.md sections 2 and 4, guarded by discipline.
+	$(PY) -m linestack.evaluation.dataset --validate $(or $(DIR),eval/ground_truth)
 
 .PHONY: embed
 embed:  ## Embed pending chunks: make embed PROSPECT=fly.io [DRY=1]

@@ -62,6 +62,15 @@ dependencies = [
                                   #           would make the 800-1200 target
                                   #           unmeasurable.
 
+    # ---- evaluation dataset ----------------------------------------------
+    # The ground-truth set is YAML and its structural validator runs in CI on
+    # every push, so this belongs in the default set rather than in an extra.
+    # It was available locally only because sentence-transformers happened to
+    # pull it -- an undeclared transitive dependency that CI would have failed
+    # on, the same way it failed on numpy one commit earlier.
+    "pyyaml==6.0.3",              # VERIFIED  exercised by
+                                  #           linestack/evaluation/dataset.py
+
     # ---- observability ---------------------------------------------------
     "langfuse==4.15.1",           # RESOLVED  SDK version line differs from the
                                   #           self-hosted server image tag in
