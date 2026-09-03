@@ -177,8 +177,11 @@ def test_the_report_states_the_cost_before_anything_is_spent() -> None:
 
     assert "111 chunks" in lines
     assert "105318 tokens" in lines
-    assert "$" in lines
     assert "would embed" in lines
+    # A cost line either quotes a price or says there is none. What it must
+    # never do is stay silent about which, or quote a price for a model that
+    # costs nothing (ADR-0017).
+    assert ("$" in lines) or ("runs locally" in lines)
 
 
 def test_a_completed_run_reports_what_it_did_not_what_it_would_do() -> None:
@@ -200,10 +203,14 @@ def test_the_batch_type_carries_the_model_so_it_cannot_be_forgotten() -> None:
     assert names == {"model", "dimensions", "vectors"}
 
 
-def test_the_configured_dimension_is_what_the_column_expects() -> None:
-    """A mismatch here surfaces as an opaque Postgres cast error rather than
-    "config says 1536, the model returned 512"."""
-    assert settings.embedding_dimensions == 1536
+def test_the_configured_dimension_is_plausible_for_an_embedding_model() -> None:
+    """The exact value is asserted against the migration elsewhere in this file.
+
+    This one only rules out a nonsense setting -- 0, or a typo of 3840 -- that
+    would fail far from its cause. The dimension moved 1536 -> 384 with
+    ADR-0017, so pinning a literal here would just be a second place to update.
+    """
+    assert 64 <= settings.embedding_dimensions <= 4096
 
 
 def test_committing_per_batch_is_the_default() -> None:
@@ -220,3 +227,87 @@ def test_committing_per_batch_is_the_default() -> None:
     from linestack.retrieval.embedding import embed_prospect
 
     assert inspect.signature(embed_prospect).parameters["commit"].default is True
+
+
+# ---------------------------------------------------------------------------
+# Local embeddings (ADR-0017)
+# ---------------------------------------------------------------------------
+def test_the_schema_dimension_and_the_configured_dimension_agree() -> None:
+    """A mismatch surfaces as an opaque Postgres cast error at the first
+    INSERT, not as "config says 384, the model returned 1536".
+
+    The dimension is a schema commitment: halfvec(N) fixes N in the column, so
+    changing the embedding model to one of a different width is a migration and
+    a full re-embed. This test is what stops the two drifting apart quietly.
+    """
+    import re
+    from pathlib import Path
+
+    migrations = sorted(
+        (Path(__file__).resolve().parent.parent / "migrations").glob("*.sql")
+    )
+    declared = None
+    for path in migrations:
+        for match in re.finditer(
+            r"halfvec\((\d+)\)", re.sub(r"--[^\n]*", "", path.read_text())
+        ):
+            declared = int(match.group(1))
+
+    assert declared is not None, "no halfvec(N) found in any migration"
+    assert declared == settings.embedding_dimensions, (
+        f"the latest migration declares halfvec({declared}) but "
+        f"settings.embedding_dimensions is {settings.embedding_dimensions}"
+    )
+
+
+def test_a_local_model_is_recognised_and_an_openai_one_is_not() -> None:
+    from linestack.retrieval.embedding import uses_openai
+
+    assert uses_openai("text-embedding-3-small")
+    assert not uses_openai("BAAI/bge-small-en-v1.5")
+
+
+def test_the_default_model_needs_no_api_key() -> None:
+    """ADR-0017's whole point: the pipeline runs without an account."""
+    from linestack.retrieval.embedding import LocalEmbedder, build_client, uses_openai
+
+    assert not uses_openai(settings.embedding_model)
+    assert isinstance(build_client(), LocalEmbedder)
+
+
+def test_no_dollar_cost_is_quoted_for_a_model_that_costs_nothing() -> None:
+    """A false number in a cost line is worse than no cost line: someone
+    budgets against it. This printed "~$0.0021" for a local run until it did
+    not."""
+    report = EmbedReport(prospect_id=1, pending_chunks=111, pending_tokens=105_318)
+    lines = "\n".join(report.as_lines())
+
+    if settings.embedding_model.startswith("BAAI/"):
+        assert "$" not in lines
+        assert "runs locally" in lines
+
+
+def test_a_bge_model_gets_the_query_prefix_and_documents_do_not() -> None:
+    """bge asks for an instruction on the query side only. Getting the
+    asymmetry wrong degrades ranking quietly rather than loudly."""
+    from linestack.retrieval.embedding import BGE_QUERY_PREFIX, LocalEmbedder
+
+    captured = {}
+
+    class _Stub(LocalEmbedder):
+        def _load(self):
+            class _M:
+                @staticmethod
+                def encode(texts, **kw):
+                    captured["texts"] = list(texts)
+                    import numpy as np
+
+                    return np.zeros((len(texts), 4))
+
+            return _M()
+
+    _Stub("BAAI/bge-small-en-v1.5").embed_query("who works here")
+    assert captured["texts"] == [BGE_QUERY_PREFIX + "who works here"]
+
+    _Stub("some/other-model").embed_query("who works here")
+    assert captured["texts"] == ["who works here"]

@@ -87,20 +87,47 @@ class ChunkingReport:
     over_max: int = 0
 
 
+# One fixed encoding, deliberately NOT the embedding model's own tokenizer.
+#
+# ADR-0005 sizes chunks in tokens as a stand-in for content volume, and A3
+# compares chunk-size distributions before and after a change. Both of those
+# break if the counter changes when the embedding model changes: the same
+# document would produce different chunks for reasons having nothing to do with
+# chunking, and no measurement would be comparable across the switch.
+#
+# This was not hypothetical. Switching the default model to a local one
+# (ADR-0017) made `encoding_for_model` raise, the old code swallowed it, and the
+# counter silently became a WORD count. fly.io went from 111 chunks to 83 with
+# no error anywhere. Words are fewer than tokens, so every chunk quietly grew.
+TOKEN_ENCODING = "cl100k_base"
+
+
+class TokenCountingUnavailable(RuntimeError):
+    """Raised when tokens cannot be counted, rather than guessed at."""
+
+
 def default_token_counter() -> Callable[[str], int]:
-    """tiktoken, or a word-count fallback that says so.
+    """The fixed encoding above. Fails loudly rather than degrading quietly.
 
     tiktoken downloads its BPE file on first use, so a cold cache makes "unit
     tests, no network" false. Every function here takes `count_tokens` as a
     parameter for that reason; this is only the default for real use.
+
+    There is no word-count fallback. A silent fallback here does not fail, it
+    produces a differently-chunked corpus and calls the result a token count.
     """
     try:
         import tiktoken
 
-        encoding = tiktoken.encoding_for_model(settings.embedding_model)
-        return lambda text: len(encoding.encode(text))
-    except Exception:  # pragma: no cover - exercised only without tiktoken
-        return lambda text: len(text.split())
+        encoding = tiktoken.get_encoding(TOKEN_ENCODING)
+    except Exception as exc:  # pragma: no cover - exercised only without tiktoken
+        raise TokenCountingUnavailable(
+            f"cannot load the {TOKEN_ENCODING} encoding, and chunk sizes are "
+            f"specified in tokens (ADR-0005). Counting words instead would "
+            f"silently produce a different corpus. Install tiktoken and allow "
+            f"it to fetch its BPE file once, or pass count_tokens explicitly."
+        ) from exc
+    return lambda text: len(encoding.encode(text))
 
 
 def provenance_header(title: str, kind: str, published: str | None) -> str:

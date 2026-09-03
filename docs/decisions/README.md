@@ -32,3 +32,4 @@ Every record states four things:
 | [0014](0014-count-people-structurally-first.md) | Count people by repeated structure first, class names second | Accepted |
 | [0015](0015-classify-by-path-segment-not-substring.md) | Classify by whole path segments; no title; deterministic canonical URL | Accepted |
 | [0016](0016-fast-fail-on-an-unreachable-host.md) | Stop crawling a host that is not answering | Accepted |
+| [0017](0017-local-embeddings-by-default.md) | Local embeddings by default; OpenAI as the alternative | Accepted |

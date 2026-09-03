@@ -41,6 +41,85 @@ class EmbeddingFailed(RuntimeError):
     """Raised when a batch could not be embedded after its retries."""
 
 
+# Models served by the OpenAI API. Anything else is treated as a local
+# sentence-transformers model (ADR-0017).
+OPENAI_MODELS = {
+    "text-embedding-3-small",
+    "text-embedding-3-large",
+    "text-embedding-ada-002",
+}
+
+# bge asks for an instruction on the QUERY side and none on the document side.
+# Getting this asymmetry wrong degrades ranking quietly rather than loudly,
+# which is the worst way for it to be wrong.
+BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
+
+def uses_openai(model: str) -> bool:
+    return model in OPENAI_MODELS
+
+
+class LocalEmbedder:
+    """sentence-transformers behind the same shape as the OpenAI client.
+
+    Deliberately mimics `client.embeddings.create(model=..., input=[...])` so
+    that `embed_texts` -- with its batching and retry policy -- does not need to
+    know which one it is talking to. Nothing here retries: a local model does
+    not rate-limit and does not have a bad afternoon.
+
+    Measured on an M5 MacBook Air (ADR-0017): the corpus of 154 chunks embeds
+    in 1.84 s using 0.2 of 10 cores, because the work goes to the GPU via MPS.
+    Model load is 7.2 s per process and is the dominant cost for a small run.
+    """
+
+    def __init__(self, model_name: str | None = None) -> None:
+        self._name = model_name or settings.embedding_model
+        self._model = None
+        self.embeddings = self
+
+    def _load(self):
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+            except ImportError as exc:  # pragma: no cover - install guidance
+                raise EmbeddingFailed(
+                    f"{self._name} is a local model but sentence-transformers "
+                    f"is not installed. Run: uv pip install -e '.[local]'  "
+                    f"(about 784 MB, mostly torch). Or set EMBEDDING_MODEL to "
+                    f"an OpenAI model and provide OPENAI_API_KEY."
+                ) from exc
+            self._model = SentenceTransformer(self._name)
+        return self._model
+
+    async def create(self, *, model: str, input: list[str]):
+        vectors = self._load().encode(
+            list(input), normalize_embeddings=True, show_progress_bar=False
+        )
+        return type(
+            "Response",
+            (),
+            {"data": [type("Item", (), {"embedding": v.tolist()})() for v in vectors]},
+        )()
+
+    def embed_query(self, question: str) -> list[float]:
+        """Embed a question, with the query-side instruction bge expects."""
+        prefix = BGE_QUERY_PREFIX if "bge" in self._name.lower() else ""
+        vector = self._load().encode(
+            [prefix + question], normalize_embeddings=True, show_progress_bar=False
+        )[0]
+        return vector.tolist()
+
+
+def build_client(model: str | None = None):
+    """The embedder for the configured model. Local unless it is an OpenAI one."""
+    name = model or settings.embedding_model
+    if uses_openai(name):
+        from openai import AsyncOpenAI
+
+        return AsyncOpenAI(api_key=settings.require_openai_key())
+    return LocalEmbedder(name)
+
+
 @dataclass
 class EmbedReport:
     """What one embedding pass did, or would do. Counted, never estimated."""
@@ -55,18 +134,29 @@ class EmbedReport:
     batches: list[int] = field(default_factory=list)
 
     def as_lines(self) -> list[str]:
-        # 1M tokens at the text-embedding-3-small list price. Stated as an
-        # order of magnitude, not a bill: prices change and this file will not
-        # notice, so the token count above it is the number to trust.
-        cost = self.pending_tokens / 1_000_000 * 0.02
         head = "would embed" if self.dry_run else "embedded"
-        return [
+        lines = [
             f"  prospect:  {self.prospect_id}",
+            f"  model:     {settings.embedding_model}",
             f"  pending:   {self.pending_chunks} chunks, {self.pending_tokens} tokens",
-            f"  estimate:  ~${cost:.4f} at $0.02/1M tokens (list price, may be stale)",
-            f"  {head}:  {self.chunks_embedded} chunks in "
-            f"{self.requests} requests, {self.retries} retries",
         ]
+        # Quote a price only when there is one. Printing "~$0.0021" for a model
+        # running on this machine would be a number that is simply false, and a
+        # false number in a cost line is worse than no cost line -- someone
+        # budgets against it.
+        if uses_openai(settings.embedding_model):
+            cost = self.pending_tokens / 1_000_000 * 0.02
+            lines.append(
+                f"  estimate:  ~${cost:.4f} at $0.02/1M tokens "
+                f"(list price, may be stale)"
+            )
+        else:
+            lines.append("  cost:      none, this model runs locally (ADR-0017)")
+        lines.append(
+            f"  {head}:  {self.chunks_embedded} chunks in "
+            f"{self.requests} requests, {self.retries} retries"
+        )
+        return lines
 
 
 def plan_batches(
@@ -176,9 +266,7 @@ async def embed_prospect(
         return report
 
     if client is None:
-        from openai import AsyncOpenAI
-
-        client = AsyncOpenAI(api_key=settings.require_openai_key())
+        client = build_client()
 
     for batch in plan_batches(pending):
         vectors = await embed_texts(client, [c.content for c in batch], report)

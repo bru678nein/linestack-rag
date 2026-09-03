@@ -22,7 +22,12 @@ import asyncio
 from sqlalchemy import text
 
 from linestack.config import settings
-from linestack.retrieval.embedding import EmbedReport, embed_texts
+from linestack.retrieval.embedding import (
+    EmbedReport,
+    LocalEmbedder,
+    build_client,
+    embed_texts,
+)
 from linestack.retrieval.scope import ProspectScope
 from linestack.retrieval.search import format_hits, search
 
@@ -61,13 +66,17 @@ async def ask(
         ]
 
     if client is None:
-        from openai import AsyncOpenAI
+        client = build_client()
 
-        client = AsyncOpenAI(api_key=settings.require_openai_key())
+    # A local bge model wants an instruction on the query side and none on the
+    # documents. Asking it the same way the chunks were embedded ranks worse,
+    # and does so silently.
+    if isinstance(client, LocalEmbedder):
+        query_vector = client.embed_query(question)
+    else:
+        query_vector = (await embed_texts(client, [question], EmbedReport()))[0]
 
-    report = EmbedReport()
-    vectors = await embed_texts(client, [question], report)
-    hits = await search(scope, vectors[0], k=k)
+    hits = await search(scope, query_vector, k=k)
     urls = await scope.source_urls([hit.id for hit in hits])
 
     lines = [

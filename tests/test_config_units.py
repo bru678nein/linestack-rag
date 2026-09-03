@@ -26,8 +26,11 @@ def test_settings_construct_without_any_environment(monkeypatch) -> None:
     s = Settings(_env_file=None)
 
     assert s.openai_api_key is None
-    assert s.embedding_model == "text-embedding-3-small"
-    assert s.embedding_dimensions == 1536
+    # The default is a LOCAL model (ADR-0017), which is the whole point: the
+    # pipeline runs with no account and no key. This test pinned
+    # text-embedding-3-small until that decision changed.
+    assert s.embedding_model == "BAAI/bge-small-en-v1.5"
+    assert s.embedding_dimensions == 384
 
 
 def test_a_missing_openai_key_fails_where_it_is_used_not_at_import() -> None:

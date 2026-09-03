@@ -320,3 +320,41 @@ def test_real_tiktoken_agrees_that_the_largest_posting_fits() -> None:
 
     assert largest < 8191, f"largest posting is {largest} tokens"
     assert largest > 1000, "suspiciously small; is the corpus truncated?"
+
+
+def test_token_counting_does_not_depend_on_the_embedding_model() -> None:
+    """A fixed encoding, so chunk sizes stay comparable across a model change.
+
+    ADR-0005 sizes chunks in tokens as a stand-in for content volume, and A3
+    compares chunk-size distributions before and after a change. Both break if
+    the counter follows the embedding model: the same document would chunk
+    differently for reasons having nothing to do with chunking.
+
+    **[verified]** switching the default to a local model (ADR-0017) made
+    `tiktoken.encoding_for_model` raise, the old code swallowed it, and the
+    counter silently became a WORD count -- fly.io went from 111 chunks to 83
+    with no error anywhere.
+    """
+    from linestack.ingestion.chunking import TOKEN_ENCODING
+
+    assert TOKEN_ENCODING == "cl100k_base"
+    assert settings.embedding_model not in TOKEN_ENCODING
+
+
+def test_token_counting_fails_loudly_rather_than_counting_words(monkeypatch) -> None:
+    """There is no word-count fallback, on purpose.
+
+    A silent fallback does not fail; it produces a differently-chunked corpus
+    and calls the result a token count.
+    """
+    import linestack.ingestion.chunking as chunking
+
+    def boom(_name):
+        raise RuntimeError("no BPE file")
+
+    import tiktoken
+
+    monkeypatch.setattr(tiktoken, "get_encoding", boom)
+
+    with pytest.raises(chunking.TokenCountingUnavailable, match="silently"):
+        chunking.default_token_counter()

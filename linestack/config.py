@@ -45,8 +45,14 @@ class Settings(BaseSettings):
     # cost is deferred failure, so the code that needs a key asks for it
     # through require_openai_key() rather than reading the field directly.
     openai_api_key: SecretStr | None = None
-    embedding_model: str = "text-embedding-3-small"
-    embedding_dimensions: int = Field(default=1536, gt=0)
+    # Local by default (ADR-0017). A model name that is not a known OpenAI
+    # model is loaded with sentence-transformers and runs on this machine, so
+    # the pipeline needs no account and no key. The dimension must match
+    # chunks.embedding, which migration 0004 fixed at 384; a unit test asserts
+    # the two agree, because a mismatch surfaces as an opaque Postgres cast
+    # error rather than "config says 384, the model returned 1536".
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dimensions: int = Field(default=384, gt=0)
     generation_model: str = "gpt-4o-mini"
     generation_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
 

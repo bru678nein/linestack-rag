@@ -41,7 +41,12 @@ DSN = os.getenv(
     "postgresql+asyncpg://linestack:linestack@localhost:5432/linestack",
 )
 
-DIM = 1536
+# Read from config rather than pinned: the dimension is a schema commitment
+# that moved 1536 -> 384 with ADR-0017, and a test that hardcodes it becomes a
+# second place to remember.
+from linestack.config import settings  # noqa: E402
+
+DIM = settings.embedding_dimensions
 
 
 async def _seed(db_session) -> int:
