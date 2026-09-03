@@ -216,3 +216,99 @@ def test_the_four_question_ids_match_the_specification(corpus: Path) -> None:
     ).read_text()
     for qid in QUESTION_IDS:
         assert qid in spec, f"{qid} is not in docs/ground-truth.md"
+
+
+# ---------------------------------------------------------------------------
+# Scaffolding
+# ---------------------------------------------------------------------------
+def test_a_scaffold_does_not_validate(tmp_path: Path) -> None:
+    """Half the value of the validator is that "it passes" means someone did
+    the work. A skeleton that validated would let an empty set report green."""
+    import json
+
+    from linestack.evaluation.dataset import scaffold
+
+    artifact = tmp_path.parent / "corpus.json"
+    artifact.write_text(
+        json.dumps(
+            {
+                "company_name": "Example",
+                "domain": "example.test",
+                "crawled_at": "2026-09-02T00:00:00+00:00",
+                "signals": {"people_listed": 57},
+                "documents": [{"url": "https://example.test/about", "kind": "website"}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "example_test.yaml").write_text(scaffold(artifact), encoding="utf-8")
+
+    report = _run(tmp_path)
+
+    assert not report.ok
+    assert any("placeholder" in str(f) for f in report.findings)
+
+
+def test_the_scaffold_does_not_fill_in_the_signals(tmp_path: Path) -> None:
+    """docs/ground-truth.md §2 step 3: signals are hand-checked against the
+    LIVE site. Copying the crawler's numbers would make signal accuracy 100% by
+    construction, because those numbers are exactly what the pairs test.
+
+    The crawler's claim appears as a comment, so it can be confirmed or
+    refuted -- which is how the 162-vs-54 and 0-vs-57 defects were found.
+    """
+    import json
+
+    from linestack.evaluation.dataset import scaffold
+
+    artifact = tmp_path / "corpus.json"
+    artifact.write_text(
+        json.dumps(
+            {
+                "company_name": "Example",
+                "domain": "example.test",
+                "crawled_at": "2026-09-02T00:00:00+00:00",
+                "signals": {"people_listed": 57},
+                "documents": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    text = scaffold(artifact)
+
+    assert "people_listed: TODO" in text
+    assert "the crawler says: 57" in text
+
+
+def test_the_scaffold_lists_only_urls_that_were_actually_crawled(
+    tmp_path: Path,
+) -> None:
+    """If the page you want is missing, that is a coverage finding worth more
+    than the pair (§2 step 2) -- not something to cite from the live site."""
+    import json
+
+    from linestack.evaluation.dataset import scaffold
+
+    artifact = tmp_path / "corpus.json"
+    artifact.write_text(
+        json.dumps(
+            {
+                "company_name": "Example",
+                "domain": "example.test",
+                "crawled_at": "2026-09-02T00:00:00+00:00",
+                "signals": {},
+                "documents": [
+                    {"url": "https://example.test/about", "kind": "website"},
+                    {"url": "https://example.test/jobs/x", "kind": "job_posting"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    text = scaffold(artifact)
+
+    assert "https://example.test/about" in text
+    assert "https://example.test/jobs/x" in text
+    assert "coverage finding" in text

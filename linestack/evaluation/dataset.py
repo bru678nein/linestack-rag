@@ -43,6 +43,11 @@ QUESTION_IDS = (
 
 OUTCOMES = ("answerable", "insufficient_evidence")
 
+# A scaffolded file is not a written one. The placeholder is rejected so that a
+# skeleton cannot be committed and reported green: half the value of this
+# validator is that "it passes" means someone did the work.
+TODO = "TODO"
+
 REQUIRED_PROSPECT_FIELDS = ("company_name", "domain", "corpus_artifact")
 REQUIRED_QUESTION_FIELDS = ("id", "question", "reference", "source_urls")
 
@@ -136,8 +141,23 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
         return
 
     for key in REQUIRED_PROSPECT_FIELDS:
-        if not prospect.get(key):
+        value = prospect.get(key)
+        if not value:
             fail("prospect", f"{key} is required")
+        elif isinstance(value, str) and TODO in value:
+            fail("prospect", f"{key} still holds the {TODO} placeholder")
+
+    signals = data.get("signals")
+    if isinstance(signals, dict):
+        for key, value in signals.items():
+            if isinstance(value, str) and TODO in value:
+                fail(
+                    "signals",
+                    f"{key} still holds {TODO}. Signals are hand-checked "
+                    f"against the LIVE site, not copied from the crawl -- the "
+                    f"crawler's numbers are what they are testing "
+                    f"(docs/ground-truth.md §2 step 3).",
+                )
 
     domain = str(prospect.get("domain", "")).lower()
     if domain and not _DOMAIN_RE.match(domain):
@@ -168,6 +188,12 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
         for key in REQUIRED_QUESTION_FIELDS:
             if key not in question:
                 fail(where, f"{key} is required")
+            elif isinstance(question[key], str) and TODO in question[key]:
+                fail(
+                    where,
+                    f"{key} still holds the {TODO} placeholder. A scaffolded "
+                    f"file is not a written one; see docs/ground-truth.md §2.",
+                )
 
         qid = question.get("id")
         if qid not in QUESTION_IDS:
@@ -260,6 +286,124 @@ def _check_the_set_as_a_whole(directory: Path, report: ValidationReport) -> None
         )
 
 
+SIGNALS_TO_CHECK = (
+    "has_team_page",
+    "people_listed",
+    "open_roles_seen",
+    "technical_roles_open",
+    "latest_post_date",
+)
+
+
+def scaffold(artifact_path: str | Path, author: str = "TODO your email") -> str:
+    """Build an unfilled ground-truth file from a frozen crawl artifact.
+
+    Fills in only what is mechanical: the prospect block, the artifact
+    reference, and the candidate source URLs grouped by page kind so nobody has
+    to grep a 400 KB JSON file by hand.
+
+    Deliberately does NOT fill in:
+
+    - **The signals.** `docs/ground-truth.md` §2 step 3 says to hand-check them
+      against the live site. Copying the crawler's numbers here would make
+      signal accuracy 100% by construction, because the crawler's numbers are
+      exactly what those pairs test. They appear as comments, labelled as the
+      crawler's claim, for you to confirm or refute.
+    - **The reference answers.** §4 forbids model-generated ones outright: a set
+      written by a model measures agreement with that model, which is not the
+      thing under test.
+
+    Every unfilled field carries a TODO that the validator rejects, so a
+    scaffold cannot be committed and pass.
+    """
+    import json
+
+    artifact_path = Path(artifact_path)
+    artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+    crawled = artifact.get("signals", {})
+
+    by_kind: dict[str, list[str]] = {}
+    for document in artifact.get("documents", []):
+        by_kind.setdefault(document["kind"], []).append(document["url"])
+
+    lines = [
+        f"# {artifact['domain']} — ground truth",
+        "#",
+        "# Scaffolded from the frozen artifact. Every TODO below is rejected by",
+        "# `make ground-truth-validate` until you replace it.",
+        "#",
+        "# Read docs/ground-truth.md §2 before filling this in. The rule that",
+        "# matters most: write the reference answers from the CRAWLED text, not",
+        "# from the live site. An answer written from something the crawler",
+        "# never fetched is an ingestion test wearing a retrieval test's label.",
+        "",
+        "prospect:",
+        f"  company_name: {artifact['company_name']}",
+        f"  domain: {artifact['domain']}",
+        f'  crawled_at: "{artifact["crawled_at"]}"',
+        f"  corpus_artifact: {artifact_path.name}",
+        f"  author: {author}",
+        "  written_at: TODO yyyy-mm-dd",
+        "",
+        "# Hand-check these against the LIVE site and replace each TODO.",
+        "# The values the crawler reported are shown beside each one: they are",
+        "# the claim under test, not the answer. Count the people yourself; open",
+        "# every page it called a job posting and decide if it is a vacancy.",
+        "signals:",
+    ]
+    for name in SIGNALS_TO_CHECK:
+        claimed = crawled.get(name, "not reported")
+        lines.append(f"  {name}: TODO          # the crawler says: {claimed}")
+    lines += [
+        "  notes: >",
+        "    TODO how you checked, and anything the next author needs.",
+        "",
+        "questions:",
+    ]
+
+    prompts = {
+        "q1_what_and_to_whom": "What does this company do, and who does it sell to?",
+        "q2_technical_capacity": (
+            "What evidence is there of in-house technical capacity?"
+        ),
+        "q3_growth_signals": (
+            "What signals are there that they are investing or growing?"
+        ),
+        "q4_stated_pain": "What pain or problem do they state explicitly?",
+    }
+    for qid, prompt in prompts.items():
+        lines += [
+            f"  - id: {qid}",
+            f"    question: {prompt}",
+            "    reference: >",
+            "      TODO 2-4 sentences, in the register a colleague would use,",
+            "      claiming only what the pages in source_urls support.",
+            "    source_urls:",
+            "      - TODO https://... the pages you actually used",
+            "    # expected_outcome: insufficient_evidence   # if the corpus",
+            "    #   genuinely does not answer this. That is a CORRECT answer",
+            "    #   and roughly a quarter of the set should be these (§3).",
+            "    must_not_claim:",
+            "      - TODO what a fluent, confident, wrong answer would say here.",
+            "      #  This is the highest-value field in the file (§1).",
+            "",
+        ]
+
+    lines += [
+        "# ---------------------------------------------------------------",
+        f"# Candidate source URLs, from the {len(artifact.get('documents', []))} "
+        "documents in this artifact.",
+        "# Only these were crawled. If the page you want is missing, that is a",
+        "# coverage finding worth more than the pair (§2 step 2) -- check",
+        "# crawl_page_outcomes for the reason before assuming it does not exist.",
+    ]
+    for kind in sorted(by_kind):
+        lines.append(f"#   {kind} ({len(by_kind[kind])}):")
+        for url in sorted(by_kind[kind]):
+            lines.append(f"#     {url}")
+    return "\n".join(lines) + "\n"
+
+
 def _main(argv: list[str]) -> int:
     import argparse
 
@@ -269,7 +413,31 @@ def _main(argv: list[str]) -> int:
         default=settings.eval_ground_truth_dir,
         help="directory of ground-truth YAML files",
     )
+    parser.add_argument(
+        "--scaffold",
+        metavar="ARTIFACT",
+        help="write an unfilled ground-truth file from a crawl artifact",
+    )
     args = parser.parse_args(argv)
+
+    if args.scaffold:
+        artifact = Path(args.scaffold)
+        if not artifact.exists():
+            print(f"  {artifact} does not exist. Crawl it first: make crawl DOMAIN=...")
+            return 2
+        import json
+
+        domain = json.loads(artifact.read_text(encoding="utf-8"))["domain"]
+        out = Path(args.validate) / f"{domain.replace('.', '_')}.yaml"
+        if out.exists():
+            print(f"  {out} already exists; refusing to overwrite your work")
+            return 2
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(scaffold(artifact), encoding="utf-8")
+        print(f"\n  wrote {out}")
+        print("  Every TODO in it is rejected by `make ground-truth-validate`")
+        print("  until you replace it. Read docs/ground-truth.md §2 first.")
+        return 0
 
     directory = Path(args.validate)
     if not directory.exists():

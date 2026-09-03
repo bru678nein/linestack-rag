@@ -154,6 +154,17 @@ ground-truth-validate:  ## Structurally validate the ground-truth set
 # RIGHT -- that is docs/ground-truth.md sections 2 and 4, guarded by discipline.
 	$(PY) -m linestack.evaluation.dataset --validate $(or $(DIR),eval/ground_truth)
 
+.PHONY: ground-truth-new
+ground-truth-new:  ## Scaffold a ground-truth file: make ground-truth-new DOMAIN=fly.io
+# Fills in only what is mechanical: the prospect block and the candidate source
+# URLs from the frozen artifact. It does NOT fill in the signals (hand-check
+# those against the live site -- the crawler's numbers are what they test) and
+# it does NOT write reference answers (a set written by a model measures
+# agreement with that model). Every TODO it leaves is rejected by validate.
+	@test -n "$(DOMAIN)" || { echo "usage: make ground-truth-new DOMAIN=fly.io"; exit 2; }
+	$(PY) -m linestack.evaluation.dataset \
+	  --scaffold prospect_$(subst .,_,$(DOMAIN)).json
+
 .PHONY: embed
 embed:  ## Embed pending chunks: make embed PROSPECT=fly.io [DRY=1]
 # DRY=1 reports the pending chunk count and token total and makes no API call.
