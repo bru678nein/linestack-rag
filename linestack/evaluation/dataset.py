@@ -93,9 +93,15 @@ class ValidationReport:
             lines.append(f"  warning:  {finding}")
         for finding in self.findings:
             lines.append(f"  ERROR:    {finding}")
-        lines.append(
-            "  structurally valid" if self.ok else f"  {len(self.findings)} errors"
-        )
+        if self.ok:
+            lines.append("  structurally valid")
+        else:
+            lines += [
+                f"  {len(self.findings)} to fix.",
+                "  Order that wastes least time: hand-check the signals against",
+                "  the live site first, then write each reference from the",
+                "  CRAWLED text (docs/ground-truth.md §2 steps 3 and 4).",
+            ]
         return lines
 
 
@@ -149,15 +155,29 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
 
     signals = data.get("signals")
     if isinstance(signals, dict):
-        for key, value in signals.items():
-            if isinstance(value, str) and TODO in value:
+        unfilled = [
+            key
+            for key, value in signals.items()
+            if isinstance(value, str) and TODO in value
+        ]
+        if unfilled:
+            # One finding for the whole block, not one per field. Repeating the
+            # same paragraph six times buries the other errors and teaches the
+            # reader to skim -- which is how a real finding gets missed.
+            #
+            # `notes` is free text, not a number to check against the site, so
+            # it is named separately rather than lumped in with the claim.
+            numbers = [k for k in unfilled if k != "notes"]
+            if numbers:
                 fail(
                     "signals",
-                    f"{key} still holds {TODO}. Signals are hand-checked "
-                    f"against the LIVE site, not copied from the crawl -- the "
-                    f"crawler's numbers are what they are testing "
-                    f"(docs/ground-truth.md §2 step 3).",
+                    f"{', '.join(numbers)} still hold {TODO}. Hand-check these "
+                    f"against the LIVE site; the crawler's values are shown "
+                    f"beside each one and are the claim under test, not the "
+                    f"answer (docs/ground-truth.md §2 step 3).",
                 )
+            if "notes" in unfilled:
+                fail("signals.notes", f"still holds {TODO}: record how you checked")
 
     domain = str(prospect.get("domain", "")).lower()
     if domain and not _DOMAIN_RE.match(domain):
@@ -185,15 +205,17 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
             fail(where, "is not a mapping")
             continue
 
+        unfilled: list[str] = []
         for key in REQUIRED_QUESTION_FIELDS:
             if key not in question:
                 fail(where, f"{key} is required")
             elif isinstance(question[key], str) and TODO in question[key]:
-                fail(
-                    where,
-                    f"{key} still holds the {TODO} placeholder. A scaffolded "
-                    f"file is not a written one; see docs/ground-truth.md §2.",
-                )
+                unfilled.append(key)
+        if unfilled:
+            fail(
+                f"{where} ({question.get('id', '?')})",
+                f"not written yet: {', '.join(unfilled)}",
+            )
 
         qid = question.get("id")
         if qid not in QUESTION_IDS:
@@ -248,6 +270,10 @@ def _validate_sources(
         )
 
     for url in urls:
+        if TODO in str(url):
+            # Not "malformed URL": unwritten. Saying the wrong thing here sends
+            # the reader looking for a typo instead of doing the work.
+            continue
         parsed = urlparse(str(url))
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             fail(f"{url!r} is not an absolute http(s) URL")

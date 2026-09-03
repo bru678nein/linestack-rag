@@ -1,0 +1,144 @@
+# thoughtbot.com — ground truth
+#
+# Scaffolded from the frozen artifact. Every TODO below is rejected by
+# `make ground-truth-validate` until you replace it.
+#
+# Read docs/ground-truth.md §2 before filling this in. The rule that
+# matters most: write the reference answers from the CRAWLED text, not
+# from the live site. An answer written from something the crawler
+# never fetched is an ingestion test wearing a retrieval test's label.
+
+prospect:
+  company_name: thoughtbot.com
+  domain: thoughtbot.com
+  crawled_at: "2026-09-02T18:54:28+00:00"
+  corpus_artifact: prospect_thoughtbot_com.json
+  author: TODO your email
+  written_at: TODO yyyy-mm-dd
+
+# Hand-check these against the LIVE site and replace each TODO.
+# The values the crawler reported are shown beside each one: they are
+# the claim under test, not the answer. Count the people yourself; open
+# every page it called a job posting and decide if it is a vacancy.
+signals:
+  has_team_page: true
+  people_listed: 54
+  open_roles_seen: TODO          # the crawler says: 0
+  technical_roles_open: TODO          # the crawler says: 0
+  latest_post_date: TODO          # the crawler says: 2026-09-02
+  notes: >
+    people_listed counted by hand on the live https://thoughtbot.com/team on
+    2026-09-03: 54 person cards. It agrees with the crawler and with the
+    crawled text, which lists 54 name-and-title pairs.
+
+    Note what this field is: how many people the PAGE lists, not how many the
+    company employs. They match here; they will not always.
+
+    /people is the one path thoughtbot's robots.txt disallows, so /team is the
+    page to check.
+
+    TODO open_roles_seen, technical_roles_open and latest_post_date still need
+    checking against the live site.
+
+questions:
+  - id: q1_what_and_to_whom
+    question: What does this company do, and who does it sell to?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+  - id: q2_technical_capacity
+    question: What evidence is there of in-house technical capacity?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+  - id: q3_growth_signals
+    question: What signals are there that they are investing or growing?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+  - id: q4_stated_pain
+    question: What pain or problem do they state explicitly?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+# ---------------------------------------------------------------
+# Candidate source URLs, from the 37 documents in this artifact.
+# Only these were crawled. If the page you want is missing, that is a
+# coverage finding worth more than the pair (§2 step 2) -- check
+# crawl_page_outcomes for the reason before assuming it does not exist.
+#   blog_post (9):
+#     https://thoughtbot.com/blog
+#     https://thoughtbot.com/blog/authors/moses-amama
+#     https://thoughtbot.com/blog/design
+#     https://thoughtbot.com/blog/designers-already-think-in-react
+#     https://thoughtbot.com/blog/development
+#     https://thoughtbot.com/blog/product_management
+#     https://thoughtbot.com/blog/tags
+#     https://thoughtbot.com/blog/tags/product-design
+#     https://thoughtbot.com/blog/tags/react
+#   job_posting (2):
+#     https://thoughtbot.com/jobs
+#     https://thoughtbot.com/jobs/compensation
+#   website (26):
+#     https://thoughtbot.com/
+#     https://thoughtbot.com/about
+#     https://thoughtbot.com/playbook/our-company/career-paths
+#     https://thoughtbot.com/playbook/the-thoughtbot-way/people
+#     https://thoughtbot.com/playbook/the-thoughtbot-way/people/apprenticeship
+#     https://thoughtbot.com/playbook/the-thoughtbot-way/people/hiring
+#     https://thoughtbot.com/playbook/the-thoughtbot-way/people/team
+#     https://thoughtbot.com/services
+#     https://thoughtbot.com/services/design-systems
+#     https://thoughtbot.com/services/fractional-product-technical-leadership
+#     https://thoughtbot.com/services/g-cloud
+#     https://thoughtbot.com/services/hotwire-stimulus-turbo-frontend-development
+#     https://thoughtbot.com/services/machine-learning-artificial-intelligence-ai
+#     https://thoughtbot.com/services/mobile-development
+#     https://thoughtbot.com/services/mvp-development
+#     https://thoughtbot.com/services/platform-engineering
+#     https://thoughtbot.com/services/product-accessibility
+#     https://thoughtbot.com/services/product-design
+#     https://thoughtbot.com/services/product-management
+#     https://thoughtbot.com/services/rails-maintenance
+#     https://thoughtbot.com/services/react-development
+#     https://thoughtbot.com/services/ruby-on-rails-development
+#     https://thoughtbot.com/services/shaping-sprint
+#     https://thoughtbot.com/services/team-augmentation
+#     https://thoughtbot.com/services/technical-and-business-assistance
+#     https://thoughtbot.com/team
