@@ -138,7 +138,7 @@ load:  ## Load crawl artifacts into Postgres: make load ARTIFACTS="a.json b.json
 .PHONY: eval
 eval:  ## [not implemented] Run the evaluation harness
 	@echo "Not implemented. Design: docs/evaluation.md."
-	@echo "Blocked on the ingestion defects in docs/open-questions.md section 1."
+	@echo "Ground-truth authoring is unblocked; the harness is the gap."
 	@exit 1
 
 .PHONY: eval-report

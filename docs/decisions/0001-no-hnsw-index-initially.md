@@ -27,15 +27,27 @@ filter). The index that matters is the B-tree on `chunks (prospect_id)`.
 Every vector query in this system is `WHERE prospect_id = :id ORDER BY embedding
 <=> :q LIMIT :k`. The filter runs first and is highly selective.
 
-**[assumed]** the candidate set after the prospect filter is in the hundreds of
-chunks. The estimate: a 40-page crawl at roughly 20,000–62,000 words per
-prospect (**[verified]** 21,174 words for thoughtbot and 62,169 for fly.io at
-`max_pages=40`) at 800–1200 tokens per chunk gives on the order of 30–100 chunks
-per prospect. Exact search over that is trivial, and it has perfect recall,
-which an approximate index does not.
+**[verified] 2026-09-03.** Both assumptions in this section have been measured,
+and the arithmetic that produced them was close.
 
-**[assumed]** exact search at that size costs single-digit milliseconds. Not
-measured — no embeddings exist yet.
+The estimate here was "on the order of 30–100 chunks per prospect", derived from
+a 40-page crawl at 20,000–62,000 words and 800–1200 tokens per chunk. Measured:
+**43 chunks for thoughtbot and 111 for fly.io**. The upper end ran a little over,
+because ADR-0005's packer produces sub-band chunks for short documents and
+force-splits one 13,000-token pricing table, but the order of magnitude was
+right.
+
+Latency was assumed to be "single-digit milliseconds". Measured over 30 runs of
+ADR-0009's frozen query against 111 chunks: **median 0.70 ms, p95 0.76 ms**,
+`EXPLAIN` execution time 0.263 ms. An order of magnitude better than assumed.
+
+Worth recording: at this size Postgres chooses a **sequential scan** over the
+`prospect_id` index, and is right to — 154 rows is cheaper to scan than to look
+up. The index earns its keep later; asserting on the plan shape now would pin an
+accident of table size.
+
+Exact search additionally has perfect recall, which an approximate index does
+not. Nothing here argues for adding one.
 
 This is A9 applied literally: an approximate index is infrastructure, and there
 is no measurement yet that justifies it.

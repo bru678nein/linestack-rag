@@ -397,9 +397,15 @@ multi-tenant deployment. Tracked in `open-questions.md`.
 | `chunks` GIN on `content_tsv` | **not created** | No lexical search exists yet. |
 
 Vector search always runs inside a prospect filter, which keeps the candidate
-set to hundreds of chunks. **[assumed]** exact search over that candidate set is
-fast enough and has perfect recall, which an approximate index does not. The
-number that would change the decision, and how to measure it, is in ADR-0001.
+set small. **[verified] 2026-09-03**: 111 chunks for fly.io and 43 for
+thoughtbot, and ADR-0009's query over them runs at a median of **0.70 ms**, p95
+0.76 ms.
+
+This paragraph previously said "hundreds of chunks", which was a guess stated in
+the voice of a fact. ADR-0001's own arithmetic — "on the order of 30–100 per
+prospect" — was the better estimate and turned out nearly right. Exact search
+also has perfect recall, which an approximate index does not. The number that
+would reverse the decision is in ADR-0001.
 
 ---
 

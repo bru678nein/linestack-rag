@@ -297,7 +297,7 @@ list of how to check them.
 
 | # | Assumption | Where | How to verify |
 | --- | --- | --- | --- |
-| 2.1 | The prospect-filtered candidate set is in the hundreds of chunks, so exact vector search is fast enough | ADR-0001 | Count chunks per prospect after the first real load; `EXPLAIN (ANALYZE)` the filtered query at p95 |
+| ~~2.1~~ | ~~Exact vector search is fast enough~~ | ADR-0001 | **[verified] 2026-09-03** — median **0.70 ms**, p95 **0.76 ms** over 30 runs on 111 chunks. See below; the candidate set is smaller than assumed. |
 | 2.2 | 800–1200-token chunks beat 400 on synthesis questions | ADR-0005 | Recall@k and faithfulness per configuration, on the ground-truth set. The most important unverified assumption in the design |
 | ~~2.3~~ | ~~Job postings fit in one chunk~~ | ADR-0005 | **[verified] 2026-09-02** — the largest in the corpus, `fly.io/jobs/networking-engineer`, is **1,493 tiktoken tokens**. Above ADR-0005's guessed "typically under 1500", and about 5× under the 8191-token embedding limit, so the never-split rule holds with room. |
 | 2.4 | Quota split 0.45 / 0.30 / 0.25 matches where the four questions are answered | ADR-0007 | Recall per question across corpora crawled at different splits |
@@ -308,6 +308,47 @@ list of how to check them.
 | 2.9 | Pinned dependency versions install and work together | pyproject.toml | See §3.1 — several are resolved from PyPI but never installed |
 | 2.10 | The signal set will stabilise, at which point queried fields leave JSONB | architecture.md §3.1 | The first time a signal appears in a `WHERE` clause |
 | 2.11 | No fifth bug of the same class remains in `ingest.py` | ADR-0010 | There is no harness. The five defects above argue against this one |
+
+---
+
+### 2.1 (detail) Exact search is fast, and the candidate set is smaller than assumed
+
+**[verified] 2026-09-03**, running ADR-0009's frozen query against a live
+database with all 154 chunks carrying 1536-dimension vectors.
+
+| | |
+| --- | --- |
+| chunks per prospect | fly.io **111**, thoughtbot **43** |
+| median latency, 30 runs | **0.70 ms** |
+| p95 | **0.76 ms** |
+| max | 0.83 ms |
+| `EXPLAIN` execution time | 0.263 ms |
+
+ADR-0001 holds comfortably. Not adding an HNSW index was the right call, and it
+is now a measurement rather than a judgement.
+
+Two things the measurement corrected, both of them expectations of mine:
+
+**The candidate set is smaller than `docs/architecture.md` assumed.** It said
+"hundreds of chunks" per prospect. The real numbers are 111 and 43. That makes
+ADR-0001 *stronger* than it claimed — the case for exact search is better at
+111 rows than at several hundred — but the document was stating a guess in the
+voice of a fact, and it is corrected.
+
+**Postgres chooses a sequential scan, not the `prospect_id` index.** The plan
+is `Seq Scan on chunks, Filter: prospect_id = 417, Rows Removed by Filter: 43`.
+I had written into the plan for this slice that the verification should "expect
+an index scan, no Seq Scan". That expectation was wrong: at 154 rows a
+sequential scan is genuinely cheaper, and the planner is right. The index
+earns its place when the table is large enough for it to, and asserting on the
+plan shape at this size would be pinning an accident.
+
+**What this does not establish.** 154 rows is a toy. `docs/ground-truth.md`
+specifies twelve prospects; at the observed rate that is roughly 1,000–1,300
+chunks total, still far inside exact search's comfort. The number to watch is
+chunks *per prospect*, because that is what the filter leaves behind, and it is
+around 100. ADR-0001's trigger for revisiting — a filtered candidate set large
+enough that exact search shows up in p95 — is nowhere near.
 
 ---
 
