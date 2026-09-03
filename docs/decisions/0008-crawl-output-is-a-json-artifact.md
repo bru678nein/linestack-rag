@@ -6,8 +6,21 @@ Status: Accepted · Date: 2026-09-02
 
 `ingest.py` writes `prospect_<domain>.json` and performs no database writes.
 Loading that artifact into Postgres is a separate step
-(`linestack/ingestion/loader.py`, not yet written), which is idempotent on
-`documents.content_hash`.
+(`linestack/ingestion/loader.py`, `make load`), which is idempotent.
+
+**Correction, 2026-09-02.** This decision originally said "idempotent on
+`documents.content_hash`". That is wrong, and this ADR predates ADR-0013 which
+explains why: some sites reshuffle repeated records on every request, so an
+unchanged page yields a new `content_hash` on every crawl. fly.io/about is one
+— four consecutive fetches, four hashes, one identical word multiset. Keying
+skip-work on `content_hash` would re-chunk and re-embed that page forever, at
+cost, for content that has not changed.
+
+Idempotency keys on **`stable_hash`**. `content_hash` is still stored, exactly,
+because it is the only thing keeping a reordering visible rather than hidden.
+Crawl-run identity is separate again: a natural key on
+`crawl_runs (prospect_id, started_at)` (migration 0003) makes a re-load
+conflict rather than insert a second run.
 
 ## Alternatives
 

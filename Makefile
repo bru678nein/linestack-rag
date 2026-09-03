@@ -121,6 +121,13 @@ crawl:  ## Crawl one prospect: make crawl DOMAIN=fly.io
 	@test -n "$(DOMAIN)" || { echo "usage: make crawl DOMAIN=example.com"; exit 2; }
 	$(PY) ingest.py $(DOMAIN)
 
+.PHONY: load
+load:  ## Load crawl artifacts into Postgres: make load ARTIFACTS="a.json b.json"
+# Separate from `crawl` on purpose (ADR-0008): a crawl is slow and impolite to
+# repeat, so an artifact can be re-loaded and diffed without re-fetching.
+	@test -n "$(ARTIFACTS)" || { echo "usage: make load ARTIFACTS=\"prospect_fly_io.json\""; exit 2; }
+	$(PY) -m linestack.ingestion.loader $(ARTIFACTS)
+
 # --------------------------------------------------------------------------
 # evaluation
 #

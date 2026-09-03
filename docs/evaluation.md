@@ -113,8 +113,19 @@ ingested at all. Per prospect, per question, the harness records:
 touches gets one outcome in the `page_outcome` vocabulary — `stored`,
 `skipped_robots`, `dns_failure`, `timeout`, `transport_error`, `http_error`,
 `non_html`, `thin_extraction`, `duplicate_content`, `budget_exhausted` — on
-`Prospect.page_outcomes` (ADR-0012). The load into `crawl_page_outcomes` still
-has to be written; the data now exists to load.
+`Prospect.page_outcomes` (ADR-0012), and **the load into `crawl_page_outcomes`
+is now written** (`linestack/ingestion/loader.py`, `make load`).
+
+**[verified] 2026-09-02** against a live database: fly.io loads 97 outcome rows
+(39 stored, 36 budget_exhausted, 19 http_error, 2 non_html, 1
+duplicate_content) and thoughtbot 68 (37 stored, 18 http_error, 9
+budget_exhausted, 3 duplicate_content, 1 skipped_robots). Re-loading writes
+nothing further, enforced by a natural key on
+`crawl_runs (prospect_id, started_at)` (migration 0003) rather than by a check
+in application code.
+
+So this section's question — "the evaluation set expects this URL and it is not
+in `documents`, why not?" — is answerable today for any URL a crawl touched.
 
 **A missing source URL with no reason code is a harness-blocking bug, not a
 retrieval miss.** Reporting recall over a corpus that silently lost pages is
