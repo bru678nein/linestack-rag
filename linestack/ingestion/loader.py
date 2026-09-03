@@ -33,6 +33,12 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from linestack.config import settings
+from linestack.ingestion.chunking import (
+    ChunkingReport,
+    chunk_document,
+    default_token_counter,
+)
+from linestack.retrieval.scope import ProspectScope
 
 # --------------------------------------------------------------------------- #
 # The artifact, as ingest.py writes it
@@ -118,6 +124,16 @@ class LoadReport:
     documents_in_artifact: int = 0
     counts_by_outcome: dict[str, int] = field(default_factory=dict)
 
+    # Per-document work. `unchanged` and `reordered` are both skips; they are
+    # counted apart because their causes differ and only one of them is a
+    # standing claim about a site (ADR-0013).
+    documents_inserted: int = 0
+    documents_updated: int = 0
+    documents_unchanged: int = 0
+    documents_reordered: int = 0
+    chunks_written: int = 0
+    blocks_force_split: int = 0
+
     def as_lines(self) -> list[str]:
         tally = ", ".join(f"{k} {v}" for k, v in sorted(self.counts_by_outcome.items()))
         return [
@@ -129,6 +145,16 @@ class LoadReport:
             f"  tally:     {tally}",
             f"  fetched:   {self.pages_fetched} pages, "
             f"{self.documents_in_artifact} documents in the artifact",
+            f"  documents: {self.documents_inserted} inserted, "
+            f"{self.documents_updated} updated, "
+            f"{self.documents_unchanged} unchanged, "
+            f"{self.documents_reordered} reordered",
+            f"  chunks:    {self.chunks_written} written"
+            + (
+                f", {self.blocks_force_split} blocks force-split"
+                if self.blocks_force_split
+                else ""
+            ),
         ]
 
 
@@ -202,6 +228,7 @@ async def load_artifact(
     *,
     now: dt.datetime | None = None,
     max_age_hours: int | None = None,
+    count_tokens=None,
 ) -> LoadReport:
     """Load a crawl's bookkeeping: prospect, crawl run, page outcomes.
 
@@ -230,7 +257,149 @@ async def load_artifact(
         report.counts_by_outcome[outcome.outcome] = (
             report.counts_by_outcome.get(outcome.outcome, 0) + 1
         )
+
+    await _load_documents(session, artifact, report, count_tokens)
     return report
+
+
+# What to do with one document, given what is already stored for that URL.
+#
+#   stable_hash equal, content_hash equal      unchanged   touch timestamps
+#   stable_hash equal, content_hash differs    reordered   store the new exact
+#                                                          hash, keep chunks
+#   stable_hash differs                        changed     re-chunk
+#   stored stable_hash IS NULL                 unknown     re-chunk
+#
+# Keyed on stable_hash, NOT content_hash, and ADR-0008 is corrected accordingly
+# in this module's docstring. fly.io/about reshuffles its roster on every
+# request: four consecutive fetches gave four content hashes and one word
+# multiset. Keying skip-work on the exact hash would re-chunk and re-embed that
+# page forever, at cost, for content that has not changed.
+#
+# The NULL case fails safe in the direction of doing the work: a document
+# stored before migration 0002 has no stable_hash, and re-chunking it costs
+# time where skipping it would silently keep a stale corpus.
+
+
+async def _load_documents(
+    session: AsyncSession,
+    artifact: Artifact,
+    report: LoadReport,
+    count_tokens=None,
+) -> None:
+    count = count_tokens or default_token_counter()
+    scope = ProspectScope(session, report.prospect_id)
+    fetched_at = artifact.crawled_at_utc
+
+    existing = {
+        row.source_url: (row.id, row.stable_hash, row.content_hash)
+        for row in (
+            await session.execute(
+                text(
+                    "SELECT id, source_url, stable_hash, content_hash "
+                    "  FROM documents WHERE prospect_id = :p"
+                ),
+                {"p": report.prospect_id},
+            )
+        ).all()
+    }
+
+    for doc in artifact.documents:
+        previous = existing.get(doc.url)
+        document_id = await _upsert_document(
+            session, report.prospect_id, doc, fetched_at
+        )
+
+        if previous is not None:
+            _, stored_stable, stored_content = previous
+            if stored_stable and stored_stable == doc.stable_hash:
+                report.documents_updated += 1
+                if stored_content != doc.content_hash:
+                    # Same words, different order. Recorded rather than
+                    # collapsed into "unchanged": it is the observable evidence
+                    # that this source reshuffles, and re-checking it on every
+                    # load keeps ADR-0013's claim honest instead of one-off.
+                    report.documents_reordered += 1
+                else:
+                    report.documents_updated -= 1
+                    report.documents_unchanged += 1
+                continue
+            report.documents_updated += 1
+        else:
+            report.documents_inserted += 1
+
+        chunking = ChunkingReport()
+        drafts = chunk_document(
+            text=doc.text,
+            kind=doc.kind,
+            title=doc.title,
+            published=doc.published,
+            count_tokens=count,
+            report=chunking,
+        )
+        report.chunks_written += await scope.replace_document_chunks(
+            document_id, drafts
+        )
+        report.blocks_force_split += chunking.force_split_blocks
+
+
+def _parse_published(value: str | None) -> dt.date | None:
+    """The artifact's `published` as a date, or None.
+
+    Stored exactly as given, never repaired. **[verified]** 31 of the corpus's
+    76 documents carry exactly `2026-01-01` and 9 carry none -- htmldate's
+    coarse fallback rather than real publication dates. A4 forbids inventing a
+    measurement, so a bad date is stored as the bad date it is. Anything keying
+    on recency -- `latest_post_date`, the chunk provenance header -- rests on
+    that, and this comment is where to start when it misleads someone.
+    """
+    if not value:
+        return None
+    try:
+        return dt.date.fromisoformat(value[:10])
+    except ValueError:
+        return None
+
+
+async def _upsert_document(
+    session: AsyncSession,
+    prospect_id: int,
+    doc: ArtifactDocument,
+    fetched_at: dt.datetime,
+) -> int:
+    """One row per (prospect, source_url). Returns the document id."""
+    return await session.scalar(
+        text(
+            "INSERT INTO documents "
+            "  (prospect_id, source_url, kind, title, published_at, "
+            "   word_count, content_hash, stable_hash, duplicate_urls, "
+            "   fetched_at) "
+            "VALUES (:p, :url, CAST(:kind AS document_kind), :title, "
+            "        :published, :words, :content_hash, :stable_hash, "
+            "        :duplicates, :fetched) "
+            "ON CONFLICT (prospect_id, source_url) DO UPDATE SET "
+            "  kind = EXCLUDED.kind, title = EXCLUDED.title, "
+            "  published_at = EXCLUDED.published_at, "
+            "  word_count = EXCLUDED.word_count, "
+            "  content_hash = EXCLUDED.content_hash, "
+            "  stable_hash = EXCLUDED.stable_hash, "
+            "  duplicate_urls = EXCLUDED.duplicate_urls, "
+            "  fetched_at = EXCLUDED.fetched_at, updated_at = now() "
+            "RETURNING id"
+        ),
+        {
+            "p": prospect_id,
+            "url": doc.url,
+            "kind": doc.kind,
+            "title": doc.title[:500],
+            "published": _parse_published(doc.published),
+            "words": len(doc.text.split()),
+            "content_hash": doc.content_hash,
+            "stable_hash": doc.stable_hash or None,
+            "duplicates": doc.duplicate_urls,
+            "fetched": fetched_at,
+        },
+    )
 
 
 async def _upsert_prospect(session: AsyncSession, artifact: Artifact) -> int:

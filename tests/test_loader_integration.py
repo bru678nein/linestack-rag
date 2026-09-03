@@ -1,8 +1,9 @@
 """The loader against a live database.
 
-What this proves is narrow and deliberate: that a crawl's bookkeeping lands
-correctly and that loading twice is not loading twice. Documents and chunks are
-not written yet.
+What this proves: that a crawl's bookkeeping, its documents and its chunks all
+land correctly, and that loading twice is not loading twice. The evidence for
+that last one is `min(chunks.created_at)`, not a row count -- a count is
+unchanged whether rows were kept or deleted and rewritten identically.
 
 Requires: make up && make migrate.
 """
@@ -221,3 +222,226 @@ async def test_the_derivation_of_uncertain_columns_is_recorded_on_the_run(
     )
     assert "end time" in detail
     assert "does not carry them" in detail
+
+
+# ---------------------------------------------------------------------------
+# Documents and chunks (step 5)
+# ---------------------------------------------------------------------------
+async def test_documents_and_chunks_land_with_the_counts_chunking_predicts(
+    db_session,
+) -> None:
+    artifact = _artifact("prospect_fly_io.json")
+
+    report = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    assert report.documents_inserted == 39
+    assert report.documents_unchanged == 0
+    # The A3 before-and-after number for this corpus, measured with real
+    # tiktoken counts on 2026-09-03. If a chunking parameter changes, this
+    # fails with the new figure, which is the point: the change is supposed to
+    # be recorded, not absorbed.
+    assert report.chunks_written == 111
+    assert report.blocks_force_split == 1, (
+        "fly.io/docs/about/pricing is one ~13,000-token table and must be "
+        "force-split; a 0 here means the hard cap stopped firing"
+    )
+
+    stored = await db_session.scalar(
+        text(
+            "SELECT count(*) FROM chunks c JOIN documents d ON d.id = c.document_id "
+            " WHERE d.prospect_id = :p"
+        ),
+        {"p": report.prospect_id},
+    )
+    assert stored == report.chunks_written
+
+
+async def test_every_chunk_is_written_without_a_vector(db_session) -> None:
+    """chunks.embedding is nullable BY DESIGN, so embedding is a separate,
+    resumable pass. A crash mid-embed must never mean re-chunking."""
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    report = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    embedded = await db_session.scalar(
+        text(
+            "SELECT count(*) FROM chunks WHERE prospect_id = :p "
+            "  AND embedding IS NOT NULL"
+        ),
+        {"p": report.prospect_id},
+    )
+    assert embedded == 0
+
+
+async def test_reloading_does_not_rechunk_and_created_at_proves_it(
+    db_session,
+) -> None:
+    """A7, with the timestamp as the evidence rather than a row count.
+
+    A count is unchanged whether chunks were kept or deleted and rewritten
+    identically. min(created_at) is only unchanged if the rows were never
+    touched -- which is the property that stops re-embedding from being paid
+    for twice.
+    """
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    before = await db_session.scalar(
+        text("SELECT min(created_at) FROM chunks WHERE prospect_id = :p"),
+        {"p": first.prospect_id},
+    )
+
+    second = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    assert second.documents_unchanged == 37
+    assert second.chunks_written == 0
+    after = await db_session.scalar(
+        text("SELECT min(created_at) FROM chunks WHERE prospect_id = :p"),
+        {"p": first.prospect_id},
+    )
+    assert after == before, "chunks were rewritten; the skip test is not working"
+
+
+async def test_a_reshuffled_page_is_recorded_but_not_rechunked(
+    db_session,
+) -> None:
+    """The ADR-0013 regression, as a standing check rather than a one-off.
+
+    fly.io/about returns its roster in a different order on every request, so
+    its content_hash changes while its stable_hash does not. Keying skip-work
+    on content_hash would re-chunk and re-embed that page forever, at cost, for
+    content that has not changed.
+    """
+    artifact = _artifact("prospect_fly_io.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+    before = await db_session.scalar(
+        text("SELECT min(created_at) FROM chunks WHERE prospect_id = :p"),
+        {"p": first.prospect_id},
+    )
+
+    # Same words, new arrangement: exactly what a re-crawl of that page yields.
+    artifact.documents[0].content_hash = "a-different-exact-hash"
+
+    second = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    assert second.documents_reordered == 1
+    assert second.chunks_written == 0, "a reordering must not cost a re-embed"
+    after = await db_session.scalar(
+        text("SELECT min(created_at) FROM chunks WHERE prospect_id = :p"),
+        {"p": first.prospect_id},
+    )
+    assert after == before
+
+    stored_hash = await db_session.scalar(
+        text(
+            "SELECT content_hash FROM documents "
+            " WHERE prospect_id = :p AND source_url = :u"
+        ),
+        {"p": first.prospect_id, "u": artifact.documents[0].url},
+    )
+    assert stored_hash == "a-different-exact-hash", (
+        "the exact hash must still be updated, or the reordering becomes "
+        "invisible rather than merely harmless"
+    )
+
+
+async def test_a_genuinely_changed_document_replaces_only_its_own_chunks(
+    db_session,
+) -> None:
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    changed = artifact.documents[0]
+    untouched_url = artifact.documents[1].url
+    before_other = await db_session.scalar(
+        text(
+            "SELECT min(c.created_at) FROM chunks c "
+            "  JOIN documents d ON d.id = c.document_id "
+            " WHERE d.prospect_id = :p AND d.source_url = :u"
+        ),
+        {"p": first.prospect_id, "u": untouched_url},
+    )
+
+    changed.stable_hash = "a-genuinely-different-stable-hash"
+    changed.text = changed.text + "\n\nA newly published paragraph."
+
+    second = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    assert second.documents_updated == 1
+    assert second.documents_unchanged == 36
+    assert second.chunks_written > 0
+
+    after_other = await db_session.scalar(
+        text(
+            "SELECT min(c.created_at) FROM chunks c "
+            "  JOIN documents d ON d.id = c.document_id "
+            " WHERE d.prospect_id = :p AND d.source_url = :u"
+        ),
+        {"p": first.prospect_id, "u": untouched_url},
+    )
+    assert after_other == before_other, "an unrelated document was re-chunked"
+
+
+async def test_a_document_with_no_stable_hash_is_rechunked_not_skipped(
+    db_session,
+) -> None:
+    """Fails safe toward doing the work.
+
+    A row stored before migration 0002 has no stable_hash. Skipping it would
+    silently keep a stale corpus; re-chunking it only costs time.
+    """
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    await db_session.execute(
+        text("UPDATE documents SET stable_hash = NULL WHERE prospect_id = :p"),
+        {"p": first.prospect_id},
+    )
+
+    second = await load_artifact(db_session, artifact, now=NOW)
+
+    assert second.documents_unchanged == 0
+    assert second.chunks_written > 0
+
+
+async def test_a_bad_publication_date_is_stored_as_given_not_repaired(
+    db_session,
+) -> None:
+    """A4: storing a plausible guess in place of a bad measurement is worse
+    than storing the bad one, because only one of them is detectable.
+
+    **[verified]** 31 of the corpus's 76 documents carry exactly 2026-01-01 and
+    9 carry none -- htmldate's coarse fallback rather than real dates.
+    """
+    artifact = _artifact("prospect_fly_io.json")
+    artifact.documents[0].published = "2026-01-01"
+    artifact.documents[1].published = None
+
+    report = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    rows = dict(
+        (r.source_url, r.published_at)
+        for r in (
+            await db_session.execute(
+                text(
+                    "SELECT source_url, published_at FROM documents "
+                    " WHERE prospect_id = :p AND source_url = ANY(:urls)"
+                ),
+                {
+                    "p": report.prospect_id,
+                    "urls": [artifact.documents[0].url, artifact.documents[1].url],
+                },
+            )
+        ).all()
+    )
+    assert str(rows[artifact.documents[0].url]) == "2026-01-01"
+    assert rows[artifact.documents[1].url] is None

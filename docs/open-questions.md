@@ -142,6 +142,35 @@ will exist when one occurs (A3).
 **Still open:** which URL should win a real `kind` disagreement. No instance
 observed on either validation site.
 
+### 1.6 Publication dates are largely htmldate's fallback, not real dates
+
+**[verified] 2026-09-03.** Across the 76 documents of the two validation
+crawls:
+
+| `published` value | documents |
+| --- | --- |
+| exactly `2026-01-01` | **31** |
+| absent (`null`) | 9 |
+| everything else | 36 |
+
+A date shared by 31 documents across two unrelated sites is not 31 publication
+dates; it is htmldate's coarse fallback reaching for a year boundary. The
+crawler stores what the extractor returned, and the loader stores that exactly
+without repair, because A4 forbids substituting a plausible guess for a bad
+measurement — only one of the two is detectable afterwards.
+
+Three things currently rest on it, and none should be trusted without checking:
+
+- `latest_post_date`, a computed signal, which is `max(published)`.
+- The chunk provenance header (`title · kind · published`, ADR-0005), which
+  embeds the date into every chunk.
+- Any future recency weighting.
+
+Not fixed here. The candidate fix is to prefer a date parsed from the URL path
+or the visible byline over htmldate's guess, and to record which source
+supplied it — but that is a change to `ingest.py` and it invalidates the frozen
+fixtures, so it belongs in its own change with a re-crawl.
+
 ### 1.2 Failure classification — FIXED 2026-09-02
 
 Only robots.txt outcomes had reason codes. Every other failure collapsed into a
