@@ -1,0 +1,846 @@
+{
+  "company_name": "thoughtbot.com",
+  "domain": "thoughtbot.com",
+  "base_url": "https://thoughtbot.com",
+  "documents": [
+    {
+      "url": "https://thoughtbot.com/",
+      "kind": "website",
+      "title": "Design and Development agency building web and mobile products - thoughtbot",
+      "text": "When the stakes are high, experience matters\n            Our senior team partners with you to deliver reliable software and strengthen your team, even under complex constraints.\n \n       \n        \n     \n   \n  \n  \n    \n  \n  \n    \n      \n  \n  \n    \n      CloseKnit Health\n      \n          - Product Management\n- UX, UI, & Product Design\n- Ruby on Rails\n        How thoughtbot delivered a multi-platform care solution while accelerating release speeds by 10x.\n       \n      Read about how we helped CloseKnit Health\n     \n    \n   \n  \n  \n    \n      \n      \n        We specialize in building and modernizing software where reliability, compliance, and long-term maintainability matter as much as speed.\n \n      \n          For every stage of your business\n        \n       \n     \n   \n  \n  \n  \n    \n      \n          \n            NEW: The State of Software Delivery in Healthcare\n          \n        We surveyed engineering, product, and technology leaders across US healthcare organizations to find out how the best teams are doing both. Learn how your team stacks up.\n \n        \n             \n   \n  \n  \n    \n      \n          \n            Service Highlight\n            Streamline your workflows with Artificial Intelligence (AI)\n          \n        Reimagine your company's future by developing your own custom Generative AI applications. thoughtbot can help you find opportunities to leverage OpenAI's ChatGPT to streamline internal workflows and stay ahead of the competition.\n \n      \n     \n   \n  \n  \n    \n      Client Success\n      Delivering confidently in complex environments\n    \n    \n   \n  \n  \n  \n  \n    \n      \n          \n            Our company\n            Purpose-driven teams\n          \n        Our team is driven by our purpose and values; we continually improve our process, do our best work in strong partnerships with you, and transparently share how we work. We now have teammates located throughout the Americas, Europe, West Asia, and Africa enabling us to take on client projects around the world. \n \n      \n     \n   \n  \n  \n    \n    \n      \n          \n          \n            Design Sprint Guide\n            Our guide to conducting and facilitating Product Design Sprints.\n \n          \n          \n          \n          \n            Giant Robots Smashing Into Other Giant Robots Podcast\n            A podcast about the design, development, and business of great software.\n \n     \n \n    \n  \n  \n    \n      \nWhat does success look like for your project?",
+      "published": "2026-08-31",
+      "extract_reason": "ok",
+      "content_hash": "75ebcec5c88ccfde",
+      "stable_hash": "a3f0f09e48102e3c",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/about",
+      "kind": "website",
+      "title": "Our Company | thoughtbot",
+      "text": "Growth & Innovation\nOur Playbook and Handbook document how we make successful web and mobile products, and also how we run our company. It’s filled with things we’ve learned based on our own experience and study of others’ experiences. They’re a living document that everyone at thoughtbot can edit in a private GitHub repo.\nthoughtbot works to create a more diverse, equitable, inclusive, fulfilling, and safe environment for all people in our community. Our DEI council, with the support and engagement of thoughtbot leadership, leads a number of initiatives that impact how we interact with our clients, our community, and as a team.\nthoughtbot works with companies in every step of the process to help identify and solve problems. We lead and participate in product design sprints, build high-quality apps, and then deploy them. We use emerging and effective technologies and methods on both internal and client projects. We believe there is always a better way to do our work, and take initiative to improve ourselves, the company, and our community.\nWe look to connect with groups offering complimentary services to our own or those who are supporting communities of folks also passionate about building great things.\n- Access to resources and tools\n- Dedicated point of contact at thoughtbot\n- Referral program\n- Opportunities for joint events & workshops",
+      "published": "2025-11-01",
+      "extract_reason": "ok",
+      "content_hash": "29fcb7f07f445683",
+      "stable_hash": "47b217475c596249",
+      "duplicate_urls": [
+        "https://thoughtbot.com/contact"
+      ]
+    },
+    {
+      "url": "https://thoughtbot.com/team",
+      "kind": "website",
+      "title": "The thoughtbot team  - thoughtbot | thoughtbot",
+      "text": "Aji Slater\n          \n            Senior Developer\n          \n        Alex Chen\n          \n            Senior Designer\n          \n        Andrew Spencer\n          \n            Principal Product Designer\n          \n        Anna Miragliuolo\n          \n            Chief People Officer\n          Becky Dunbar\n          \n            Chief Financial Officer\n          Bethan Ashley\n          \n            Product Management Team Lead\n          \n        Brian Tenggren\n          \n            Development Team Lead\n          \n        Chad Pytel\n          \n            Developer and CEO\n          \n        Clarissa Borges\n          \n            Development Team Lead\n          \n        Daniel Garcia\n          \n            Senior Developer\n          \n        Danny Kim\n          \n            Product Management Team Lead\n          \n        Dave Iverson\n          \n            Senior Developer\n          \n        Dawn Delatte\n          \n            Head of Product & Design\n          Derek Chavez\n          \n            Internal Tools Specialist\n          \n        Diego Oliveira\n          \n            Senior Developer\n          \n        Elaina Natario\n          \n            Design Team Lead\n          \n        Eric Milford\n          \n            Development Director\n          \n        Fatima Burke\n          \n            Designer\n          \n        Fernando Perales\n          \n            Development Team Lead\n          \n        Jared Turner\n          \n            Senior Product Manager\n          Jimmy Thigpen\n          \n            Senior Developer\n          \n        Johny Ho\n          \n            Development Team Lead\n          \n        Jose Daniel Blanco Espinosa\n          \n            Senior Developer\n          \n        Justin Toniazzo\n          \n            Senior Developer\n          \n        Kevin Kwon\n          \n            Senior Designer\n          \n        Lindsey Christensen\n          \n            VP of Marketing\n          \n        Louis Antonopoulos\n          \n            Development Team Lead\n          \n        Maria Filimonova\n          \n            Business Development Manager\n          \n        Mariia Sus\n          \n            Product Manager\n          \n        Matheus Richard\n          \n            Senior Developer\n          \n        Matheus Sales\n          \n            Senior Developer\n          \n        Mina Slater\n          \n            Senior Developer\n          \n        Moses Amama\n          \n            Senior Designer\n          \n        Neil Carvalho\n          \n            Senior Developer\n          \n        Nick Charlton\n          \n            Development Team Lead\n          \n        Oluwatomi Oluwafemi Alu\n          \n            Senior Developer\n          \n        Rakesh Arunachalam\n          \n            Senior Developer\n          \n        Ran Craycraft\n          \n            Managing Director\n          \n        Rémy Hannequin\n          \n            Senior Developer\n          \n        Richard Newman\n          \n            Director of Development Operations\n          \n        Rob Whittaker\n          \n            Development Director\n          \n        Sally Hall\n          \n            Senior Developer\n          \n        Sami Birnbaum\n          \n            Senior Developer\n          \n        Sarah Lima\n          \n            Development Team Lead\n          \n        Stephanie Kuroda\n          \n            Senior Associate Director of Operations\n          \n        Steve Polito\n          \n            Senior Developer\n          \n        Svenja Schäfer\n          \n            Development Team Lead\n          \n        Tess Griffin\n          \n            Senior Developer\n          \n        Trésor Bireke\n          \n            Senior Developer\n          \n        Valeria Graffeo\n          \n            Senior Developer\n          \n        Valerie Burzynski\n          \n            Senior Developer\n          \n        Vendela Colavecchio\n          \n            Design Director\n          \n        Victoria Bell\n          \n            Senior Product Manager\n          Will Larry\n          \n            Senior Developer",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "55be05293e3515a1",
+      "stable_hash": "d63d07680caea4ed",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/jobs",
+      "kind": "job_posting",
+      "title": "Jobs - thoughtbot",
+      "text": "Join the thoughtbot community\nthoughtbot works with companies in every step of the process to help identify and solve problems. We lead and participate in product design sprints, build high-quality apps, and then deploy them. We use emerging and effective technologies and methods on both internal and client projects. We believe there is always a better way to do our work, and take initiative to improve ourselves, the company, and our community. Read more about how we work in our Playbook.\nOur team works in a relaxed and educational environment to develop excellent products for our clients. We work a sustainable pace of 40 hours/week. We also reserve at least 4 weeks per year for investing in ourselves, the company, and our community. Everything we do is predicated on having a great team and a culture of growing. We use the latest technologies and are always down to try new methods on both internal and client projects. Additionally, we maintain an inclusive work environment where everyone can thrive professionally, as well as have full lives outside of work. Meet the thoughtbot team.\nthoughtbot works to create a more diverse, equitable, inclusive, fulfilling, and safe environment for all people in our community. Our DEI council, with the support and engagement of thoughtbot leadership, leads a number of initiatives that impact how we interact with our clients, our community, and as a team. We are proud of the progress we have made so far and the dedication our team has to continuing to improve the world in all we do. Read more about Diversity, Equity, and Inclusion at thoughtbot or learn about our Purpose and Values.\nOur Benefits\nOur goal is to provide ourselves with the best possible benefits, tools to use, and environments to work in while staying sustainable. We've shared the details of all our benefits, along with all our salary bands in our compensation calculator, and our career paths.\n- \nInvestment TimeWe reserve at least 20 days of the year for continuous improvement to make ourselves, the company, and our community better by learning new tools and techniques, working on open source, blogging, creating new products, volunteering our time, and more.\n- \nAlways LearningWe pay 100% of expenses when you speak at conferences and 50% of the cost for attendees. We also pay 50% of all expenses for job-related training.\n- \nPaid Time OffWe work a sustainable pace of 40 hours/week. We have four weeks (24 days in the UK) of vacation time per year, in addition to company holidays and sick days. For new parents, we also have at least 6 weeks paid leave in all locations, as well as the ability to take at least 6 months off.\n- \nHealthcare + FinancialIn the U.S. we provide competitive medical, dental, vision, and life insurance, and a comprehensive 401k plan with matching. In the UK we provide supplemental private insurance and a group personal pension scheme.\nOur Team Across the World\nOur teammates are located throughout the Americas, Europe, West Asia, and Africa. We work together with teammates and clients in similar timezones.\nAbout Our Apprenticeship\nWe've had an Apprentice position since 2011, and have successfully mentored over 50 apprentices. This full-time, paid position includes benefits and provides mentorship to people who are not yet ready to bill on client work. After a successful apprenticeship, you are promoted to the role of developer or designer. Read more about our apprentice program.\nOur Available Apprenticeships\nWe currently have no open positions.\nthoughtbot does not discriminate on the basis of race, sex, color, religion, age, national origin, marital status, disability, veteran status, genetic information, sexual orientation, gender identity or any other reason prohibited by law in provision of employment opportunities and benefits.\nthoughtbot does not accept unsolicited resumes from any source other than directly from a candidate. Any unsolicited resumes not originating directly from a candidate and sent to thoughtbot or any thoughtbot's employees, including unsolicited resumes sent to a thoughtbot mailing address or email address, are rejected. thoughtbot will NOT pay a fee for any placement resulting from the receipt of an unsolicited resume. thoughtbot considers any candidate for whom the recruiter has submitted an unsolicited resume referred by the company free of any fees.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "70c41108584390b6",
+      "stable_hash": "eeb7fe2f8395e154",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services",
+      "kind": "website",
+      "title": "Senior Product Strategy, Design, and Development services for web apps, mobile apps, and websites. | thoughtbot",
+      "text": "Our thoughtbot Teams have tailored expertise in the projects, challenges, and skills associated with your business and product at every product stage. We are equipped to partner with teams around the world with our fully-remote delivery model.\n- Rapid validation and early product strategy\n- Building a new product and roadmap planning\n- Team augmentation and process improvement\n- DevOps, Cloud, CI/CD\nProduct Design\nConducting Design Research allows our team to validate that the problem we’re solving for is worth the time and money to solve for it. It develops a fuller understanding of the problem for the team from the eyes of the people using the product. Having that validation and team understanding sets the stage for the team to find ways to optimize for the problem at hand.\nShaping Sprints help you rapidly validate opportunities, assess technical feasibility, and identify the most impactful first version. Our five-phase process helps unpack all the complexity of your needs in innovative ways. We work with you to surface hidden assumptions, generate ideas, and test those ideas with real users. At the end of a sprint, you’ll have a clearer foundation to build from, with fewer unknowns, smarter decisions, and a stronger starting point for whatever comes next.\nFrom strategy to implementation, we collaborate with you to design experiences that build successful products and businesses. We pay close attention to flows and not individual screens because we know that is what builds a great user experience. Each of our team members has a design mindset; all keeping your users top of mind.\nWhether you're building something from scratch or improving an existing product, our design and development consultants have you covered. Enjoy the ease of pulling in several Senior Developers and Designers to work alongside your team and enhance the speed and quality of your project for a flexible amount of time. While we have a rich history with Ruby on Rails, we use a range of technologies, including React and Elixir, to utilize the best tools for your application.\nYou have a mobile app idea you want to make a reality, an existing app you want to scale, or you need to replicate an app experience for a second device, and we’re ready to help. We design and build iOS, Android, and cross-platform React Native apps for startups and established businesses.\nMentoring your team\nOur clients tell us their favorite part of a thoughtbot engagement is the change we leave behind by working side by side with your team. Whether it’s improved processes and collaboration, advice on hiring, or junior developers leveling up their skills, you’ll notice a positive cultural shift.\nDeploy and learn\nYour product is never done. Past features can be improved and new features can be added. Our mission is to leave you in a place where you can confidently maintain the product and have the tools and knowledge to test, assess, and make the best decisions after our engagement together has concluded.\nHelp with hiring\nYou want to make sure you have a meaningful interview process and make the right choices to help you long into the future. Many product leaders over the years have looked to thoughtbot to provide coverage and the peace of mind that comes with trusted expert designers and developers.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "1e37397b52e97feb",
+      "stable_hash": "5e6ae28c385c0de9",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/ruby-on-rails-development",
+      "kind": "website",
+      "title": "Ruby on Rails Development and Consulting Services | thoughtbot",
+      "text": "Ruby on Rails Web Development\nOur team of experienced web developers are experts in Ruby on Rails. We love Rails because we can create full-featured, highly functional web apps in less time while you can be confident in product quality and maintenance costs.\nCode Audit\nScaling an application or taking over a new codebase doesn’t have to feel unmanageable. We can help you understand the current state of your code quality, opportunities for optimization, guidance toward strengthening your foundation, process, and people, and learning how best to upgrade your current system.\nSupport and Maintenance\nAfter launching your web app, maintaining it is crucial. Lacking dedicated support can lead to bugs, outdated systems, and costly security concerns. thoughtbot is here to help and has a part-time support and maintenance team dedicated to supporting applications long-term.\nRails Upgrades\nAs your business evolves, you will need to upgrade to new Ruby and Rails versions that support updated functionalities for your app. You also want to upgrade to ensure that external code or resources such as gems and other third-party libraries, open source libraries, and third party integrations continue working properly. We are always on hand to help.\nTeam Augmentation\nSometimes the demands of your product roadmap require additional senior designers and developers, and fast. Deploy a small, agile team of thoughtbot product experts to join your existing team and accelerate your product.\nLevel up your junior team\nWe believe there is always a better way to do our work, and we want to share it with your existing team and project. As we work together, we’ll help level up your team so they can continue with best practices long after we’re gone.\n…and the blog, the podcast, the guides, and the tutorials. The thoughtbot team has maintained a passionate and active presence in the Ruby on Rails community since the beginning. Whether you’re looking to create an innovative e-commerce experience or expand on an existing enterprise SaaS platform, we’ll set you up for scalability and a codebase your future dev team will love working on.\nDo you feel like technical debt is holding you back? Is your codebase a mess that makes it difficult and time-consuming to ship new features? thoughtbot can help clean up the mess while working with your team to establish best practices that make future development frustration-free.\nYou know you need to upgrade to the next version of Rails, but not sure where to start. Or maybe you know exactly what needs to be done, but need your team focusing on new features. At thoughtbot, we’ve done hundreds of upgrades through the years and can help you navigate the process with ease.\nConsultants working on Ruby on Rails projects are full-time team members located around the world. Our experienced developers are located in the Americas (United States, Canada, Mexico, and Brazil), Europe, West Asia, and Africa, and are aligned to our client's time zone for optimal productivity. We don't rely on contractors or third-party developers to provide services to our clients.\nthoughtbot consultants become part of your product team, quickly integrating and adding immediate value. Our clients come to us for quality code, but they stay because of the improvement in their team and the transformational outcomes.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "8bf7349a4dcbdb04",
+      "stable_hash": "e7a70ec5491f7733",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/hotwire-stimulus-turbo-frontend-development",
+      "kind": "website",
+      "title": "Hotwire frontend web and mobile app development services | thoughtbot",
+      "text": "Less JavaScript, simpler web apps\nHotwire is an alternative approach to building modern web applications without using much JavaScript by sending HTML instead of JSON over the wire.\nThis makes for fast first-load pages, keeps template rendering on the server, and allows for a simpler, more productive development experience without sacrificing any of the speed or responsiveness associated with a traditional single-page application.\nSource: hotwired.dev\nA popular alternative to React\nHotwire offers a more agile and streamlined development experience compared to traditional React setups. With Hotwire, you benefit from a monolith stack, significantly simplifying development and reducing the mental load on your team. This approach is developer-friendly, promoting easier maintenance and faster iterations.\nIndustry leaders in Ruby on Rails Development\nWith 20 years of experience in Rails development, thoughtbot is at the leading edge of web innovation. Our Ruby on Rails experts have the skills and knowledge to integrate Hotwire seamlessly into your existing projects, enhancing performance and usability.\nMastery of Turbo and Stimulus\nTurbo and Stimulus are integral components of Hotwire. We're proficient in using these technologies to create dynamic and responsive interfaces. Experience the difference with applications that feel native without the complexity of full-scale JavaScript frameworks.\nHTML over the wire for superior performance\nThe HTML over the wire approach minimizes the need for extensive JavaScript, reducing complexity and enhancing the speed of your web applications. This means faster load times, improved SEO, and a better user experience.\nCustomized solutions tailored to your needs\nEvery project is unique. Our team works closely with you to understand your specific requirements and develop customized solutions that align with your business goals. From initial consultation to deployment, we ensure a smooth and collaborative process.\nProven track record of success\nWe have a proven track record of delivering over 1,000 successful projects across various industries. Our portfolio showcases a diverse range of applications, all built with precision, a focus on quality, and mentoring client teams along the way.\n“Hotwire is our default frontend framework choice on the Rails apps we build. Our team includes some of the leading contributors to Hotwire and we're dedicated to developing more Stimulus and Turbo resources for our clients and community.”\n– Chad Pytel, Developer and CEO, thoughtbot\nHotwire Example Templates\nA collection of GitHub branches that transmit HTML over the wire.\nHotwire Essentials\nThis interactive tutorial guides you through building a dynamic podcast player using Hotwire.\nHotwire: Asynchronously loaded tooltips\nLearn how to effectively render tooltips in Rails without writing any JavaScript.\nDynamic forms with Turbo\nLearn how to fetch fresh fields from your servers with Turbo Frames.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "62fcd46751e06cc1",
+      "stable_hash": "0f432db09f9f3aeb",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/machine-learning-artificial-intelligence-ai",
+      "kind": "website",
+      "title": "Machine Learning and Artificial Intelligence (AI) services | thoughtbot",
+      "text": "thoughtbot helps our clients quickly explore how AI and machine learning technologies can provide value to their business. We’ve adapted our product design sprint to uncover how AI can be a useful technology for your internal processes or external offering.\nAfter deciding on a winning idea, we will help you evaluate your technical options, taking a close look at technical feasibility and costs. From there we will help your team with the product roadmap, an implementation plan, and we can execute on that implementation plan through to launch and beyond.\n- validated initial concepts of an idea\n- proposed technical architecture\n- a Minimal Viable Product roadmap\n- clarified the business impact\nthoughtbot consultants help organizations add AI to their existing products to gain competitive edge in the market and drive strategic growth.\nBy incorporating AI and machine learning into your software, you can gain a deeper understanding of your customers, improve segmentation, automate tasks, predict needs, and optimize product recommendations.\nthoughtbot helps teams identify human processes that can be streamlined with AI so you can free up your team to work on the important things and be empowered with better information.\nWhether creating dynamic content, providing real-time recommendations, or powering virtual assistants, thoughtbot’s artificial intelligence experience can enable your business to capitalize on the potential of AI for driving growth and efficiency.\nSome AI projects require you to have a solid data engineering architecture. thoughtbot’s data engineering consultants build scalable pipelines for data processing, real-time streaming, and data warehousing. By implementing robust data infrastructure, you can extract reliable, actionable insights.\nHow to use an open source LLM model\nLearn how to run an open source language model on your local machine and remotely.\nUnderstanding LLM options\nMake informed decisions to select an LLM model that meets your needs.\nDiscovery work for AI products\nTips on how to turn your AI product idea from good to exceptional.\nAI Ethics Guide\nA guide to help ensure our values are applied to the AI solutions we build.",
+      "published": "2024-12-06",
+      "extract_reason": "ok",
+      "content_hash": "3b97ae53d76f655b",
+      "stable_hash": "bca68502adf0556f",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/rails-maintenance",
+      "kind": "website",
+      "title": "thoughtbot can lead Rails optimizations, bug fixing, and upgrades in between large releases. | thoughtbot",
+      "text": "It's critical to proactively maintain and improve your Ruby on Rails application, but hiring talented Ruby developers may not be an option. Partnering with thoughtbot allows you to tap the expertise we are most well known for - Ruby on Rails - whenever a need arises. What sets our maintenance team apart is we proactively suggest improvements, and come to you with ideas and suggestions, as we continuously look for ways to make maintenance, scaling, and future development more efficient.\nthoughtbot has been a passionate and active participant in the Ruby on Rails community since the beginning because we continuously see the competitive advantage it gives companies as they grow. We are well-known in the open-source community and have created a number of open-source libraries, including factory_bot, administrate, dotfiles, and suspenders.\nWe understand your business, product, and team's bandwidth ebbs and flows. The Rails Maintenance team is structured in a way that provides you with the flexibility you need. We can increase and decrease bandwidth based on your priorities.\nWe are also comfortable working within a monthly budget so you can project your long-term maintenance costs. We use an hourly rate to describe our team and report on progress made at the close of each week. Our most successful partnerships include standing prioritization meetings to ensure we are all on the same page and your expectations are being met.\n- Ongoing feature development\n- Performance Improvements that save you money & optimize hosting\n- Code updates in line with Compliance and Security Requirements\n- Rails, Security Patches and Gem Upgrades\n- Bug Fixes\n- Modernization of Application Deployment\n- Test Coverage, Test Suite and Automated Test Improvements\nTesting Rails\nLearn to test Ruby on Rails web applications from the ground up in this comprehensive guide to modern testing practices.\nRuby Science\nThe canonical reference for writing fantastic Rails applications from authors who have created hundreds.\nOpen-Source Libraries\nSome of our most popular libraries include factory_bot, administrate, dotfiles, and suspenders.\nRailsConf Presentations\nthoughtbot was fortunate enough in 2022 to have a few thoughtbotters join as Rails Conf speakers.\nOur Playbook\nThis is our playbook. It details the best ways we've found so far for how we make successful web and mobile products.\nHow to supercharge your Rails app with a code audit\nDuring this workshop, thoughtbot shares best practices for auditing Rails codebases, and how to shift to actionable items without sacrificing speed of feature development.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "a00f91466e3bf61b",
+      "stable_hash": "4d6b3ec4d9a04e34",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/mobile-development",
+      "kind": "website",
+      "title": "Mobile App Development & Design Experts | thoughtbot",
+      "text": "App setup can be time consuming, so we created Belt, a CLI tool designed to take the guesswork out of starting a new React Native app. Belt simplifies and standardizes the process of starting and enhancing React Native apps. This helps you maximize your budget and focus development time on the components important to your users.\nYou’ve got the vision. Now you need an expert partner focused on delivering value to your business and users. We like to say that “mobile” refers to the user, not the device. With that in mind, we’ll help you with your first critical product decisions like technology, branding, design, and experience. And we’ll set up your application and business for success.\nBased on your design and technology needs, you will be paired with a small team of mobile experts to tackle the job. A major difference between our approach and that of most other app developers is our marriage of design and seamless integration in the front and back end.\nTo stand out from other apps, you’re not only going to need outstanding expertise and creativity, but also serious strategic direction. We’ll help you combine robust code and slick design for a superior user experience.\nWhen looking to balance speed, cost, and functionality without compromising quality, React Native is our recommended mobile framework. With cross-platform power and a vibrant developer ecosystem, React Native helps you launch faster and smarter on iOS and Android. After many successful launches, thoughtbot has the React Native best practices to help you get to market sooner, while establishing a strong mobile foundation that scales.\nFeatured Case Study\nHarvard Business Review\nHBR needed to re-imagine the mobile experience to engage a more youthful, global audience. thoughtbot helped them design and develop a user-centric mobile app that gave readers a brand-worthy experience.\nAirrosti Remote Recovery\nCreating a mobile app to expand Airrosti's pain relief and physical therapy services beyond their physical locations.\nGroups Recover Together\nCentralizing a highly effective opioid-addiction care model onto one easy-to-use platform while increasing access to support.\nFolio\nFrom idea to Rails MVP in under a year, serving 200+ hotels and securing $14M to transform hospitality.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "8da50a44ce62a058",
+      "stable_hash": "ad1a62da461c7bd2",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/shaping-sprint",
+      "kind": "website",
+      "title": "Hone in on your product roadmap with a Shaping Sprint | thoughtbot",
+      "text": "A shaping sprint is a focused, time-boxed engagement where we prototype your idea, test it with users, and give you the clarity to move forward with confidence.\nOur team partners with you to solidify product strategy and direction in a matter of weeks. We gather insights from user research, document assumptions, and deliver clear recommendations to move forward with confidence, not guesswork. We leverage AI strategically in our sprints, moving faster without sacrificing quality, and getting testable artifacts in front of real users sooner.\nUnderstand\nAlign on the problem, gather context from stakeholders, surface hidden assumptions, and define what success looks like.\nDiverge\nGenerate a wide range of possible approaches, solutions, or directions without committing to any. Quantity and variety of ideas over premature decisions.\nConverge\nNarrow the options, make decisions, and define one clear direction to move forward with.\nPrototype\nBuild a testable artifact. Depending on the problem space and your needs, this could be a clickable prototype, working proof-of-concept concept, a roadmap document, or an ad experiment.\nthoughtbot has been running sprints for over a decade. Each new tool or process change we integrate not only helps validate ideas sooner, but brings even more clarity and confidence. Now AI-assisted synthesis and prototyping allow us to test with users faster than ever with the same rigor and quality because our senior designers are guiding every step. We’re experts in helping you thoughtfully navigate the constraints, opportunities, and nuances of your project.\nHow strategic product design reduces risk before you write code\nIn an era where we can build faster than ever, reducing risk up front is more important than ever. In regulated industries, building products carries extra risk.\nLessons from using AI in Discovery\nWe tested multiple AI tools for synthesizing discovery output and found the best insights come when machines find the patterns and humans connect the dots.\nTurn Any Idea Into a Validated MVP\nA step-by-step path to validate your idea fast by defining the problem, testing assumptions, prototyping the critical flow, and shaping a focused MVP you can learn from.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "33a1c125c849826c",
+      "stable_hash": "562c916e2f285c0e",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/product-design",
+      "kind": "website",
+      "title": "Product Design experts | thoughtbot",
+      "text": "We design your product with users in mind — knowing that if we solve their problems, they'll come back again and again. That's why we pay close attention to flows and not individual screens, and why every team member brings a design mindset, whether they're working in a consumer app or a regulated clinical or financial environment.\nProduct Designers at thoughtbot integrate AI into research, prototyping, and overall design processes. We focus on what responsible AI integration looks like, especially in regulated industries where getting it right matters most. Our team is publicly testing and documenting what works, from running live design experiments to publishing our findings for the broader community.\nProduct Design Research\n- Market and customer validation\n- User interviews\n- Shaping Sprints\nUser Experience Design\n- Usability testing\n- Design for accessibility, WCAG, and \nregulatory compliance\n- Design for regulated workflows and \naudit-friendly interfaces\nUI Design and Implementation\n- Visual design and brand implementation\n- Information architecture\n- Design systems for complex, \nmulti-role applications\n- Front-end design\nthoughtbot Product Designers collaborate with you on what’s critical for a project's success. They've built brands from the ground up, worked within established ones, and embedded in regulated environments where compliance constraints shape what good design actually means.\nShaping Sprints are essential starting points for new features, workflows, products, or existing problems. We use design thinking to build team alignment and get an early read on market fit. Then we pressure-test with generative research methods like qualitative interviews, usability tests, and workflow analysis so every sprint ends with real user-driven learnings.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "e7777b8b82ece93e",
+      "stable_hash": "adc6047b5cca53d4",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/design-systems",
+      "kind": "website",
+      "title": "Seamless visuals and rapid product growth using a Design System | thoughtbot",
+      "text": "A Design System is your style guide come to life. Combining your pattern library, design documentation, and product workflow, your Design System is the single and sustainable source of truth uniting your product teams.\nWe will lead the initial investment needed to establish a sustainable Design System that can grow with your project and team. A best-practice Design System is a gift that keeps on giving and you'll start to reap the rewards right away.\nDesign debt can easily build up during periods of rapid product growth. New features add value for users, but an increasingly incoherent user experience will start to drive them away.\nIf this sounds familiar, then you need a Design System overhaul to streamline your existing features and set cohesive standards for new ones.\nAn effective Design System clarifies accessibility standards and practices from Day 1, so you aren’t relying on everyone being an expert. We can empower your teams to deliver accessibility at each phase, while saving time and reducing cognitive load on designers and developers.\nNo matter your project scale or budget, we will look at your product with fresh eyes during a Design System audit to find and document design components and variations. thoughtbot designers work with your team to analyze and flag each element to document, merge, modernize, or replace.\nInterviews with your teams will identify the strengths and pain points of your existing Design System workflow. We’ll use this data to create an effective and sustainable workflow that empowers your designers and developers to take ownership of the system. Or, a thoughtbot designer can embed with your team to lead the system iterations and nurture a strong in-house team.\nThe result? A streamlined, sustainable experience for your users and your product teams.\nImproving the user experience by streamlining the design system\nthoughtbot's Design System expertise helped tackle design debt and rebuild team trust to maintain the quality of the product going forward.\nOptimizing an existing platform suffering from design debt\nthoughtbot Design Systems optimization helped prioritize the user experience for internal users and customers, while tackling accumulated design debt.\nBuilding a design framework for multiple mobile applications\nthoughtbot also identified a design and localization strategy that would support a variety of constituents, across the US and world.\nWhat is design debt?\nWhen a Design System isn't regularly updated, it's impossible for designers and developers to use it. Both product and brand suffer as a result.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "29df284369972cbc",
+      "stable_hash": "1130403af95023c0",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/mvp-development",
+      "kind": "website",
+      "title": "MVP app development and consulting services | thoughtbot",
+      "text": "AI tools and no-code platforms can take an idea to a working prototype in a weekend. But that speed often comes with fragile architecture, security gaps, and technical debt that grows with every workaround.\nMany of our clients arrive with AI-generated prototypes or rough versions they built themselves. We assess what you have, keep what works, and build production-ready software with the architectural decisions and technical judgment that separate a demo from something you can take to market.\nIn healthcare, finance, and insurance, the stakes are different. Compliance failures, security gaps, and undocumented architecture create risk that grows as your product scales. Getting it right after launch is always harder than getting it right from the start.\nthoughtbot has deep experience delivering products in regulated industries. We build with HIPAA, SOC 2, and your industry's specific requirements as part of the foundation. Our teams bring the architecture, documentation, and security practices your compliance team needs to see.\nthoughtbot is an expert at shaping the right roadmap and mitigating risk quickly. We call this our MVP Shaping Sprint. Whether you're coming in with a working prototype, a validated concept, or a new idea, we start by identifying the assumptions that matter most.\nDuring your sprint, we validate assumptions, connect with target users, and align the roadmap with your business goals. Our designers and developers plan the right user experience, architecture, and tech stack. In a matter of weeks, we shape an MVP roadmap you can move forward with confidence.\nBuilding a new product requires deep expertise in new product development which may include navigating new challenges like API integrations, mobile technologies, and accessibility design standards. New product development also requires upskilling your current team which is hard to do without disrupting their essential work for your business.\nthoughtbot can help you achieve all of this. We provide the expertise necessary to launch the product that you need, and collaborate with your team to help them master it.\n- Product strategy\n- Cross-functional leadership\n- Roadmap prioritization\n- Team management\n- Risk management\n- Tech assessment\nTeam Integration involves much more than technology upgrades and API integrations. It requires human connection, collaboration, up-skilling, and establishing a trusted partnership from the beginning.\nOur team thinks about this from day one and can meet your team where they are in the process, up-skill them in a new technology, and work collaboratively with them to bring a new product to market and beyond. Committing to a strong partnership is the best way to ensure the success of your team and product.\n- Team upskilling\n- Recruitment\n- Remote collaboration\n- Product iteration best practices\n- Team mentorship\nProduct Design\nWe deliver a highly usable experience and establish a product’s foundation by putting Design Systems and Accessibility Standards in place.\nMobile Development\nWe design and build iOS, Android, and cross-platform React Native apps for startups and established businesses.\nProduct Management\nOur product strategists are there from day one, helping to define a product vision, lead the agile implementation and support the GTM strategy.\nWeb Development\nWe are experts in using React, Ruby on Rails, and Python to craft stellar web applications.\nFeatured Case Study\nHarvard Business Review\nEngaging a new generation of mobile users and expanding the core business with HBR’s React Native app.\nFolio\nLaunching an MVP in time for the first paying customer and establishing a strong software foundation.\nGroups Recover Together\nCentralizing opioid-addiction care into a single easy-to-use platform while increasing access to support.\nNeighborhood Alerts\nLaunching and scaled a multi-source alerts platform to 4M users in months, built for speed and reliability.\nClaude Code: Production ready code in a two-week sprint\nProduction-ready code in a two-week sprint AI-generated code doesn't have to be throwaway code. Here's how we used Claude Code to build production-quality software during a two-week sprint.\nRapid prototyping with Claude Code: How we transformed our design sprint process\nRapid prototyping with Claude Code For more than ten years we've been running design sprints. Now Claude Code is helping us prototype faster than ever without sacrificing quality.\nPriority determines product\nPriority determines product When we get overly attached to our initial vision, or race to launch, or try to satisfy every customer request, we often jeopardize our own success.\nHow to define and prioritize features for your MVP\nStarting a business and building an MVP is full of risks. This article helps you find focus and mitigate risk.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "2f399d73232788e8",
+      "stable_hash": "45e623497d4df8fd",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/product-management",
+      "kind": "website",
+      "title": "Our Product Managers drive product strategy and work closely with you to find success. | thoughtbot",
+      "text": "Having a focused go-to-market strategy and product roadmap is imperative for any first version launch. From the very beginning, our Product Managers work with your team to uncover the right go-to-market strategy, set the project up for success, and assemble a team with the right type of experience and skill sets.\nthoughtbot Product Managers:\n- Identify the root cause and problem statements\n- Focus in on the target users and critical path\n- Call out assumptions, risks, and dependencies\n- Work with designers to run experiments to test, gather information, and validate assumptions\n- Have code-competency to collaborate with developers and understand complexity and technical challenges\n- Prepare a prioritized roadmap outlining implementation details and milestones\n- Use feedback and identify KPIs to inform the foundational product strategy\nOnce a high-level go-to-market plan has been created and the team with the right skill sets has been assembled, it’s our Product Manager’s responsibility to ensure that everyone has a space to do their best work. Product Managers come equipped with best practices for each phase of the product delivery lifecycle.\nAs design and development gets underway, Product Managers lead the collective effort across interdisciplinary teams to make sure that there’s alignment around priorities, information is flowing to the right team members, and that the proper mechanisms for communication, tooling, and working practices are in place and documented.\nWhat that can look like for you\n- Run Agile ceremonies (Sprint Planning, Backlog Grooming, Daily Syncs, Retros, Stakeholder Demos)\n- Coordinate across teams and establish best practices for cross-team collaboration\n- Build a regular cadence for stakeholder updates and check-ins\n- Create and maintain product/project documentation for visibility and historical context\nWhat sets the thoughtbot team apart is our ability to move your team and process forward while also building products that people love. A product is only as great as the team supporting it, which is why mentorship, knowledge sharing, and best practices documentation is such an important part of our delivery. Our Product Managers make sure your product, processes, and team are all improved as a part of our work together.\nYour product is an evolving application that ebbs and flows with the ever-changing needs of your business and customers. Our Product Managers help champion the voice of your customers and continuously align the team around your business goals, KPIs, and business objectives.\nTo maintain an evolving understanding of your customers, we utilize both qualitative and quantitative feedback that allows us to evaluate impact, validate assumptions, anticipate potential risks, and ultimately uncover the next set of features that will deliver the most value.\nDo you want to see how our product strategists approach specific use cases? We've outlined a step-by-step guide in our newest Playbook. It breaks down how thoughtbot tackles the most common client scenarios. For example: how to identify your target audience, minimize customer drop-off, uncover opportunities to successfully grow your business, and conduct a competitive analysis with actionable insights.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "870ffbd0cd991d57",
+      "stable_hash": "ccc1e13dea6fc5c0",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/product-accessibility",
+      "kind": "website",
+      "title": "Accessibility work that goes beyond compliance | thoughtbot",
+      "text": "Our team will take a look through the existing product. They’ll document findings, have suggestions for steps forward, and help your team implement updates. Our audits cover:\n- Severity, scope, and priority of impact\n- Applicable Web Content Accessibility Guidelines (WCAG) Criterion\n- Real-world examples of how issues affects your users\n- Suggested fixes\nConsidering permanent and temporary disabilities, circumstance, and underlying biases makes for stronger, more successful products. Our team can help you work through your assumptions to identify oversight and risk.\nNavigating the European Accessibility Act\nUnderstanding new regulations, assessing your solution, and outlining remediation efforts can be an overwhelming. This resource shares suggestions for compliance.\nNew web accessibility ruling in the U.S.\nThe new regulations set out to ensure that web and mobile applications are accessible to people with disabilities. This blog helps you understand where to take action.\nStop aiming for compliance: Craft a better product strategy instead\nWith new legislation, you may be figuring out how to fit accessibility into your roadmap. Here are 5 actionable ways to integrate compliance into your ongoing strategy.\nAlt vs Figcaption\nWhile both the alt attribute and the figcaption element provide a way to describe images, the way we write for them is different. alt descriptions should be functional; figcaption descriptions should be editorial or illustrative.\nAccessibility Testing on Android\nProgramming an accessible Android app is not technically difficult, but is often skipped in the rush of a deadline. With the right tools, skipping accessibility is a compromise you don’t have to make.\nImproving the usability and accessibility of a healthcare website by being mindful of reading level\nImproving the reading level is often overlooked or downplayed as unglamorous work. Yet it is one of the most effective things you can do to make a product more usable.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "da99a1f455ca743c",
+      "stable_hash": "574515c6ff74aebf",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/team-augmentation",
+      "kind": "website",
+      "title": "Keep your product moving forward with Team Augmentation - thoughtbot | thoughtbot",
+      "text": "Whether it's a long-running project that you're pushing over the final hill, a new feature that your thinly-stretched team can't take on, bugs that accumulated over time, or framework upgrades to get security features, we can bring our expertise, process, and passion to your organization.\nGot a new feature that needs to be done soon but you're in a race to hire? We can fill in the blanks: help you scope the requirements, implement the feature in a manner consistent with the rest of the codebase, and even help with the hiring process.\nWe believe there is always a better way to do our work, and we want to share it with your existing team and project. As we work together, we’ll help level up your team so they can continue with best practices long after we’re gone.\nDocumentation is vital to the longevity of your team, product, and process. From onboarding to deployment, we want the next person to have a smooth experience. Consider it a bonus for bringing us on: we'll get you where you need to be and leave a trail of well-edited documentation in our wake.\nOur developers and designers have deployed hundreds of projects in a variety of configurations and setups. Our self-directed team can fit into yours in a way that truly augments their skills.\nWe are enthusiasts of the software we use, and we'd love to share what we know about the latest upgrades for Ruby on Rails, React Native, Android in Kotlin, iOS in Swift, Django, Webpack, Scss, and more.\nOur flexibility in working environments comes from actual experience. We can handle a remote-first culture natively and with as much knowledge as we would an in-office integration.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "44e980b58217e2db",
+      "stable_hash": "93f37cf452037e74",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/fractional-product-technical-leadership",
+      "kind": "website",
+      "title": "Fractional Product and Technical Leadership | thoughtbot",
+      "text": "- Accelerate progress without waiting on full-time hires\n- Get expert guidance in architecture, team process, and product delivery\n- De-risk your roadmap with experienced leaders\n- Hire and onboard new team members with support\n- Instill best practices that scale with you\nA Fractional CTO from our team will lead your product’s technical direction and team with confidence. From early technical audits to hiring, process setup, and architecture decisions, we help you move fast and sustainably.\nOur senior developers are strong communicators and consultants. We clarify complex decisions, help with code reviews and CI/CD improvements, and ensure your dev team is set up for long-term success.\nCommon support areas:\n- Technical audits and architectural planning\n- Code quality standards and tooling\n- Team upskilling and mentoring\n- Hiring your first technical leads\nWhen your product team needs alignment and leadership, a Fractional PM from thoughtbot helps you establish a roadmap, define KPIs, and deliver value quickly.\nWe integrate seamlessly with your team, bringing strategic clarity and agile best practices that create focus, transparency, and momentum.\nOur Product Managers:\n- Define product vision tied to business goals\n- Prioritize roadmaps based on research and impact\n- Run agile sprints and ensure consistent delivery\n- Improve stakeholder communication and planning\nStartups\nYou’re growing fast, but not ready for a full-time CTO or CPO. We step in to lead product and technical decisions, reduce uncertainty, and help you build toward the team you’ll need in the future.\nEstablished companies\nYou have a product org, but you’re navigating change, restructuring, or quality issues. We help you tighten up processes, lead special initiatives, or fill temporary gaps in senior leadership.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "3cd4a04508d7ba03",
+      "stable_hash": "46488eb7638b3d1c",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/jobs/compensation",
+      "kind": "job_posting",
+      "title": "Jobs - Compensation calculator",
+      "text": "thoughtbot does not discriminate on the basis of race, sex, color, religion, age, national origin, marital status, disability, veteran status, genetic information, sexual orientation, gender identity or any other reason prohibited by law in provision of employment opportunities and benefits.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "72df3bb6d8c46f22",
+      "stable_hash": "b1b9712cad0725f5",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog",
+      "kind": "blog_post",
+      "title": "Giant Robots: thoughtbot Blog",
+      "text": "A senior designer’s diary on picking up React Native. This entry starts with an argument about padding and ends up in the React docs, where three of the five steps in “Thinking in React” described work I already do. Variants are props. The layers panel is a hierarchy. The gap is that a Figma file shows every state at once, and code has to pick one.\n    \n    \n  \n  \n    \n    \n      Join thoughtbot and engineering, product, and technology leaders in London for informal evenings of networking.\n    \n    \n  \n  \n    \n    \n      I photographed a mystery coat of arms on vacation and asked a handful of AI models to identify it. Their reasoning traces show the difference between a model that backtracks and one that doubles down.\n    \n    \n  \n  \n    \n    \n      An append-only status model gives you full history, but concurrent transitions can produce contradictory records. Here’s how to prevent that.\n    \n    \n  \n  \n    \n    \n      AI makes code faster and cheaper to produce. Premium consultancies need to offer more: experienced judgment, the right capabilities, and people who help teams solve the right problems and make better decisions.\n    \n    \n  \n  \n    \n    \n      AI is accelerating software delivery, but regulated industries face a harder challenge: moving faster without increasing risk. Here’s how teams can balance speed with privacy, security, compliance, and accountability.\n    \n    \n  \n  \n    \n    \n      We’re excited to bring the thoughtbot Tech Leaders Meetup back to Amsterdam...\n    \n    \n  \n  \n    \n    \n      A Product Manager doesn’t need to code, but understanding technology can completely change the quality of conversations, decisions, and collaboration with engineering.\n    \n    \n  \n  \n    \n    \n      Healthcare can be a tough space for innovation: Speed often feels at odds with the high-compliance environment. How do you find a balance? We asked them in a new research study and sat down with a Merck executive and two of our own developers.\n    \n    \n  \n  \n    \n    \n      Third-party component libraries come with restrictions, the :has() CSS pseudo-selector unlocks flexible style options without needing JavaScript.",
+      "published": "2026-09-02",
+      "extract_reason": "ok",
+      "content_hash": "2621373026d322b2",
+      "stable_hash": "d7bc22cd5ea3ca23",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/design",
+      "kind": "blog_post",
+      "title": "Design - Giant Robots Smashing Into Other Giant Robots",
+      "text": "A senior designer’s diary on picking up React Native. This entry starts with an argument about padding and ends up in the React docs, where three of the five steps in “Thinking in React” described work I already do. Variants are props. The layers panel is a hierarchy. The gap is that a Figma file shows every state at once, and code has to pick one.\n    \n    \n  \n  \n    \n    \n      Third-party component libraries come with restrictions, the :has() CSS pseudo-selector unlocks flexible style options without needing JavaScript.\n    \n    \n  \n  \n    \n    \n      Vibe coding might get you 80% of the way there. But the other 20% is what really counts. It’s what makes you stand out from AI slop and helps you avoid huge accessibility fines. thoughtbot designers can give you that extra 20%.\n    \n    \n  \n  \n    \n    \n      The hidden reason good products, meetings and workshops still fail: they depend on a single way of seeing, thinking and processing.\n    \n    \n  \n  \n    \n    \n      Some say interface tests are fragile and shouldn’t be written. I disagree. Here’s why I think they’re worth writing.\n    \n    \n  \n  \n    \n    \n      Moving from Figma to Claude Code and back again is now possible. This could be a game changer for less technical, more visual Product Designers.\n    \n    \n  \n  \n    \n    \n      Here are 6 key insights I took from the Startup Grind Global conference 2026 along with 3 cool companies worth checking out!\n    \n    \n  \n  \n    \n    \n      A case for verbosity in CSS properties.\n    \n    \n  \n  \n    \n    \n      Accessibility as the key factor for debugging, designing and developing a carousel with logos on a webpage.\n    \n    \n  \n  \n    \n    \n      We’re experimenting with two new CSS functions to clean up our logo marquee code.",
+      "published": "2026-09-02",
+      "extract_reason": "ok",
+      "content_hash": "13fc9034b4fd5fce",
+      "stable_hash": "dd3244cff2613733",
+      "duplicate_urls": [
+        "https://thoughtbot.com/blog/tags/design"
+      ]
+    },
+    {
+      "url": "https://thoughtbot.com/blog/development",
+      "kind": "blog_post",
+      "title": "Development - Giant Robots Smashing Into Other Giant Robots",
+      "text": "Sharing my experience building a Chrome extension wrapper around a Rails app: the hard-won expertise, the rabbit holes, and everything I’d do differently.\nLearn what happened when Chad installed the open source rails-audit-thoughtbot Claude skill, ran it on thoughtbot’s decade-old internal Hub app, and walked through hits, misses, and how we’d tighten the skill over time.\nWhen speed matters more than perfection, API documentation can quickly become a bottleneck. In this post, I share how we used thoughtbot’s Claude Skill to generate Postman collections directly from a Rails codebase.",
+      "published": "2026-07-13",
+      "extract_reason": "ok",
+      "content_hash": "35124ea3a871dfe7",
+      "stable_hash": "d26b973f196857dc",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/product_management",
+      "kind": "blog_post",
+      "title": "Product Management - Giant Robots Smashing Into Other Giant Robots",
+      "text": "A Product Manager doesn’t need to code, but understanding technology can completely change the quality of conversations, decisions, and collaboration with engineering.\nSlow development isn’t always a code problem. It’s often a process one, especially in regulated industries. Here’s how navigating change to embrace a shared agile process helped one of our clients start finishing ahead of schedule.\nSpoiler, the product wasn’t the problem. It was the customer experience. This is the mindset shift that will save you money, and keep your revenue recurring.\nA step-by-step path to validate your idea fast by defining the problem, testing assumptions, prototyping the critical flow, and shaping a focused MVP you can learn from.\nInsights from the 2025 Just Product conference - from slowing down under pressure, to experimenting with AI and vibecoding - and what this all means for product teams and leaders.",
+      "published": "2026-08-19",
+      "extract_reason": "ok",
+      "content_hash": "0b1fc0fe40fd7841",
+      "stable_hash": "3ad4996765001789",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags",
+      "kind": "blog_post",
+      "title": "All Topics - Giant Robots Smashing Into Other Giant Robots",
+      "text": "3\na\nb\nc\n- C\n- Capybara\n- Capybara Webkit\n- Carnival\n- Carthage\n- CDN\n- Chat Bot\n- Chicago\n- Chrome\n- ChromeDriver\n- Chrome Extension\n- CI\n- CI/CD\n- CircleCI\n- Claude\n- Claude Code\n- Clearance\n- CLI\n- Clojure\n- ClojureScript\n- Closure\n- Cloud\n- Coaching\n- Cocaine\n- Code\n- Code Audit\n- Codecation\n- Code Review\n- CoffeeScript\n- Collaboration\n- Color\n- Combine\n- Comments\n- Commits\n- Communication\n- Community\n- Compliance\n- Computer Science\n- Concurrency\n- Conferences\n- Configuration\n- Connascence\n- Consultante\n- Consulting\n- Context\n- Continuous Improvement\n- Continuous Integration\n- Controllers\n- Cookie\n- Copycopter\n- Coupling\n- Credentials\n- Crystal\n- C#\n- CSS\n- Cube\n- Culture\n- Customer\nd\ne\n- Ecommerce\n- Economics\n- Ecto\n- Education\n- Eisenhower\n- Elastic Beanstalk\n- Elasticsearch\n- Electron\n- Elixir\n- Elm\n- Emacs\n- Embeds One\n- Ember\n- Ember For Designers\n- Endianess\n- Entertainment\n- Enum\n- Enumerable\n- Enumeration\n- Enumerator\n- Environment\n- Environment Variables\n- EQ\n- ERB Lint\n- Error\n- Error Handling\n- ES6\n- Esoteric\n- Estimation\n- Ethics\n- Events\n- Expenses\n- Experiments\n- Expo\n- ExpressJS\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\n- Rack\n- Rack Tutorial\n- Radish\n- Rails\n- Rails 5\n- Rails Tutorials\n- Rails Upgrade\n- Rake\n- Raleigh\n- React\n- ReactiveCocoa\n- Reactive Programming\n- ReactiveSwift\n- React Native\n- Reading\n- Readline\n- Readysetgo\n- Realtime\n- Recursion\n- Redis\n- Redux\n- Refactor\n- Refactoring\n- Regex\n- Remix\n- Remote\n- Remote In Public Channels.\n- Rename\n- Research\n- Resiliency\n- Resource\n- REST\n- Review\n- Rototo\n- Routes\n- RSpec\n- Rubedo\n- Rubocop\n- Ruby\n- Rubyllm\n- Ruby On Rails\n- Rust\n- Rx\n- RxCocoa\n- RxJava\n- RxSwift\ns\n- SaaS\n- Sales\n- San Francisco\n- Sass\n- Scala\n- Scenic\n- Search\n- Security\n- Sed\n- SEO\n- Serie De AI\n- Serverless\n- Server Management\n- Service Design\n- Service Oriented Architecture\n- Sesgos\n- Shape Up\n- Shell\n- Shopify\n- Shoulda\n- Sidekiq\n- Sinatra\n- Sketch\n- Skills\n- Slack\n- Slide Deck\n- Snap\n- Social Media\n- Sockets\n- SQL\n- Squirrel\n- SRE\n- SSL\n- Staffing\n- Standard\n- Startup\n- State\n- Stimulus\n- Stockholm\n- Stories\n- Strategy\n- Studio Culture\n- Style\n- Style Guides\n- Successful Products\n- Superglue\n- Suspenders\n- SVG\n- Swag\n- Swift\n- SwiftUI\n- Swish",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "3689da55da3ae3c5",
+      "stable_hash": "1960271e146b002c",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/designers-already-think-in-react",
+      "kind": "blog_post",
+      "title": "Designers already think in React",
+      "text": "I got curious about implementation because of padding.\nSpecifically the fourth message in a thread about whether a card’s inner spacing was 16px or 20px. I have had some version of that conversation on every project I have worked on, along with the ones about type scale, and border radius, and which grey. All of them cost a lot of time, for designers and developers both.\nWe make those decisions in design. They get translated in code, and translation is where they go missing. I wanted to carry one all the way through, so I decided to explore React.\nEarly in the docs there is a page called “Thinking in React”. I opened it braced to be lost, and spent most of it recognising things. It lays out five steps for turning a design into working code. Three described work I already do. The other two were new, and those two are most of what I have to say.\nThe docs open by telling you to break the interface into a hierarchy of components. Decide what’s a component, what nests inside what, where the line falls between a card and the list it sits in.\nThat’s the layers panel. I have been doing it for years and calling it organising my layers.\nThen they tell you to build a static version first. No data, no behaviour, everything hard-coded, and resist adding interactivity until the static version holds up. That’s the Figma file. Designers get that discipline for free, because the canvas puts that constraint on us.\nHere’s the part that actually stopped me. I have a button in our library with three properties. Size, state, and a switch for the leading icon. Set those three and you get the button you need. Turns out that is what a component’s props are. I had been building those for years, knowing someone else would pick them up and use them.\nSome of that overlap is deliberate. Figma’s slots, the areas inside a component you can fill without detaching the instance, are the same idea as children in React.\nHowever, what escaped me was the cost. On the canvas, adding a fourth property is one more frame. In code it multiplies against everything already there, and someone has to hold that arithmetic in their head every time they touch the file. That’s why the answer to “can we just add one more variant” is slower than it looks from my side.\nThere’s a page in most of my files where I start building my components, and it is mostly just states. Default, hover, loading, empty, error. All side by side, all equally true, none of them in each other’s way.\nThat’s the canvas doing what it does. There’s no time on the canvas and no data, so nothing ever has to be responsible for anything. Everything is simply true, forever, all at once.\nI have found that React can’t do that. It shows one thing at a time, and something has to decide which. So it made me ask myself something about that page I had never had to ask. Which of these are real, and which ones are just what happens when something else is true?\nOur empty state is the results list with nothing in it. If I let it become its own thing in code, I have built a second way for it to be empty, plus a bug for the day the two disagree. Loading is real, and it belongs somewhere else again, with whatever is doing the fetching.\nThen comes the part with no canvas equivalent at all. Once you know what the real states are, something has to own them, and the owner sits above whatever you’re looking at.\nTake a filter panel and a results list. On my canvas they’re siblings, sitting side by side, neither one inside the other. So when someone picks a filter, where does that choice live? The list needs it as much as the panel does, so it moves up to the nearest thing holding them both, and gets handed back down to each.\nThat has a name. Lifting state up. The vocabulary was new, and the instinct is one designers already have, because it’s the argument we have about tokens every time someone hardcodes a hex. One owner, everything else pointing at it.\nWhich, it turned out, is also the padding thread. That argument happens because the number lives in two places, my file and their code, with neither one pointing at the other, so both stay true until somebody notices they disagree. Dabbling in React made me ask who owns this often enough that I started asking it about my own files.\nThe title of this post only goes so far, and this is where it runs out. I can look at a screen now and work out the hierarchy, sort the real states from the ones I drew, and tell you roughly where that filter choice needs to live. Then I open an empty file and none of it types itself.\nThe styling I can handle. That’s the CSS talking, and it’s the part that carries over most cleanly, though I gather it stops carrying the moment I get to React Native, where there’s no cascade and styles are just objects sitting on the component. Everything else is a skill I am still paying for. The syntax, the hooks, the six ways to do one thing and the opinion my codebase has about which one.\nIf you want to build what you design, then yes, and you are starting further along than the docs assume. The component thinking is already yours. What you are buying is the part about time, which the canvas never asked you to think about, and then writing the code itself.\nThat half shows up in real work more than it sounds like it would. When developers plan a build, one of the first things they settle is which parts of a screen are real and which fall out of something else, which is step three of that docs page happening in a meeting instead of a tutorial. I watched two experienced developers do it on a call recently, taking a design apart into components and deciding where each part got its value from.\nYou can run the same pass on your own work today. The react.dev page runs in the browser with editable examples, so there is nothing to install, and it builds one small thing across the five steps. Read it with a few of your own screens open beside it. Take one you have drawn several versions of, the empty one, the loading one, the error one, and ask the same question of it.",
+      "published": "2026-09-02",
+      "extract_reason": "ok",
+      "content_hash": "a657900d7f7bc356",
+      "stable_hash": "fde38291dab984b1",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/authors/moses-amama",
+      "kind": "blog_post",
+      "title": "Moses Amama - Giant Robots Smashing Into Other Giant Robots",
+      "text": "A senior designer’s diary on picking up React Native. This entry starts with an argument about padding and ends up in the React docs, where three of the five steps in “Thinking in React” described work I already do. Variants are props. The layers panel is a hierarchy. The gap is that a Figma file shows every state at once, and code has to pick one.\n    \n    \n  \n  \n    \n    \n      We’ve retired Upcase, but our commitment to sharing what we learn hasn’t changed. Here’s where you can continue learning with us through articles, videos, podcasts, and more.\n    \n    \n  \n  \n    \n    \n      A step-by-step path to validate your idea fast by defining the problem, testing assumptions, prototyping the critical flow, and shaping a focused MVP you can learn from.\n    \n    \n  \n  \n    \n    \n      Explore how AI enhances accessibility testing, its limitations, and why collaboration with human expertise is key to inclusive solutions.\n    \n    \n  \n  \n    \n    \n      Combine AI tools with design expertise to make better typography decisions faster. Use AI as an assistant to select, test and implement typefaces while reducing time spent on exploration.\n    \n    \n  \n  \n    \n    \n      Discover how startups and small teams can leverage a lean approach to design systems to enhance consistency, reduce costly redesigns, and improve user experience from day one.\n    \n    \n  \n  \n    \n    \n      User interfaces enable or frustrate users. Good UIs empower users by making goals achievable, bad ones make users feel lost and helpless. This article discusses how to craft empowering UIs.",
+      "published": "2026-09-02",
+      "extract_reason": "ok",
+      "content_hash": "daafb1eb07b8ab85",
+      "stable_hash": "58dc7fb01cc2cbc8",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags/product-design",
+      "kind": "blog_post",
+      "title": "Product Design - Giant Robots Smashing Into Other Giant Robots",
+      "text": "A senior designer’s diary on picking up React Native. This entry starts with an argument about padding and ends up in the React docs, where three of the five steps in “Thinking in React” described work I already do. Variants are props. The layers panel is a hierarchy. The gap is that a Figma file shows every state at once, and code has to pick one.\n    \n    \n  \n  \n    \n    \n      Vibe coding might get you 80% of the way there. But the other 20% is what really counts. It’s what makes you stand out from AI slop and helps you avoid huge accessibility fines. thoughtbot designers can give you that extra 20%.\n    \n    \n  \n  \n    \n    \n      Moving from Figma to Claude Code and back again is now possible. This could be a game changer for less technical, more visual Product Designers.\n    \n    \n  \n  \n    \n    \n      Here are 6 key insights I took from the Startup Grind Global conference 2026 along with 3 cool companies worth checking out!\n    \n    \n  \n  \n    \n    \n      thoughtbot designers aren’t just pushing pixels—they’re full-stack product partners and front-end developers.\n    \n    \n  \n  \n    \n    \n      The final blog in our “AI for Business” series in which we look at the rollout of your new AI strategy.\n    \n    \n  \n  \n    \n    \n      Like Frodo, you have left the Shire, formed the fellowship and survived the Dead Marshes. But you still need to scale Mount Doom. In our case, Mount Doom represents the many legal, societal and ethical implications around adopting AI technology.\n    \n    \n  \n  \n    \n    \n      The biggest hurdle to a successful AI-powered business transformation is not broken code, bad data or limited budget. It’s people. Let’s take a look at a few ways to jump this hurdle!\n    \n    \n  \n  \n    \n    \n      The basics on how to leverage cognitive engagement and AI to deliver value for your customers.\n    \n    \n  \n  \n    \n    \n      Designing tech for older adults is a massive opportunity to improve lives. We break down the five biggest product mistakes we see in AgeTech and how you can avoid them to build solutions that truly make an impact.",
+      "published": "2026-09-02",
+      "extract_reason": "ok",
+      "content_hash": "cca41ecc8ae3ae81",
+      "stable_hash": "d51b3a1a598c34eb",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags/react",
+      "kind": "blog_post",
+      "title": "React - Giant Robots Smashing Into Other Giant Robots",
+      "text": "A senior designer’s diary on picking up React Native. This entry starts with an argument about padding and ends up in the React docs, where three of the five steps in “Thinking in React” described work I already do. Variants are props. The layers panel is a hierarchy. The gap is that a Figma file shows every state at once, and code has to pick one.\n    \n    \n  \n  \n    \n    \n      We’re releasing Humid 1.0. A few helper methods to help with React server-side rendering in Rails with mini_racer.\n    \n    \n  \n  \n    \n    \n      The Rails way of building Rails and React apps just got easier.\n    \n    \n  \n  \n    \n    \n      Superglue 2.0 incoming! Bringing the power of Rails Turbo Streams to React.\n    \n    \n  \n  \n    \n    \n      The year’s not over yet — there’s plenty of JavaScript events ahead for those looking to learn, connect, and grow with the community.\n    \n    \n  \n  \n    \n    \n      Learn how various approaches to integrating JavaScript with Ruby on Rails present unique affordances towards handling presentational concerns and vary in how they support system requirements.\n    \n    \n  \n  \n    \n    \n      Superglue 1.0 is released! Learn about pairing Rails and React and why being thoughtful matters.\n    \n    \n  \n  \n    \n    \n      For a long time, I thought that using React with Rails was an “all-or-nothing” proposition. I’m now realizing that the two can be integrated on a spectrum.\n    \n    \n  \n  \n    \n    \n      Want to setup React on your Rails 7 app but don’t know how do it? Read this post to explore options to consider when using React with Ruby on Rails.\n    \n    \n  \n  \n    \n    \n      Is your app ready for what’s coming up in React 19’s release? Get prepared with what is going to change ahead of its release date.",
+      "published": "2026-09-02",
+      "extract_reason": "ok",
+      "content_hash": "3df5d5605f5744f4",
+      "stable_hash": "d6af545a31027e6d",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/platform-engineering",
+      "kind": "website",
+      "title": "Cloud Platform Engineering | thoughtbot",
+      "text": "Platform Engineering services focus on how code gets from the developers hands into the end user's experience to ensure success from the beginning of the product lifecycle through exponential growth. We build continuous integration and delivery pipelines, cloud platforms, and provide ongoing support post-launch of new products and major features.\n- Is your team able to deliver code at a high velocity?\n- Are they able to test features in a production-like environment before deployment?\n- Do you frequently have post-deployment errors or production outages?\nOur platform engineering team creates all infrastructure as code. Get the tools to mirror your staging and production environments, monitor your site performance, and minimize production outages caused by deployments. Make both your users and your developers happier.\nAs your product grows, it's crucial to balance site reliability with new feature production. We can help you adopt Site Reliability Engineering (SRE) tenets and upgrade your team and processes to effectively manage SLOs and error budgets.\nOur AWS Platform Guide documents our experiences and approach to building on the cloud with security best practices on Flightdeck - our curated set of pre-configured open source Terraform modules and AWS products for deploying and managing applications on AWS Elastic Kubernetes Service.\n- Do you feel comfortable meeting the security compliance needs of your product with your current platform?\n- Do you have a high variability in traffic?\n- Are you experiencing growth / cost pain with your current cloud provider?\nOur team can stand up a high-compliance ready AWS platform for your team and be ready to begin a migration in less than 3 weeks. We provide your team with all of the documentation and training you need to operate on AWS, maintain security compliance, and scale to meet the variability of your user needs. We have the experience and partnerships to handle special considerations like HIPAA, FINRA, SOC 2, and PCI in a variety of cloud platforms.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "040c6f47bd5cde22",
+      "stable_hash": "2735ef782c924964",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/our-company/career-paths",
+      "kind": "website",
+      "title": "Career Paths | thoughtbot’s Playbook for great products and teams",
+      "text": "We have the following pre-defined career paths, which includes our standard promotion path. The standard promotion path includes roles that folks can be promoted into without an application process. Additionally, there is no cap on the number of folks who can be in a role in the standard promotion path.\nPositions that are not part of the standard promotion path are denoted with an asterisk ( * ) in the list below. Moving into a role that is not part of the standard promotion path requires an application and interview process.\nDesign\nThese positions outline the Individual Contributor track.\nDevelopment\nThese positions outline the Individual Contributor track.\nDesigner and Developer Management\nAvailable to anyone at Senior Designer or Senior Developer position or higher.\nGeneral\nProcess\nWe expect team members to grow and progress in their career path while at thoughtbot. We have a standard promotions path for folks in general and technical roles. The standard promotion path is made up of individual contributor (IC) roles.\nPositions that are not part of the standard promotion path are denoted with an asterisk ( * ) in the list above.\nMoving into a people management role is not part of the standard promotions path. We list openings for all positions that are not part of the standard promotion path and all positions that are responsible for managing others internally and externally (when it is financially possible), and conduct interviews for those positions.\nWhile it is possible for an existing team member to be promoted to a position that manages others, we also need to consider the limited number of leadership positions we have and ensure equity and help build a diverse team. Therefore, if an existing role is to be expanded to manage others, or someone would otherwise be promoted to a position that is responsible for managing others, we treat that as a new position and advertise it internally and externally, and conduct interviews for the position (in accordance with Colorado's Equal Pay for Equal Work Act). This also allows for folks to give feedback (including concerns and recommendations) on anyone moving into people management.\nFor all positions, once a team member has shown that they meet the expectations for promotion, they are ready to be promoted. The evaluation will be reviewed by the People Team for approval. Once approved for promotion, other details will be confirmed on the thread including promotion date and any salary changes.\nApprentices, Designers, and Developers\nDesigners and Developers work through a skill self-evaluation with their team lead or manager to identify strengths and areas for growth. Apprentices use the same evaluation but work on it each month with their mentor. Each skill category can be thought of along a 1 through 5 scale, with 1 representing beginning, 3 representing the expected level, 5 representing a rare level of expertise. Skill evaluations cover the following areas:\nShared Skills (Designer and Developer)\n- \nDiversity, Equity, & Inclusion (DEI): A 1 here could mean that you come from an industry or background where you have not had exposure to DEI issues. You have not thought about it, but you demonstrate open-mindedness and genuine curiosity about learning more. A 3 indicates that you can clearly articulate reasons why DEI is important. You acknowledge the complexities of DEI initiatives. You back up opinions with examples, things you've read, or direct experience. A 5 indicates that you actively run DEI initiatives, and mentor or sponsor underrepresented people in the wider community.\nDevelopers\n- \nCommunity: A 1 here could mean that you have not been involved in a professional community in any manner -- no events, no writing, no open source contributions. A 3 indicates that you participate in professional community regularly in a way that helps you, helps thoughtbot, or helps the community itself. A 5 indicates that you are an important figure in the community, such as an organizer or open source maintainer.\n- \nCommunication: A 1 in communication means that you are still working on effectively communicating regularly, proactively, and clearly with teammates, clients, and stakeholders. A 3 means that you communicate effectively. A 5 means that your communication skills are sought out; for example, you are consulted when a client is troublesome or you improve the ways we as a company communicate.\n- \nSpecialization: A 1 in specialization indicates that you have just begun your technical knowledge. A 3 means that you know your technical specialization in depth, able to work unaided and assist people who are still learning. A 5 is for knowing your specialization at a recognized expert level; this could involve being sought out by others for questions, or contributing upstream.\n- \nProcess: A 1 in process means that process is not a thing you've focused on. A 3 means that you participate in and lead the processes for your project, such as planning, estimates, design sprints, prioritization, or automation. A 5 indicates that you treat process as its own entity that can be improved and you seek large improvements to the process in a way that impacts future projects.\n- \nMentoring: A 1 in mentoring is for when you haven't mentored, in an explicit mentor/apprentice relationship or in a simple ad hoc pairing situation. A 3 is for when people feel like they learn every time they collaborate with you. A 5 means that you are a mentor to other mentors.\n- \nTooling & Configuration: A 1 in tools means that you don't think about your tooling apart from using the basics. A 3 means that you have a solid grasp on your tools and configuration for your specialization, including how to debug and improve them. A 5 indicates a greater understanding of tooling that might include helping others, customized tooling, or a wider reach beyond the company.\n- \nImplementation: A 1 in implementation means that you are at the start of your technical journey. A 3 means that you understand the concepts well enough to apply them across different contexts as appropriate. A 5 indicates the discovery of novel implementation techniques.\nDesigners\n- \nProduct Thinking\n  - \nProduct Strategy: A level 1 means you understand your client's long-term product strategy and your team's mission. You make reasonable product decisions based on the strategy. A level 3 means you're using your knowledge of product strategy, you actively help improve your team's short-term roadmap. A level 5 means you lead your team's long-term product strategy and are the primary contributor.\n  - \nDesign Consulting: A level 1 means you explain your design decisions to your team. You share work and seek out constructive feedback on the work you have done. A level 3 means you communicate complex ideas clearly and succinctly. You establish your project's critical success metrics with the client and team. Your knowledge extends to projects created by other teams (if team size is applicable) in the client organization. A level 5 means you're a knowledge leader and consistently find product opportunities for your clients. Others seek out your product sense and opinion. You understand how a particular industry solution fits into the larger company strategy. You also have a deep understanding of competitor product portfolios.\n  - \nUser Understanding: A level 1 means you are developing an understanding of the people who use your product, their goals, use cases, and tasks to achieve those goals. A level 3 means you can be the go-to person on your team who understands current user needs and goals. People rely on you to share your understanding with other teammates. A level 5 means your deep understanding of the user and user research helps you identify unmet needs and goals of the user for the larger product team or organization.\n- \nInteraction Design\n  - \nDesign Patterns: A level 1 means you have a preliminary understanding of design patterns for your product space (mobile, web, other) and how to use the patterns. A level 3 means you keep yourself updated with advancements in design patterns. You teach others how to use design patterns. A level 5 means you can create new design patterns in a new product space with little-to-no existing design patterns to reference. You're an expert and are considered an innovator by the industry or thoughtbot peers.\n  - \nPrototyping: A level 1 means you leverage prototyping tools to create simple static prototypes to test flows. For web applications, you implement your designs with HTML & CSS, maintaining a clean markup and style, and working with our Developers in Git through pairing. A level 3 means you are comfortable creating high-fidelity prototypes and know which prototyping fidelity to use for a given situation. Ability to use components, a design system or other resources when building prototypes for rapid iterating. A level 5 means you can work primarily in code to test design hypotheses. Others consider you a technologist who is proficient in coding front-end interfaces. You teach others how to become better prototypers.\n  - \nColor, Typography, Iconography, and Composition: A level 1 means you leverage UI styles within an existing design system and have a solid rationale behind UI choices. A level 3 means you craft beautiful UI that is functional and delightful. You always meet a high-quality bar with your UI. You can evolve UI styles for an existing design system. A level 5 means you can recognize, create, and promote unique and visually stunning user interfaces that few other designers can. You push our design organization forward with your visual style. Your craftsmanship is unparalleled, and you may even be widely known outside our organization.\n- \nIntentionality\n  - \nCollaboration: A level 1 means you tend to work in silos and share once you have designs ready. A level 3 means you bring your entire team into your design process and have an open mind to others' perspectives. You attend design critiques, design workshops, and sprints. You give feedback freely. A level 5 means you're a shining example of how to collaborate across thoughtbot or design industry successfully, and others seek your advice on how to collaborate. You own design processes related to collaboration.\n  - \nCommunication: A level 1 means you're developing your communication skills and ability to communicate your reasoning. You share work and seek out constructive feedback on the work you have done. A level 3 means you communicate your reasoning to large groups and influence others. You focus on accuracy, conciseness, and completeness in communicating. In addition, you have an inclusive mindset and can juggle others' perspectives with yours. A level 5 means you have a platform for communicating broadly and can influence thoughtbot or design industry. People seek out your communication and trust it.\n  - \nDesign Process: A level 1 means your process isn't fully defined yet, but you can develop an idea into a product with help. You share work and seek out constructive feedback on the work you have done. A level 3 means your process is well-defined and consistently leads you to successful solutions. You justify all design decisions with data and move fast through the Discover, Define, Develop, and Deliver phases. A level 5 means you find new and unique ways to accelerate your's and others' design process. You're a process owner and willing to share your knowledge with others.\n- \nAwareness\n  - \nStrengths & Weaknesses: A level 1 means you're beginning to understand your strengths as a designer. You spend considerable time on self-improvement. A level 3 means your strengths are apparent to you and others. You consistently create plans to promote your strengths and improve your weaknesses. You can offer insight to other designers where your strengths lie. You ask for feedback on your strengths and weaknesses. A level 5 means you have a long-term plan for your growth and understand precisely where you stand with your plan and how to achieve your goals. You are known on the team as an expert in a particular domain and can offer insight when needed.\n  - \nAccessibility: A level 1 means you're beginning to understand where and when to help make experiences accessible. You spend considerable time on research and learning. A level 3 means you have a strong understanding of how you can help make a product more accessible. You have tried and true methods that work but are still learning new ways to test and validate a product’s accessibility. A level 5 means you lead the company in accessibility knowledge. You are actively participating in the larger design conversations and helping educate large groups of designers and developers.\n  - \nDiversity, Equity, and Inclusion: A level 1 means you are learning about systemic or structural issues around race, gender, disability, ethnicity, or class. You ask thoughtful questions when encountering DEI issues you’re not familiar with. You research when encountering DEI issues you’re not familiar with. A level 3 means you consistently advocate for DEI at thoughtbot. You consistently follow and teach our inclusive meeting guidelines. You consistently follow and teach our code review guidelines. A level 5 means you volunteer your time teaching design or software development to underrepresented people. You volunteer your time to work on technology initiatives that benefit communities that are marginalized or underserved by technology. You consistently advocate for DEI in the conference circuit, meetups, Open Source Software, or the design community. You start a DEI initiative at thoughtbot or the wider community.\n- \nDrive\n  - \nLeadership: A level 1 means you represent UX Design alongside developers and research peers. Someone else on the team is leading the team's workload. A level 3 means you drive product direction with development and research support. You're seen as the go-to person for design decisions on your team. You partner with peers and key stakeholders to drive positive product impact on your team. You anticipate potential risks and proactively design solutions. A level 5 means you work closely with other leaders in your organization to drive positive product impact at scale. You are focused on how to make the company successful and not just your team or department.\n  - \nCommunity: A level 1 means you seek expert advice from experienced designers and desire to improve your design skills. A level 3 means you contribute back to the design community by teaching others. Others seek out your advice and relationship. A level 5 means your influence can extend beyond your company and into the design industry. Large groups of designers see you as a massive \"connector\" and primary community contributor.\n  - \nPersonal Elective: TBD: Work with your manager to determine a personal elective that's exciting to you. It could be something you are currently exploring with a client or something you've always wanted to try. Determine how you can break it up across the five levels.\nGeneral positions\nGuidelines for those expectations are:\n- \nCoordinator: Responsible for execution in an area within the responsibility of\nan overall department or role led by someone else Manager level or higher.\n- \nSpecialist: Contributes to strategy and responsible for execution in a specialized area of\nexpertise.\n- \nManager: Responsible for managing the area and standard decision making.\nLeads larger projects, thoroughly researching and presenting final options to all\nstakeholders.\n- \nAssociate Director: Increased responsibility over multiple areas, or\nhigher-level strategy of a specific area.\n- \nSenior Associate Director: Distinguished experience within their job role.\nResponsibility over multiple areas, or higher-level strategy of a specific area.\nDesign Directors and Directors of Software Development\nThe qualifications we look for in a Design Director or Director of Software Development are:\n- They reinforce the thoughtbot culture. They are consistently shipping great\nwork and are fun to work with.\n- Consistent, positive feedback from team members in past reviews, and the\nrespect of their team as an expert in their field.\n- They have consistently shared their opinions while demonstrating an openness\nto understand different points of view and adopt new approaches.\n- They have demonstrated strong leadership on their Team with mentoring\nand sales.\n- They have demonstrated strong leadership across the company. They've\ncontributed unique and positive perspectives in Slack, Hub, Trello,\nGitHub, or in-person.\n- They have demonstrated leadership outside of the company via open source\ncontributions, blog posts, speaking, leading local meetups, etc.\nDesign Team Leads and Development Team Leads\nThe qualifications we look for in a Team Lead are:\n- They reinforce the thoughtbot culture. They are consistently shipping great\nwork and are enjoyable to work with.\n- Consistent, positive feedback from team members in past reviews, and the\nrespect of their team as an expert in their field.\n- They have consistently shared their opinions while demonstrating an openness\nto understand different points of view and adopt new approaches.\n- They have demonstrated strong leadership on their Team with mentoring\nand client projects.\n- They are interested in shifting their career towards management or exploring\nmanagement as a career path.\n- Their questionnaire answers indicate that they have potential as a manager.\n- They understand the importance of Team sustainability.\n- They can help others understand the necessary trade-offs to achieve Team sustainability.\n- Are already a Senior Product Designer or Senior Developer, or the equivalent\nif the candidate is external.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "40fd53c9d591006c",
+      "stable_hash": "16184db11c9fed3b",
+      "duplicate_urls": [
+        "https://thoughtbot.com/playbook/the-thoughtbot-way/people/career-paths"
+      ]
+    },
+    {
+      "url": "https://thoughtbot.com/services/react-development",
+      "kind": "website",
+      "title": "React development firm | thoughtbot",
+      "text": "React enables rich, reusable components and dynamic interactions, but it can also introduce additional layers and complexity when integrated with a Rails backend. thoughtbot helps you:\n- Evaluate whether React is the best fit for your application.\n- Implement patterns and tools, like Superglue, to streamline development.\n- Leverage the strengths of both React and Rails while minimizing complexity.\nReact is known for enabling teams to make incremental improvements by introducing reusable components. Our approach ensures:\n- Faster iteration cycles for your team.\n- Scalable, maintainable codebases that reduce technical debt.\n- Best practices for combining React with Rails, tailored to your needs.\nReact.js\nWe’ve built many single page applications at thoughtbot using Backbone.js Angular, Ember, Elm and others. We prefer to use React and Redux when we’re building a full client side application as opposed to a website with some rich interactions.\nRedux\nRedux is a Flux Library we use to maintain state when using React. Using Redux you define actions which you use to modify your state. This prevents bugs that were common when using plain React.js.\nReact Native\nReact Native gives our team the chance to write fast, native applications on Android and iOS in a single codebase while sharing large amounts of logic. This means we can ship faster to all platforms.\nSuperglue bridges the gap between Rails and React by providing a framework for handling common challenges such as:\n- Seamless server-rendered React components.\n- Enhanced developer productivity with clear conventions.\n- Improved maintainability and team collaboration.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "4e3c2b5531348e65",
+      "stable_hash": "a5012b578d77c063",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/g-cloud",
+      "kind": "website",
+      "title": "thoughtbot is proud to be a G-Cloud 14 supplier. | thoughtbot",
+      "text": "thoughtbot is proud to be an approved supplier on Lots 1-3 of the \nG-Cloud framework from the UK’s Crown Commercial Services.\nOur team is passionate about using our expertise to improve the quality of UK services for its citizens and is well prepared to support government agencies' digital transformation efforts. \nOur human-centered product strategy has driven successful outcomes for more than 1,000 clients. Since 2003, we have developed effective practices and continuously improved our processes to help build effective software and improve teams. We share our process and learnings with others through our GitHub, blog, and podcasts. \nthoughtbot has an extensive portfolio in the GovTech, HealthTech, and EdTech space and have built new products and optimized legacy ecosystems. We are qualified with strategies for success in those verticals and well-versed in compliance such as Data Protection Act requirements.\nThe best products are backed by quality research, validation, and technical due diligence. We have a team of experts to help you each step of the way uncover optimal experiences for your customers or remedy cumbersome workflows. We are comfortable leading brand-new product initiatives or optimizing existing software.\n- thoughtbot Cloud application Support & Maintenance\n- thoughtbot Site Reliability Engineering (SRE) monthly support\n- thoughtbot Solution Architect and Technical Architecture Services\n- thoughtbot Ruby on Rails / Python / React / Angular / Java / Scala Development\n- thoughtbot Python / Ruby / Ruby on Rails Cloud DevOps\n- thoughtbot Site Reliability Engineering (SRE) Discovery & Implementation\nServer Migrations & Monitoring\nServer usage can grow over time, leaving teams surprised by increased costs. thoughtbot proactively protects against spending creep by continually monitoring performance over time. We can help you navigate and execute a successful migration and have migrated high-compliance systems to AWS in as little as 3 months using our open-sourced AWS platform guide.\nScalable and Stable\nFor the public sector, software products are commonly critical applications, that must be scalable and stable. thoughtbot confidently builds continuous integration and delivery pipelines and robust cloud platforms to ensure software can meet demands and uptime thresholds.\nData Security & Privacy\nthoughtbot has achieved Data Protection Act compliance and is equipped with best practices, like upfront EHR planning, and handling other special considerations like FINRA, SOC 2 and PCI. Data privacy safeguards are built into our workflows and we help you identify and remedy vulnerabilities, ensuring your business and customer data remains safe.\nthoughtbot has been a passionate and active participant in the Ruby on Rails community and has created many open-source libraries, spoken at multiple conferences, and even written a book.\nWe value a diverse team because it brings essential perspectives that improve our work and workplace. thoughtbot's CEO signed the CEO Action for Diversity & Inclusion™ to codify our commitment to cultivate a trusting environment where employees feel comfortable and empowered to discuss diversity and inclusion.\nThe thoughtbot team volunteers regularly and has invested time, energy, and resources into organizations such as Resilient Coders, The LEAH Project, Rebuilding Together, Boston Rescue Mission, Technology Underwriting Greater Good, The Waffles Foundation, Jane’s Due Process, The Trevor Project and FareShare.\nBranching Minds\nScaling with Kubernetes to successfully deliver services to 2x the volume of school districts.\nHealthify\nDeveloping a stable, HIPAA-compliant web application wile expanding the platform.\nCorverix\nRethinking reactive healthcare into a proactive, secure, and robust virtual health solution.\nMulti-State Partnership for Prevention\nScaling and maintaining a vaccine management app to meet unprecedented pandemic activity.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "e9aa5e17f9d3bdb5",
+      "stable_hash": "504b90b6ba0903ea",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/services/technical-and-business-assistance",
+      "kind": "website",
+      "title": "Supporting SBIR & STTR Grant recipients with technical and business assistance through, market research, validation, and technical, go-to-market planning. | thoughtbot",
+      "text": "Commercialization Plan\nthoughtbot will support you with Commercialization planning by outlining the right product and business strategy. The final deliverable will include a clear picture of your revenue model, market research reports and go-to-market plan.\nMarket Opportunity\nWe use a jobs-to-be-done format for our product definition efforts which will allow us to easily describe the target customer, their needs, pain points, and how we will address them. From a market research perspective, our industry and competitive research will allow us to clarify trends, barriers, and the proposed corresponding business model to find success.\nProduct/Tech and Competition\nHaving built 1,000s of applications, we know that a prioritized roadmap highlighting the most impactful features is a foundational deliverable. With expertise in a variety of tech stacks and industries, we have best practices on product architecture that give you confidence in your technology commercialization approach and product strategy choices.\nthoughtbot is a team of world-class consultants who quickly ramp up on the opportunity, and research done to date, and jump into leading collaborative exercises with your team, keeping your users and goals in mind. At project start, we capture any assumptions and work hand in hand to craft our research approach for further exploration. Each effort is tailored to our clients and includes both quantitative and quantitative findings. Equipped with best practices in customer, market, and competitive research we efficiently use tools like clickable prototypes to uncover the optimal user experience and expected adoption in a handful of weeks.\nWe expect to work together to synthesize a variety of inputs and analyze our collective effort into the deliverables you need for a comprehensive proposal. Having led hundreds of Research & Design Sprints and successful new product launches, the thoughtbot team has extensive experience packaging up market research in a clear manner, providing the details required while telling a compelling story for future investment.\nWe utilize product strategy, human-centered design, and technical expertise to validate early and often and ensure success at every stage. Throughout the process, we document and translate findings needed to create the following:\n- Technical expertise clarifying technical objectives and computer services\n- Budget justification documents including expected investment for first release & maintaining post-launch\n- thoughtbot Consultant Services Overview\n- Project Schedule and Work Plan defining specific tasks, performance schedules, milestones, and deliverables\n- Technology and Commercialization Planning Audits\nHarvard Business Review\nFuture-proofing Harvard Business Review to inspire the next generation of global business leaders by exploring new technology experiences.\nCorverix\nRethinking reactive healthcare into a proactive virtual health solution. V1 successfully achieved HIPAA compliance and was approved for a larger Feasibility Study.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "d82a14b02b625a49",
+      "stable_hash": "441b88539484378e",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people",
+      "kind": "website",
+      "title": "People | thoughtbot’s Playbook for great products and teams",
+      "text": "Work alongside the thoughtbot team as we collaborate with each other and our clients, live. Ask us anything, we're live right now!\nHow we organize our team, support careers, and grow alongside each other.",
+      "published": "2026-01-01",
+      "extract_reason": "recovered_recall",
+      "content_hash": "3cf0b66faf77b871",
+      "stable_hash": "069ee655a51b314a",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/team",
+      "kind": "website",
+      "title": "Team | thoughtbot’s Playbook for great products and teams",
+      "text": "Our teams are composed of skilled and motivated Designers, Developers,\nand Product Managers who are capable of being successful on a project.\nDelivery Leads are there to support the team, including the client.\nEveryone is T-shaped,\ndeep in some area of expertise with the ability to collaborate across\ndisciplines.\nWe are people, not \"resources\", and avoid calling each other such because we\nunderstand we are working with each other as people.\nDesigners\nThe designers are responsible for designing the interactions between users and\nthe product. They conduct experiments and do research. They interview users,\npotential users, and stakeholders. They create user interfaces that not only\nwork great, they are also pleasing to look at.\nDesigners not only figure out how it should work, they also make it work by\nwriting user interface code using HTML, CSS, JavaScript.\nDevelopers\nThe developers write the mobile and server code that makes the app function.\nThey aim to make the product error-free. They monitor performance because speed\nis a feature of every application. They set and meet development standards, keep\nthe Continuous Integration build passing, and\nreview each others' code.\nDevelopers also keep it running. They make architectural decisions and interact with\nmodern-day hosting companies like Heroku, whose employees\ndouble as our outsourced operations team.\nProduct Managers\nThe product manager collaborates with clients and the designers and developers\nto define and clarify product vision. They conduct and provide insights from\ncustomer and stakeholder interviews, and define customer-centric key\nperformance indicators that then inform and change the product roadmap.\nNot every project we do has one of our Product Managers on it.\nFor projects that do have a Product Manager, the Project Manager also fills the\nDelivery Lead role.\nDelivery Management\nOur Delivery Leads are what others might call Project Managers, Advisors and Account Managers\nrolled into one. We use a different term because we want to reinforce the idea\nthat the designers and developers work directly with clients and everyone is\nresponsible for project success.\nDelivery Leads are there to support our teams, not to get in between them and the\nclient. Delivery Leads are there to support our clients, by acting as a trusted peer throughout the partnership and collaboration.\nDelivery Leads run weekly meetings so the rest of the team can fully contribute to the meeting without having to\nfacilitate it. They keep an eye on the high-level goals of the project. They express enthusiasm when the team is in a groove and help\nproblem-solve when things get off track.\nDelivery Leads keep an eye on overall business goals of our clients both within the existing project and outside of the existing project. They highlight opportunities for continued collaboration. When appropriate, they work with the client to either reduce or increase team\nsize to meet the needs of the current project. The Delivery Lead is ideally plugged into the project enough to be able to assess future and ongoing needs. The Delivery Lead facilitates initial conversations with the client to discuss their ongoing needs and gauge interest in extending the engagement, and then collaborates with the Account Manager to finalize these opportunities.\nTime spent on a particular project as a Delivery Lead can vary depending on the project needs and team makeup. In general, a Delivery Lead can spend anywhere from 1 hour to 2 days a week on a project.\nIf the primary salesperson is not also the Delivery Lead, the salesperson should onboard and introduce the Delivery Lead to the client when the sale is in the final stages. There should be a detailed handoff from one to the other so that details are not lost as the team starts the project.\nAccount Managers\nThere may also be a separate Account Manager for a client. This may happen if\nthe Account Manager led the initial sale, but is not the Delivery Lead, or\nif a client has multiple projects with multiple Delivery Leads. In these cases, the\nAccount Manager is responsible for maintaining a lifetime relationship with the\nclient. They understand the client's needs and budgets, and how thoughtbot can\nmeet those needs. They identify opportunities for working with a client, they\ncoordinate scheduling, and manage invoices for the client's projects.\nHandling distractions\nDelivery Leads take on some tasks that would distract the team from their day-to-day\npriorities and are not completable by the client. These tasks can vary from team\nto team with one team feeling something is a distraction and a different team\nfeeling something similar is not. Either may be true depending on the context.\nSome of the examples of these tasks include forming an initial backlog,\nnegotiating extensions, rotations, and rate changes, and scheduling dinner\naround project wrap-up or rotations.\nMaintaining a safer space\nDelivery Leads create the right environment for a team, and that includes the client,\nto effectively self organize. That might mean standing up to the client if they\nconstantly push the team or change their mind three times a day. It often means\nteaching the client how to interact with an agile team. It might mean asking the\nteam tough questions if they are continually shipping bugs, or starting lots of\ndifferent tasks and finishing none. Most challenging of all it might mean\nprompting the team to talk about issues like a lack of communication between the\nteam members if that's causing problems. All these actions are collectively\ncalled \"holding the space\", a reference to creating a safer space in which these\ntough subjects can be talked about without any feeling of blame or aggression,\nwhich tend to prevent everyone being able to engage properly.\nRetrospectives are one tool that can be used to hold the space, but they tend to\nbe insufficient on difficult projects if they are the only tool being used.\nCoaching\nDelivery Leads help the team when there is a lack of skill within the team in one area\nor another. The most common example here is with \"consultancy skills.\" These are\nthe skills like talking about technical details to a client, saying \"no\" to them\nwhen necessary, and helping them to understand why something is impossible or a\nbad idea. These skills take time to develop and if there is no one on a team\nwith them it can cause problems. The best solution isn't to put someone with\nthese skills between the client and the team but to help the team learn these\nskills. Either by directly coaching these skills, or arranging for the team to\nspend time with someone who can coach them.\nThey might also provide coaching to clients. For example, running a training\nsession for the client on the finer details of working with us, e.g.: what makes\na good story, how to bring concerns to the team, walking through complexity vs.\nvalue, and how we would advise dealing with it.\nExamples of Day-to-Day Responsibilities\nThese tasks vary by project, but commonly include:\n- Ensuring schedules and booked time align with the project plan and budget\n- Coordinating holiday cover, rotations, onboarding and access\n- Understanding contract scope and must-not-exceed constraints\n- Preparing and facilitating internal and external kickoffs\n- Maintaining awareness of progress, risks and client expectations\n- Monitoring budget burn and prompting planning adjustments\n- Unblocking team members and encouraging momentum\n- Supporting healthy communication and consulting skills\n- Holding regular check-ins with stakeholders to surface issues early\n- Initiating retros, 1-1s or alignment sessions when needed\nResources for Delivery Management",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "1e97e87be909b826",
+      "stable_hash": "701fb3c4c0bd0b3b",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/hiring",
+      "kind": "website",
+      "title": "Hiring | thoughtbot’s Playbook for great products and teams",
+      "text": "We are not the permanent team solution for our clients. They often want to know:\n- How do I find a technical co-founder?\n- How can I learn to \"do it myself\"?\n- How do I hire designers and developers?\nWe tell them:\n- To find a technical co-founder, network in person at user groups and online at\nLinkedIn and AngelList. Is what you really need a designer\nfounder?\n- To learn to do what we do, you'll work directly with us,\npair programming and sketching together.\n- To hire someone, follow the same process we use, detailed below.\nRecruiting\nWe've met our future teammates via:\nWe met Josh because he submitted excellent patches to\nClearance.\nDue in part to their open source work, we've hired great people as far\naway as India and Thailand.\nMany of us are regulars at Ruby, JavaScript, Vim, and other user groups. We met\nBen, Joel, and Mason at the Boston Ruby Group.\nA nice thing about those meetings are that they happen naturally. We're not\ntrolling GitHub looking for people or fishing for talent at user groups and\nconferences. We're there, anyway. If we never hired again, we'd still be writing\nand using open source. We'd be members of mailing lists and going to events.\nWe know what we'll get when we hire in the above ways. We know their\npersonality and energy level from the user group. We know their coding style\nfrom their open source work. We know they'll take initiative because they\nvoluntarily contributed to the community.\nWe met Jessie and Laila via Dev Bootcamp. They went through\nour apprenticeship,\nas did Adarsh, Draper, Edwin, Diana, Melissa, Joël, Lisa, Lydia, Rich,\nChristian, and Tony.\nWe've also had great luck finding designers on Authentic Jobs and iOS developers\non Stack Overflow Careers.\nWe don't work with outside recruiters. We've found they don't present us with\npeople that would be a good fit for our team, and are often disingenuous about\nthe candidates they have. Overall, it isn't worth the effort reviewing lots of\nunqualified candidates.\nInterviewing\nWe track each candidate's progress in the interview process using\nWorkable.\nWe manually enter people into Workable for personal introductions.\nPeople who apply on our website are automatically added.\nOur People Team leads the hiring process. They ensure the integrity of the process and that everyone gets a response.\nInterview Stages\nWe have a similar overall process for all our roles:\n- Initial application screening\n- Non-technical Interview\n- Technical Interview\n- Final Stage\nReducing Bias\nUnfortunately, it is all too easy for a hiring process to be impacted by\nunconscious or implicit bias. At thoughtbot we believe that more diverse\nteams build better products, and that everyone should receive a fair\nopportunity to join our team.\nIn order to achieve this goal, we've made the following improvements to our\nhiring process:\n- Implemented anonymous initial screening of candidate application.\nThis process removes names, school information, gender-identifying pronouns,\nand other identifying information from candidates before their application\nis reviewed.\n- Feedback left by reviewers at each stage of the process is not shared with\npeople later in the process. Interviewers in later stages can be confident\nthat the candidate made it to their stage because they met our consistent\nrequirements for the prior stages. It also helps them more consistently\ninterview the candidate in their stage.\n- Each stage has a rubric that helps interviewers more consistently evaluate\ncandidates on the criteria we are looking for at their current interview\nstage.\n- We've standardized and published all of salary bands and compensation.\nIn addition, all salary offers are reviewed for equity and approved by the Head of People before they are sent.\nUnable to find off-the-shelf software to help us do this, we've created some\nof our own.\nInitial Application Screening\nAnyone can do the initial anonymous review of a candidate's application.\nIn particular, they review the candidate's experience and answers to the\napplication questions.\nWe either send them a rejection or an email inviting them to do a\n\"Non-Technical Interview\" with the hiring manager for the position.\nNon-technical Interview\nIn a non-technical interview that goes well, we've learned that they are\nsomeone we'd like to work with, that they potentially have the skill set for\nthe role, they are a good match for our values, and that they\nwill make thoughtbot better by being here. We will also have gotten them\nexcited about thoughtbot, how we work, and what we stand for as a company.\nTechnical Interview\nAfter the non-technical interview, the next step is the technical interview.\nWe have standard questions for iOS developers, Rails developers, and designers\nfor the technical interview.\nWe don't use puzzles or code challenges. Instead, we prefer reviewing actual\nwork the candidate has done, and talking to them about design processes,\narchitecting systems, and writing code; the same thing we do for work every day.\nYou can view a presentation all about our technical interview in this RailsConf talk,\nBeyond the Whiteboard Interview\nby Joël Quenneville & Rachel Mathew.\nFinal Stage\nThe final stage for candidates is to work with us remotely for a day.\nDevelopers pair program with one of our\ndevelopers in the morning and another in the afternoon.\nDesigners pair in the morning and work on a small product design project\nthroughout the day and then present at 4pm. It primarily involves sketching and\nworking with one or two thoughtbot designers.\nOther roles also do working sessions, for example, working together on mock\nsales calls and proposal writing.\nWe do the interviews this way because there's no substitute for seeing someone\nactually do the work and interacting with the team. We also want candidates to\nexperience what the company is like for themselves.\nCharacter Strengths\nAside from technical skill, during the entire interview process, we look for\nthe following character strengths:\n- Enthusiasm (invigorates others)\n- Focus (pays attention, resists distractions, remembers directions)\n- Composure (remains calm when critiqued, doesn't interrupt)\n- Gratitude (shows appreciation)\n- Curiosity (eager to explore, asks questions to understand, actively listens)\n- Optimism (gets over frustrations quickly)\n- Grit (finishes what they start, doesn't get blocked)\n- Emotional intelligence (demonstrates respect for others' feelings, knows when\nand how to include others)\n- Humor (likes to laugh, makes others smile)\n- Appreciation of beauty (notices and appreciates beauty and excellence)\nTo be hired, the candidate must get a unanimous \"yes\" from the existing\nteammates with whom they interacted.\nOffer and Onboarding\nWe use Workable to send the offer and get\nthem signed without the \"print and scan\" process on either end.\nOffers are reviewed and approved by at least one member of the C-level executive\nteam before being sent. C-level executives and Managing Directors can execute\noffers on behalf of thoughtbot.\nWhen the offer is accepted, we run a custom onboarding app which we wrote.\nIt creates the teammate's email address, gives them access to systems like\nGitHub and Slack, notifies Accounting, sends a welcome email to the teammate,\nand creates a todo list for the hiring manager for any remaining manual items\nthat we haven't been able to automate.\nWe assign a guide to new team members for their first two weeks. The guide\nhelps them get set up, makes them feel comfortable, answers questions they\nmay have, or points them to the person who can answer their questions.\nCompensation\nWe share all of our salary bands on our \nwebsite in order to provide transparency for our current team and potential applicants. \nRead all about compensation at thoughtbot.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "fbf60d8b134ef126",
+      "stable_hash": "7e4cfecbe8a7c754",
+      "duplicate_urls": []
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/apprenticeship",
+      "kind": "website",
+      "title": "Apprenticeship | thoughtbot’s Playbook for great products and teams",
+      "text": "We have high expectations for our design, technical, and execution abilities,\nas do our clients.\nOver the years, we've met potential team members\nwho we would like to work with\nbut would not make it through our normal interview process\nwhere the expectation is to bill on client work on day one.\nIn 2011,\nwe created a full-time, paid apprentice position so that we could bring these\npeople onto our team and mentor them to the point where they could be promoted\nto a full developer or designer.\nWe have worked with over 50 apprentices,\nmost of whom have been promoted to the designer or developer role at thoughtbot.\nThe majority of people who join us as an apprentice\nleave a job where they are already working as a developer or designer.\nIt is a full-time position at thoughtbot and includes benefits.\nWe work hard to ensure that we only accept people\nthat we believe will be successful as an apprentice\nand will be promoted to designer or developer.\nAnyone can apply to apprentice at thoughtbot\nby applying on our Jobs page.\nOur interview process is the same for apprentices\nand full designers and developers.\nWhile an apprentice,\npeople work alongside thoughtbot designers and developers on client projects,\nand are assigned a mentor who is their primary instructor.\nWe do not bill for apprentice time spent on client projects.\nThey may also work on special projects designed to give additional time and\ntraining in the areas they most need.\nWe provide apprentices with a guide during onboarding that helps them get\ncomfortable and have the best apprenticeship possible.\nEach month, they move to another mentor and different team. This rotation\nenhances the learning process by exposing them to new projects and new people,\nbut also by allowing them to reapply what they've learned in a new context.\nMost people are in an apprentice position for three months,\nand we strive for that time frame.\nAt the conclusion of three months, if they are ready,\nthe apprentice is promoted to a designer or developer at thoughtbot.\nIf three months is not necessary,\nthe can also be promoted sooner.\nOccasionally,\nsome people need some additional time to complete their apprenticeship.\nIf we are confident they will be successful eventually, we continue,\nsetting expectations along the way.\nRarely, like any role at any company, people are not successful in the\nposition and we decide to part ways.\nCompensation\nApprentices are paid W-2 employees of thoughtbot. It is a full position at\nthoughtbot that includes salary, health insurance, and other benefits.\nWho is it for?\nA person that possesses our desired character strengths, as also defined in\nthe Playbook: good communicator, demonstrates initiative, motivated,\nenthusiastic, focused, composed, curious, optimistic, displays grit, emotionally\nintelligent, and able to feel gratitude.\nIn addition, a base level of technical experience in their relevant area, and\nour assessment that they can likely achieve our expected skill level in 3\nmonths.\nWeb Developers\nWeb developers are promoted from an apprenticeship\nwhen they are very comfortable\nbuilding and shipping Rails & JavaScript applications,\ndoing fully test-driven development along the way.\nWe find that well-qualified web developer apprentices will be:\n- A web developer experienced in frameworks other than Rails, or\n- An less-experienced developer who has built and deployed at least one Rails\napp and are also practicing test-driven development, or\n- A developer comfortable with Rails, but needing to improve on best-practices\nlike test-driven development or code quality.\nDesigners\nDesigners are promoted from an apprenticeship\nwhen they are very comfortable\ndoing great product design and user experience,\ncreating great visual design,\nthen implementing their designs with HTML and CSS (Sass).\nWe find that well-qualified design apprentices will:\n- Have a solid visual design foundation and have designed for the web,\nbut are not as comfortable implementing their own work in HTML and Sass, or\n- Have a solid visual design foundation and are comfortable implementing your\nown work in HTML and Sass, but do not have much experience designing products.\niOS Developers\niOS developers are promoted from apprentice when they are comfortable building\nand shipping iOS applications, in Swift, writing tests along the way.\nWe find that well-qualified iOS developer apprentices will have built and\nshipped at least one iOS app in either Objective-C or Swift.\nWe've written blog posts about our apprentice program.",
+      "published": "2026-01-01",
+      "extract_reason": "ok",
+      "content_hash": "ac5b276c89d6ccf7",
+      "stable_hash": "fce550d7ec1c0b25",
+      "duplicate_urls": []
+    }
+  ],
+  "signals": {
+    "has_team_page": true,
+    "team_page_url": "https://thoughtbot.com/team",
+    "people_listed": 54,
+    "technical_roles_named": 37,
+    "has_careers_page": true,
+    "open_roles_seen": 0,
+    "technical_roles_open": 0,
+    "blog_posts_seen": 9,
+    "latest_post_date": "2026-09-02",
+    "pages_crawled": 37,
+    "total_words": 18001
+  },
+  "crawled_at": "2026-09-02T18:54:28+00:00",
+  "robots_reason": "ok",
+  "crawl_outcome": "completed",
+  "page_outcomes": [
+    {
+      "url": "https://thoughtbot.com/",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/about",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/about-us",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/nosotros",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/quienes-somos",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/company",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/team",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/our-team",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/equipo",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/people",
+      "outcome": "skipped_robots",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/leadership",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/careers",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/jobs",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/join-us",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/trabaja-con-nosotros",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/empleos",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/products",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/solutions",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/servicios",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/contact",
+      "outcome": "duplicate_content",
+      "http_status": 200,
+      "detail": "identical of https://thoughtbot.com/about"
+    },
+    {
+      "url": "https://thoughtbot.com/contacto",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/ruby-on-rails-development",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/hotwire-stimulus-turbo-frontend-development",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/machine-learning-artificial-intelligence-ai",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/rails-maintenance",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/mobile-development",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/shaping-sprint",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/product-design",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/design-systems",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/mvp-development",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/product-management",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/product-accessibility",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/team-augmentation",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/fractional-product-technical-leadership",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/jobs/compensation",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/news",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/insights",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/noticias",
+      "outcome": "http_error",
+      "http_status": 404,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/design",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/development",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/product_management",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/designers-already-think-in-react",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/authors/moses-amama",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags/design",
+      "outcome": "duplicate_content",
+      "http_status": 200,
+      "detail": "identical of https://thoughtbot.com/blog/design"
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags/product-design",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags/react",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/platform-engineering",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/our-company/career-paths",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/react-development",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/g-cloud",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/services/technical-and-business-assistance",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/team",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/hiring",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/apprenticeship",
+      "outcome": "stored",
+      "http_status": 200,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/career-paths",
+      "outcome": "duplicate_content",
+      "http_status": 200,
+      "detail": "identical of https://thoughtbot.com/playbook/our-company/career-paths"
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/performance-reviews",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/people/compensation",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/the-thoughtbot-way/how-we-work/planning/product-owners-guide-and-team-charter",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/strategy/customer-discovery/product-focus",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/playbook/strategy/design-sprints/02-pre-product-validation/jobs-profile",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/introducing-superglue",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/get-your-codebase-ready-for-react-19",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/how-to-integrate-react-rails",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    },
+    {
+      "url": "https://thoughtbot.com/blog/tags/apprenticeship",
+      "outcome": "budget_exhausted",
+      "http_status": null,
+      "detail": ""
+    }
+  ]
+}

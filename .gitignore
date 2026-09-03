@@ -13,7 +13,16 @@ __pycache__/
 # Crawl artifacts. Committed deliberately when they are part of a frozen
 # evaluation corpus (eval/ground_truth/), ignored everywhere else so that
 # ad-hoc crawls do not end up in review.
+# Crawl artifacts are scratch by default: they are large, regenerable, and a
+# working directory fills with them.
+#
+# EXCEPT the ones a ground-truth file cites. docs/ground-truth.md §1 requires
+# the frozen artifact to be committed alongside its pairs, and §1 explains why:
+# a reference answer without its corpus is unfalsifiable -- nobody can tell
+# later whether the answer was wrong or the corpus moved underneath it. Those
+# are force-added, and CI fails without them, which is how this rule was found.
 /prospect_*.json
+!/prospect_thoughtbot_com.json
 
 # Debugging leftovers from the ingest.py hardening session (ADR-0010).
 ingest.py.bak*
