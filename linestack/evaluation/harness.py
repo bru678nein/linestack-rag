@@ -262,33 +262,65 @@ async def evaluate_directory(
     if not paths:
         return record
 
-    # Built ONCE, here, and threaded through. The first version called
-    # build_client() inside the per-question embed, which reloaded the
-    # sentence-transformers model for every pair: "Loading weights" printed
-    # twice for two questions and embed_seconds read 15.05s, nearly all of it
-    # model loading. A timing that is mostly setup makes the embed/retrieve
-    # split useless, which is the one thing the run record exists to give.
-    client = client or build_client()
-    # Warmed here so the one-time load is measured as itself. sentence-
-    # transformers loads lazily on first use, so without this the first
-    # question in the set silently absorbs 7 s of setup.
-    started = time.perf_counter()
-    await _embed_question("warm-up", client)
-    record.model_load_seconds = time.perf_counter() - started
-
+    embedder = _Embedder(client, record)
     for path in paths:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         record.prospects.append(
-            await _evaluate_prospect(session, data, record, client, cutoffs)
+            await _evaluate_prospect(session, data, record, embedder, cutoffs)
         )
     return record
+
+
+class _Embedder:
+    """Builds and warms the embedding client on FIRST ACTUAL USE.
+
+    Three revisions, and the third exists because the second broke a property
+    the first never had.
+
+    v1 called `build_client()` inside the per-question embed, reloading the
+    model for every pair: "Loading weights" printed twice for two questions and
+    embed_seconds read 15.05s, nearly all of it setup.
+
+    v2 built and warmed it once at the top of the run. That fixed the timing --
+    ADR-0017 measures the load at 7.2s against 0.03s to embed two questions --
+    and quietly broke something more important: the model loaded even when
+    every pair was refused. **[verified] 2026-09-05**, five integration tests
+    failed on CI, which does not install the 784 MB `[local]` extra, and one of
+    them asserts in its own docstring that a half-written set costs nothing.
+    The claim and the code disagreed, and the code was wrong.
+
+    So: lazy, and warmed exactly once when the first scoreable, covered pair
+    actually needs a vector. A run that scores nothing loads nothing.
+    """
+
+    def __init__(self, client, record: RunRecord) -> None:
+        self._client = client
+        self._record = record
+        self._ready = False
+
+    async def embed(self, question: str) -> list[float]:
+        if not self._ready:
+            # Timed as itself. sentence-transformers loads lazily on first use,
+            # so without this the first question absorbs the whole load and the
+            # embed/retrieve split -- the one thing the run record exists to
+            # give -- reports setup as embedding.
+            started = time.perf_counter()
+            self._client = self._client or build_client()
+            await _embed_question("warm-up", self._client)
+            self._record.model_load_seconds = time.perf_counter() - started
+            self._ready = True
+
+        started = time.perf_counter()
+        vector = await _embed_question(question, self._client)
+        self._record.embed_seconds += time.perf_counter() - started
+        return vector
 
 
 async def _evaluate_prospect(
     session,
     data: dict[str, Any],
     record: RunRecord,
-    client,
+    embedder: _Embedder,
     cutoffs: tuple[int, ...],
 ) -> ProspectResult:
     domain = str(data.get("prospect", {}).get("domain", "")).lower()
@@ -345,7 +377,7 @@ async def _evaluate_prospect(
     for question in data.get("questions") or []:
         result.pairs.append(
             await _evaluate_pair(
-                question, scope, crawled, outcomes, record, client, cutoffs
+                question, scope, crawled, outcomes, record, embedder, cutoffs
             )
         )
     return result
@@ -357,7 +389,7 @@ async def _evaluate_pair(
     crawled: set[str],
     outcomes: dict[str, str],
     record: RunRecord,
-    client,
+    embedder: _Embedder,
     cutoffs: tuple[int, ...],
 ) -> PairResult:
     qid = str(question.get("id", "?"))
@@ -378,9 +410,7 @@ async def _evaluate_pair(
             coverage=coverage,
         )
 
-    started = time.perf_counter()
-    query_vector = await _embed_question(str(question.get("question", "")), client)
-    record.embed_seconds += time.perf_counter() - started
+    query_vector = await embedder.embed(str(question.get("question", "")))
 
     started = time.perf_counter()
     hits = await search(scope, query_vector, k=max(cutoffs))

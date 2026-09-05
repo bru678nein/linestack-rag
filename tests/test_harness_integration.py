@@ -128,6 +128,66 @@ async def test_an_unwritten_pair_is_not_scored_against_a_real_corpus(
     await db_session.rollback()
 
 
+class _Explodes:
+    """An embedder that fails if anything touches it.
+
+    Asserting `model_load_seconds == 0` would only prove the timing, not that
+    nothing loaded. This proves it.
+    """
+
+    class embeddings:  # noqa: N801
+        @staticmethod
+        async def create(*args, **kwargs):
+            raise AssertionError("the embedder was used for a run that scored nothing")
+
+    def embed_query(self, *args, **kwargs):
+        raise AssertionError("the embedder was used for a run that scored nothing")
+
+
+async def test_a_half_written_set_never_touches_the_embedder(
+    db_session, tmp_path
+) -> None:
+    """The property `make eval` on a half-written set depends on, pinned.
+
+    **[verified] 2026-09-05**, this regressed within an hour of being claimed.
+    A warm-up call added to measure model-load time separately ran
+    unconditionally at the top of the run, so the model loaded even when every
+    pair was refused -- and five tests failed on CI, which does not install the
+    784 MB `[local]` extra. The docstring below the fix said a half-written set
+    costs nothing while the code above it loaded a model to find that out.
+
+    Loading is lazy now, and this is what keeps it lazy. A property asserted
+    only in prose is a property with nothing holding it.
+    """
+    await _seed(db_session, {"people_listed": 54})
+    _write(
+        tmp_path,
+        questions=[
+            {
+                "id": "q1_what_and_to_whom",
+                "question": "What does this company do?",
+                "reference": "TODO 2-4 sentences",
+                "source_urls": ["TODO https://..."],
+            },
+            {
+                "id": "q3_growth_signals",
+                "question": "Are they growing?",
+                "reference": "A written answer.",
+                "source_urls": [f"https://{DOMAIN}/never-crawled"],
+            },
+        ],
+        signals={"people_listed": 54},
+    )
+
+    record = await evaluate_directory(db_session, tmp_path, client=_Explodes())
+
+    assert [p.status for p in record.prospects[0].pairs] == [UNWRITTEN, NOT_INGESTED]
+    assert record.prospects[0].signals.accuracy == 1.0, "diagnosis still runs"
+    assert record.model_load_seconds == 0.0
+    assert record.embed_seconds == 0.0
+    await db_session.rollback()
+
+
 async def test_a_pair_citing_an_uncrawled_page_is_diagnosed_not_scored(
     db_session, tmp_path
 ) -> None:
