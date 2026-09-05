@@ -175,6 +175,15 @@ eval-report:  ## [not implemented] Delta table against the previous run
 	@echo "Produce run records first:  make eval JSON=eval/runs/\$$(date +%F).json"
 	@exit 1
 
+.PHONY: show
+show:  ## Read the frozen corpus: make show ARTIFACT=prospect_x.json [URL=/about]
+# docs/ground-truth.md section 2 step 2 says to write every reference answer
+# from the CRAWLED text rather than from the live site, and until now that step
+# had no command behind it. A rule that is inconvenient to follow is a rule
+# that gets followed loosely.
+	@test -n "$(ARTIFACT)" || { echo "usage: make show ARTIFACT=prospect_thoughtbot_com.json [URL=/about]"; exit 2; }
+	$(PY) -m linestack.evaluation.corpus $(ARTIFACT) $(if $(URL),--url $(URL),)
+
 .PHONY: ground-truth-validate
 ground-truth-validate:  ## Structurally validate the ground-truth set
 # Structural only: required fields, the four question ids, resolvable corpus
