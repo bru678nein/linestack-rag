@@ -83,18 +83,29 @@ dependencies = [
 # ever built, gets its own optional group and stays off the serving path.
 
 [project.optional-dependencies]
-# Installed only when the evaluation harness runs, because ragas pulls a large
-# transitive tree and nothing in ingestion or serving needs it.
+# DOES NOT INSTALL. Left declared, and left broken on purpose, because an
+# extra that is silently deleted is an extra somebody re-adds.
+#
+# **[verified] 2026-09-05**, `make install-eval`:
+#
+#   Because instructor>=1.4.0,<=1.4.1 depends on openai>=1.40.0,<2.0.0 and
+#   ragas>=0.4.3 depends on instructor, we can conclude that ragas>=0.4.3
+#   depends on openai>=1.1.0,<3.0.0.
+#   And because linestack-rag[eval] depends on ragas==0.4.3 and linestack-rag
+#   depends on openai==3.7.0, [eval] cannot be used.
+#
+# Not fixable by choosing another ragas: 0.4.3 IS the latest, and ragas itself
+# asks only for openai>=1.0.0. The ceiling comes from `instructor`, whose
+# newest release (1.16.0) requires openai>=2.0.0,<3.0.0.
+#
+# It is not being repaired yet, and the reason is not the resolver. Both ragas
+# metrics are LLM-judged and settings.eval_judge_model is an OpenAI model, so
+# with no key (ADR-0017) neither could run even if it installed. The harness
+# computes the four metrics that need no judge instead, including the primary
+# one. See ADR-0020 and docs/open-questions.md §3.1.
 eval = [
-    "ragas==0.4.3",               # RESOLVED  pinned exactly because its API
-                                  #           changes across releases. The
-                                  #           pinned version has NOT been
-                                  #           imported; the metric names used
-                                  #           in docs/evaluation.md come from
-                                  #           the library's general shape, not
-                                  #           from this version's docs. Verify
-                                  #           before writing
-                                  #           linestack/evaluation/metrics.py.
+    "ragas==0.4.3",               # BROKEN    conflicts with openai==3.7.0 via
+                                  #           instructor. See above.
 ]
 
 # Local embeddings, as an alternative to the OpenAI API. Not installed by

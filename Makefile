@@ -34,8 +34,17 @@ install:  ## Create .venv and install pinned dependencies (dev included)
 	uv pip install --python $(PY) -e ".[dev]"
 
 .PHONY: install-eval
-install-eval:  ## Additionally install the evaluation extra (ragas)
-	uv pip install --python $(PY) -e ".[dev,eval]"
+install-eval:  ## [broken] The evaluation extra does not resolve. See ADR-0020.
+	@echo "The [eval] extra does not install: ragas==0.4.3 conflicts with"
+	@echo "openai==3.7.0 through instructor. Verified 2026-09-05."
+	@echo "Not repaired, because both ragas metrics are LLM-judged and there"
+	@echo "is no key by design (ADR-0017) -- they could not run either way."
+	@echo "The four metrics that need no judge are in linestack/evaluation/"
+	@echo "metrics.py and run with 'make test'. See ADR-0020."
+	@echo
+	@echo "To see the conflict for yourself:"
+	@echo "  uv pip install --python $(PY) -e \".[dev,eval]\""
+	@exit 1
 
 # --------------------------------------------------------------------------
 # services
