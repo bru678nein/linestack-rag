@@ -48,7 +48,7 @@ There is no acceptable non-zero leakage rate.
 
 ## 2. Metric definitions
 
-### 2.1 Retrieval recall@k — primary
+### 2.1 Retrieval recall@k — primary, IMPLEMENTED
 
 For each ground-truth pair, the author records the URLs of the source pages that
 contain the evidence. Recall@k is: of the retrieved chunks at cut-off `k`, did at
@@ -65,7 +65,12 @@ metric does not change meaning when chunk sizes change (ADR-0005). A chunking
 change that moves the boundary should show up as a change in the score, not as a
 change in what the score measures.
 
-### 2.2 Faithfulness — primary
+### 2.2 Faithfulness — primary, NOT IMPLEMENTED
+
+> **Status, 2026-09-05.** Specified here and not built. `ragas==0.4.3` does not
+> install alongside `openai==3.7.0` (see `docs/open-questions.md` §3.1) — and
+> more to the point, this metric is LLM-judged and there is no OpenAI key by
+> design (ADR-0017), so it could not run even if the pin resolved. ADR-0020.
 
 Is every claim in the answer supported by the retrieved context?
 
@@ -80,7 +85,9 @@ Measured with `ragas` faithfulness. This is an LLM-judged metric, so:
 - The computed signals injected into the context count as retrieved context.
   They are cited facts, not model output.
 
-### 2.3 Answer correctness — secondary, noisy
+### 2.3 Answer correctness — secondary, noisy, NOT IMPLEMENTED
+
+> **Status, 2026-09-05.** Same reason as §2.2. ADR-0020.
 
 `ragas` answer correctness and answer relevancy against the hand-written
 reference answer. Recorded. Never used alone to accept or reject a change. When
@@ -88,7 +95,7 @@ correctness moves and neither recall nor faithfulness moves, the null hypothesis
 is judge noise, and the check is to re-run the same configuration three times
 and look at the spread before believing the delta.
 
-### 2.4 Signal accuracy — diagnostic, exact
+### 2.4 Signal accuracy — diagnostic, exact, IMPLEMENTED
 
 The computed signals (ADR-0003) are checked against hand-recorded ground truth
 per prospect: `people_listed`, `open_roles_seen`, `technical_roles_open`,
@@ -99,7 +106,7 @@ signal in the whole harness. It has already caught real defects at the two
 prospects that were hand-checked: 162 people against 54, and 4 open roles
 against 0 (see ADR-0003).
 
-### 2.5 Ingestion coverage — diagnostic, exact
+### 2.5 Ingestion coverage — diagnostic, exact, IMPLEMENTED
 
 Before attributing any failure to retrieval, check whether the evidence was
 ingested at all. Per prospect, per question, the harness records:

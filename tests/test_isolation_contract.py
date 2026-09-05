@@ -206,9 +206,23 @@ def test_every_module_states_its_responsibility() -> None:
 # ---------------------------------------------------------------------------
 # The same guarantee, against a real database
 # ---------------------------------------------------------------------------
-DSN = os.environ.get(
-    "DATABASE_URL_SYNC", "postgresql://linestack:linestack@localhost:5432/linestack"
-)
+def _default_dsn() -> str:
+    """Fall back to the URL the APPLICATION uses, not to a second literal.
+
+    This line used to hardcode `localhost:5432`, which made it the fourth
+    independent copy of the port -- alongside docker-compose.yml, the Makefile
+    and .env. **[verified] 2026-09-05** on a machine where another project's
+    Postgres held 5432: this test connected to THAT database and reported
+    `InvalidPasswordError`, which reads as a credentials problem rather than
+    as "this is not your database". Same reason test_db_integration.py reads
+    settings.embedding_dimensions instead of pinning 1536.
+    """
+    from linestack.config import settings
+
+    return str(settings.database_url).replace("postgresql+asyncpg://", "postgresql://")
+
+
+DSN = os.environ.get("DATABASE_URL_SYNC") or _default_dsn()
 
 
 @pytest.mark.integration

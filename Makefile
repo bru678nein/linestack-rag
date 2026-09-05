@@ -14,7 +14,20 @@ include .env
 export
 endif
 
-DATABASE_URL_SYNC ?= postgresql://linestack:linestack@localhost:5432/linestack
+# One port, read from .env, used by BOTH the container and the sync URL.
+#
+# These used to be three independent 5432s -- here, in docker-compose.yml, and
+# in .env's DATABASE_URL -- and they drifted. **[verified] 2026-09-05** on a
+# machine where another project's Postgres already held 5432: `make up` failed
+# to bind, and `make test-integration` connected to THAT database and reported
+# `InvalidPasswordError`, which reads as a credentials problem rather than as
+# "this is not your database". The .env had already been moved to 55432; the
+# other two defaults had not, and nothing tied them together.
+#
+# docker compose substitutes POSTGRES_PORT from .env by itself, so setting it
+# in one place now moves the container and this URL together.
+POSTGRES_PORT ?= 5432
+DATABASE_URL_SYNC ?= postgresql://linestack:linestack@localhost:$(POSTGRES_PORT)/linestack
 
 .PHONY: help
 help:  ## List targets
@@ -140,19 +153,26 @@ load:  ## Load crawl artifacts into Postgres: make load ARTIFACTS="a.json b.json
 # --------------------------------------------------------------------------
 # evaluation
 #
-# Not implemented. These targets exist so the interface is settled before the
-# harness is written; each fails loudly rather than pretending to run.
-# See docs/evaluation.md.
+# Runs the four metrics that need no LLM judge: recall@k, signal accuracy,
+# ingestion coverage, and the cross-prospect leakage gate. Faithfulness and
+# answer correctness are not computed -- ADR-0020 records why, and it is not
+# only the broken [eval] extra.
+#
+# Needs a loaded, embedded corpus: make up && make migrate && make load ... &&
+# make embed PROSPECT=...
 # --------------------------------------------------------------------------
 .PHONY: eval
-eval:  ## [not implemented] Run the evaluation harness
-	@echo "Not implemented. Design: docs/evaluation.md."
-	@echo "Ground-truth authoring is unblocked; the harness is the gap."
-	@exit 1
+eval:  ## Run the ground-truth set. JSON=path also writes the full run record.
+	$(PY) -m linestack.evaluation.harness --dir $(or $(DIR),eval/ground_truth) \
+	  $(if $(JSON),--json $(JSON),)
 
 .PHONY: eval-report
 eval-report:  ## [not implemented] Delta table against the previous run
+# The run record `make eval JSON=...` writes is the input this needs, and two
+# of them do not exist yet. Building a delta table before there are two runs to
+# diff is infrastructure ahead of measurement (A9).
 	@echo "Not implemented. Design: docs/evaluation.md section 4."
+	@echo "Produce run records first:  make eval JSON=eval/runs/\$$(date +%F).json"
 	@exit 1
 
 .PHONY: ground-truth-validate

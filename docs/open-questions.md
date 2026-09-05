@@ -512,6 +512,20 @@ ADR-0001 is ever reversed.
 every pin is satisfiable together, and each was the current release on PyPI at
 the time. Now installed and importable:
 
+> **One pin is not in that tree, and does not resolve at all.**
+> **[verified] 2026-09-05**, `make install-eval`: `ragas==0.4.3` cannot be
+> installed alongside `openai==3.7.0`. ragas depends unconditionally on
+> `instructor`, and the newest `instructor` (1.16.0) requires
+> `openai>=2.0.0,<3.0.0`. Not fixable by choosing another ragas — **0.4.3 is
+> the latest release**, and ragas itself asks only for `openai>=1.0.0`; the
+> ceiling comes from instructor.
+>
+> This is the fourth finding of the same shape on this page, and the clearest
+> one. `RESOLVED` here has always meant "exists on PyPI", and that is exactly
+> as much as it was worth: the `[eval]` extra was never installed, so nobody
+> found out. See ADR-0020, and the extra is now marked BROKEN in
+> `pyproject.toml` rather than left looking optional.
+
 | Package | Version | First checked |
 | --- | --- | --- |
 | sqlalchemy | 2.0.52 | imports |
