@@ -16,8 +16,7 @@ Three sections:
 All **[verified]** against live sites on 2026-09-01/02. Every defect listed
 here is now fixed. What remains is recorded inline under the entry it belongs
 to: §1.1c does not yet know which URL should win a genuine `kind`
-disagreement, and §1.6's publication dates are still largely htmldate's
-fallback.
+disagreement.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -213,7 +212,7 @@ over-classified two thoughtbot playbook articles as job postings: both errors
 run towards too much specificity, and neither runs the other way. The next
 instance will announce itself instead of having to be excavated.
 
-### 1.6 Publication dates are largely htmldate's fallback, not real dates
+### 1.6 Publication dates were largely htmldate's fallback — FIXED 2026-09-09
 
 **[verified] 2026-09-03.** Across the 76 documents of the two validation
 crawls:
@@ -237,10 +236,46 @@ Three things currently rest on it, and none should be trusted without checking:
   embeds the date into every chunk.
 - Any future recency weighting.
 
-Not fixed here. The candidate fix is to prefer a date parsed from the URL path
-or the visible byline over htmldate's guess, and to record which source
-supplied it — but that is a change to `ingest.py` and it invalidates the frozen
-fixtures, so it belongs in its own change with a re-crawl.
+Fixed by ADR-0021, and the candidate fix named here turned out to be half
+right. Preferring the URL path and the visible byline was correct; what
+actually did the work was **not consulting htmldate's guess at all**.
+`find_date(..., extensive_search=False)` returns what a page declares and
+`None` otherwise, and `trafilatura.extract_metadata` — which enables the fuzzy
+search by default — is no longer used for dates.
+
+`Document.published_source` now records which source supplied it: `url_path`,
+`metadata`, `byline`, or `none`.
+
+**[verified] 2026-09-09**, both sites re-crawled:
+
+| `published` | before | after |
+| --- | --- | --- |
+| exactly `2026-01-01` | **31** | **0** |
+| other dated | 36 | 30 |
+| null | 9 | **46** |
+
+Five non-fallback dates also went, and **every one was a guess** — the
+`1998-01-01`, one more extensive-only value, and three pages (`contact`,
+`cost-management`, `free-trial`) checked directly against the live site, none
+of which declares a date. Zero real dates lost. All 30 survivors come from
+`metadata`, which is the page's own statement.
+
+**A defect the fix introduced, and then removed.** The first version of the
+byline reader took any date near the top of the text. Across 76 documents it
+fired once, on `fly.io/docs/about/discontinued-plans`, reading *"If you
+purchased a Launch or Scale plan before October 7, 2024"* as a publication
+date. One for one, and wrong. A date in a sentence is a fact the page states,
+not a claim about when it was written; the reader now requires a cue
+(*posted*, *published*, *last updated*) within 24 characters before the date.
+
+**What the re-crawl cost.** The frozen corpus moved, and the ground-truth file
+written against the old one is now stale: thoughtbot's `people_listed` 54 → 53
+and `latest_post_date` 2026-09-02 → 2026-09-09, fly.io's `people_listed`
+57 → 53. That is seven days of site drift, not this change — the frozen
+fixtures still count 57 / 54 / 14 / 0 under today's code. The validator now
+warns when a ground-truth file's `crawled_at` disagrees with its artifact's,
+because until it did, such a file validated perfectly while describing a corpus
+that no longer existed.
 
 ### 1.2 Failure classification — FIXED 2026-09-02
 

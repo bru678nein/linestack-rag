@@ -5,6 +5,7 @@ problem. A validator whose rules have never fired is not known to work -- the
 same standard the isolation guards are held to.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -82,6 +83,40 @@ def test_a_missing_corpus_artifact_is_rejected_not_skipped(corpus: Path) -> None
 
     assert not report.ok
     assert any("unfalsifiable" in str(f) for f in report.findings)
+
+
+def test_a_file_written_against_an_older_crawl_warns(corpus: Path) -> None:
+    """A re-crawl leaves the file validating perfectly while quietly
+    describing a corpus that no longer exists.
+
+    **[verified] 2026-09-09**: re-crawling for the §1.6 date fix moved
+    thoughtbot's hand-checked `people_listed` from 54 to 53 and its
+    `latest_post_date` from 2026-09-02 to 2026-09-09, in seven days. Nothing
+    failed. The numbers just stopped being true.
+    """
+    (corpus.parent / "corpus.json").write_text(
+        json.dumps({"crawled_at": "2026-09-09T21:04:38+00:00"}), encoding="utf-8"
+    )
+    data = _valid()
+    data["prospect"]["crawled_at"] = "2026-09-02T18:54:28+00:00"
+    _write(corpus, "example_test.yaml", data)
+
+    report = _run(corpus)
+
+    assert report.ok, "stale is work to redo, not a broken build"
+    assert any("Re-check the signals" in str(w) for w in report.warnings)
+
+
+def test_a_file_matching_its_crawl_does_not_warn(corpus: Path) -> None:
+    """A warning that fires on a healthy file is a warning people mute."""
+    (corpus.parent / "corpus.json").write_text(
+        json.dumps({"crawled_at": "2026-09-02T18:54:28+00:00"}), encoding="utf-8"
+    )
+    data = _valid()
+    data["prospect"]["crawled_at"] = "2026-09-02T18:54:28+00:00"
+    _write(corpus, "example_test.yaml", data)
+
+    assert not any("Re-check" in str(w) for w in _run(corpus).warnings)
 
 
 def test_an_unknown_question_id_is_rejected(corpus: Path) -> None:

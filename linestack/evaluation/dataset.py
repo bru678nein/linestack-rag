@@ -23,6 +23,7 @@ guard against, and they are guarded by discipline rather than by this file.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -206,12 +207,15 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
     # The artifact is what makes a reference answer falsifiable. Without it,
     # nobody can tell whether an answer was wrong or the corpus had changed.
     artifact = prospect.get("corpus_artifact")
-    if artifact and not (root / str(artifact)).exists():
+    artifact_path = root / str(artifact) if artifact else None
+    if artifact and not artifact_path.exists():
         fail(
             "prospect.corpus_artifact",
             f"{artifact} is not on disk. A reference answer without its frozen "
             f"corpus is unfalsifiable (docs/ground-truth.md §1).",
         )
+    elif artifact_path is not None:
+        _check_the_corpus_has_not_moved(prospect, artifact_path, path, report)
 
     questions = data.get("questions")
     if not isinstance(questions, list) or not questions:
@@ -259,6 +263,52 @@ def _validate_file(path: Path, root: Path, report: ValidationReport) -> None:
     if missing and not report.findings:
         report.warnings.append(
             Finding(path.name, "questions", f"no pair yet for {missing}")
+        )
+
+
+def _check_the_corpus_has_not_moved(
+    prospect: dict,
+    artifact_path: Path,
+    path: Path,
+    report: ValidationReport,
+) -> None:
+    """Warn when the artifact has been re-crawled since the file was written.
+
+    Every answer in a ground-truth file is written against one frozen crawl,
+    and `crawled_at` records which. When the artifact is re-crawled, the file
+    still validates perfectly while quietly describing a corpus that no longer
+    exists -- source URLs may have gone, and hand-checked signals may have
+    drifted.
+
+    **[verified] 2026-09-09.** Re-crawling for the §1.6 date fix moved
+    thoughtbot's `people_listed` from 54 to 53 and its `latest_post_date` from
+    2026-09-02 to 2026-09-09 in seven days. Both had been hand-checked. Nothing
+    in the file changed and nothing failed; the numbers simply stopped being
+    true.
+
+    A warning, not an error, for the reason the TODO checks are warnings: this
+    is work to redo, not a broken build, and a red build on a day nobody
+    changed the file is a build people learn to ignore.
+    """
+    written = prospect.get("crawled_at")
+    if not written:
+        return
+    try:
+        crawled = json.loads(artifact_path.read_text(encoding="utf-8")).get(
+            "crawled_at"
+        )
+    except (OSError, ValueError):
+        return  # the existence check above owns that failure
+    if crawled and str(crawled) != str(written):
+        report.warnings.append(
+            Finding(
+                path.name,
+                "prospect.crawled_at",
+                f"written against a crawl of {written}, but "
+                f"{artifact_path.name} is now {crawled}. Re-check the signals "
+                f"and every source_urls entry before trusting this file "
+                f"(docs/ground-truth.md §5).",
+            )
         )
 
 

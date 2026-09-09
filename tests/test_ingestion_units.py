@@ -969,6 +969,135 @@ def test_a_paragraph_starting_with_a_name_is_not_a_card() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Publication dates and where they came from (Finding 1.6)
+# ---------------------------------------------------------------------------
+
+
+def test_a_page_with_no_publication_date_gets_none_not_a_guess() -> None:
+    """The defect, in its exact shape. **[verified]** 31 of the 76 documents
+    in the two validation crawls carried `2026-01-01` and one carried
+    `1998-01-01`. A services page has no publication date, and None is the
+    correct answer -- inventing one is what A4 forbids."""
+    html = _fixture("thoughtbot_team")
+
+    published, source = ingest.extract_published("https://x.test/team", html, "")
+
+    assert published is None
+    assert source == ingest.PUBLISHED_NONE
+
+
+def test_the_fuzzy_guess_is_what_produced_the_fallback_dates() -> None:
+    """Names the cause rather than asserting around it. htmldate's
+    extensive_search invents a year boundary; with it off the same page
+    honestly returns nothing."""
+    htmldate = pytest.importorskip("htmldate")
+    html = _fixture("fly_io_team")
+
+    assert htmldate.find_date(html, extensive_search=True) == "2026-01-01"
+    assert htmldate.find_date(html, extensive_search=False) is None
+    assert ingest.date_from_metadata(html) is None
+
+
+@pytest.mark.parametrize(
+    "url, expected",
+    [
+        ("https://ex.test/blog/2026-08-19", "2026-08-19"),
+        ("https://ex.test/blog/2026/09/02/a-title", "2026-09-02"),
+        ("https://ex.test/blog/corrosion", None),
+        ("https://ex.test/2026/09/02", "2026-09-02"),
+        # Not a date. A version number in a path must not become one.
+        ("https://ex.test/docs/v2/api", None),
+    ],
+)
+def test_a_date_in_the_url_path_is_read(url: str, expected) -> None:
+    """The highest-confidence source: the site's own filing decision, not
+    anyone's reading of the page."""
+    assert ingest.date_from_url(url) == expected
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Posted August 19, 2026 by someone", "2026-08-19"),
+        ("Published 19 September 2025.", "2025-09-19"),
+        ("Last updated on 2026-03-10 by the team", "2026-03-10"),
+        ("Written Aug. 3rd, 2026", "2026-08-03"),
+        ("no date here at all", None),
+    ],
+)
+def test_a_visible_byline_is_read_numeric_or_written_out(text: str, expected) -> None:
+    """§1.6 names the visible byline as a candidate source. The old code read
+    only numeric dates, so "August 19, 2026" was invisible to it and the fuzzy
+    guess filled in instead."""
+    assert ingest.date_from_byline(text) == expected
+
+
+def test_a_date_in_a_sentence_is_not_a_byline() -> None:
+    """The false positive this reader had on its first run. **[verified]
+    2026-09-09**: across 76 documents the byline source fired exactly once, on
+    fly.io/docs/about/discontinued-plans, reading
+
+        "If you purchased a Launch or Scale plan before October 7, 2024"
+
+    as a publication date of 2024-10-07. One for one, and wrong. A date in a
+    sentence is a fact the page states, not a claim about when it was written,
+    so a cue -- posted, published, last updated, written -- is now required.
+    """
+    prose = (
+        "Discontinued Plans Fly.io no longer offers plans to new customers. "
+        "If you purchased a Launch or Scale plan before October 7, 2024, you "
+        "can remain on those plans."
+    )
+
+    assert ingest.date_from_byline(prose) is None
+
+
+def test_a_cue_from_a_different_sentence_does_not_vouch_for_a_date() -> None:
+    """The cue window is deliberately narrow. A "published" forty words
+    earlier is not about this date."""
+    text = "Published a while back. Our terms changed on 2024-10-07 for everyone."
+
+    assert ingest.date_from_byline(text) is None
+
+
+def test_a_byline_far_down_the_page_is_not_read() -> None:
+    """Bounded to the top of the text. A date in the footer or in a comment is
+    not this document's publication date."""
+    assert ingest.date_from_byline("x " * 500 + "August 19, 2026") is None
+
+
+def test_an_impossible_date_is_rejected_rather_than_stored() -> None:
+    """A regex will happily match 2026-13-45. Storing it would put a value in
+    `published` that no comparison can order."""
+    assert ingest.date_from_byline("2026-13-45") is None
+    assert ingest.date_from_url("https://ex.test/2026/13/45/x") is None
+
+
+def test_the_source_is_recorded_so_a_date_can_be_judged_later() -> None:
+    """§1.6 asks for exactly this: record which source supplied it. Three
+    things rest on `published` -- latest_post_date, the chunk provenance
+    header, and any future recency weighting -- and none of them could tell a
+    declared date from a guess."""
+    html = '<html><body><time datetime="2025-10-22">Oct 22</time></body></html>'
+
+    assert ingest.extract_published("https://ex.test/blog/2026-08-19", html, "")[1] == (
+        ingest.PUBLISHED_URL
+    )
+    assert ingest.extract_published("https://ex.test/blog/x", html, "")[1] == (
+        ingest.PUBLISHED_META
+    )
+    assert ingest.extract_published(
+        "https://ex.test/blog/x", "<html></html>", "Published 2026-03-10"
+    )[1] == (ingest.PUBLISHED_BYLINE)
+
+
+def test_a_document_carries_its_date_source() -> None:
+    doc = ingest.Document(url="https://ex.test/x", kind="website", title="", text="t")
+
+    assert doc.published_source == ingest.PUBLISHED_NONE
+
+
+# ---------------------------------------------------------------------------
 # Canonical URL choice (Finding 1.1c)
 # ---------------------------------------------------------------------------
 

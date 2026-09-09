@@ -67,13 +67,18 @@ async def test_a_full_crawl_loads_with_the_counts_the_artifact_reports(
 
     report = await load_artifact(db_session, artifact, now=NOW)
 
+    # Re-measured 2026-09-09 after the ADR-0021 re-crawl. These moved because
+    # the SITE moved -- fly.io links two more pages than it did on 2026-09-03,
+    # so two more URLs end in budget_exhausted -- not because anything here
+    # changed. The pin is kept exact rather than loosened: a count that drifts
+    # silently is a count nobody would notice going wrong.
     assert report.crawl_run_existed is False
-    assert report.outcomes_written == 97
+    assert report.outcomes_written == 99
     assert report.pages_fetched == 61
     assert report.documents_in_artifact == 39
     assert report.counts_by_outcome == {
         "stored": 39,
-        "budget_exhausted": 36,
+        "budget_exhausted": 38,
         "http_error": 19,
         "non_html": 2,
         "duplicate_content": 1,
@@ -238,10 +243,17 @@ async def test_documents_and_chunks_land_with_the_counts_chunking_predicts(
     assert report.documents_inserted == 39
     assert report.documents_unchanged == 0
     # The A3 before-and-after number for this corpus, measured with real
-    # tiktoken counts on 2026-09-03. If a chunking parameter changes, this
-    # fails with the new figure, which is the point: the change is supposed to
-    # be recorded, not absorbed.
-    assert report.chunks_written == 111
+    # tiktoken counts. If a chunking parameter changes, this fails with the new
+    # figure, which is the point: the change is supposed to be recorded, not
+    # absorbed.
+    #
+    # 111 -> 110 on 2026-09-09, and the obvious explanation is wrong. ADR-0021
+    # made `published` null on most documents, which shortens the provenance
+    # header and leaves more room per chunk, so the header looked like the
+    # cause. Measured by chunking the SAME corpus under both date sets:
+    # 110 either way. The header accounts for none of it; fly.io's text simply
+    # changed (59,142 -> 59,022 words) between crawls.
+    assert report.chunks_written == 110
     assert report.blocks_force_split == 1, (
         "fly.io/docs/about/pricing is one ~13,000-token table and must be "
         "force-split; a 0 here means the hard cap stopped firing"

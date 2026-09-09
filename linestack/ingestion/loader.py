@@ -66,6 +66,13 @@ class ArtifactDocument(BaseModel):
     title: str = ""
     text: str
     published: str | None = None
+    # Where `published` came from (ingest.py, ADR-0021). Defaulted, like
+    # kind_conflicts, so artifacts frozen before the field still load. Not
+    # persisted yet: `documents` has no column, and adding one before a
+    # recency-weighting decision needs it is infrastructure ahead of
+    # measurement (A9). The artifact carries it, which is where §1.6's
+    # "record which source supplied it" is satisfied.
+    published_source: str = "none"
     extract_reason: str = ""
     content_hash: str
     stable_hash: str = ""

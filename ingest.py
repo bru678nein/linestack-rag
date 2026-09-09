@@ -21,6 +21,7 @@ Two kinds of output, deliberately separated:
 No database writes here. This produces JSON; loading is a separate step so the
 crawl can be rerun and diffed without touching Postgres.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -34,23 +35,46 @@ from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from typing import Iterable
 
+import htmldate
 import httpx
 import trafilatura
 from selectolax.parser import HTMLParser
 
-USER_AGENT = "Linestack-Research/1.0 (+https://linestack.dev; contact: brunoracconto@live.com)"
+USER_AGENT = (
+    "Linestack-Research/1.0 (+https://linestack.dev; contact: brunoracconto@live.com)"
+)
 DELAY_SECONDS = 1.5
 TIMEOUT = 20.0
 MAX_PAGES = 40
 
 # Paths worth trying directly before falling back to link discovery.
 SEED_PATHS = [
-    "/", "/about", "/about-us", "/nosotros", "/quienes-somos", "/company",
-    "/team", "/our-team", "/equipo", "/people", "/leadership",
-    "/careers", "/jobs", "/join-us", "/trabaja-con-nosotros", "/empleos",
-    "/blog", "/news", "/insights", "/noticias",
-    "/services", "/products", "/solutions", "/servicios",
-    "/contact", "/contacto",
+    "/",
+    "/about",
+    "/about-us",
+    "/nosotros",
+    "/quienes-somos",
+    "/company",
+    "/team",
+    "/our-team",
+    "/equipo",
+    "/people",
+    "/leadership",
+    "/careers",
+    "/jobs",
+    "/join-us",
+    "/trabaja-con-nosotros",
+    "/empleos",
+    "/blog",
+    "/news",
+    "/insights",
+    "/noticias",
+    "/services",
+    "/products",
+    "/solutions",
+    "/servicios",
+    "/contact",
+    "/contacto",
 ]
 
 # Page kind from the URL path. Matched against whole path SEGMENTS, never as a
@@ -62,16 +86,168 @@ SEED_PATHS = [
 # job-posting weight is a retrieval defect, not a cosmetic one.
 KIND_PATTERNS = [
     ("job_posting", r"^(careers?|jobs?|vacantes?|empleos?|join-us|trabaja[\w-]*)$"),
-    ("blog_post",   r"^(blog|news|insights|posts?|articles?|noticias|novedades)$"),
+    ("blog_post", r"^(blog|news|insights|posts?|articles?|noticias|novedades)$"),
 ]
 
 # Role words that indicate technical capacity when they appear on a team page.
 TECH_ROLE_RE = re.compile(
     r"\b(developer|engineer|cto|programmer|architect|devops|sre|data\s+scientist|"
-    r"desarrollador|ingenier[oa]|programador|tech\s+lead)\b", re.I)
+    r"desarrollador|ingenier[oa]|programador|tech\s+lead)\b",
+    re.I,
+)
 
-DATE_RE = re.compile(
-    r"\b(20[12]\d)[-/](\d{1,2})[-/](\d{1,2})\b")
+DATE_RE = re.compile(r"\b(20[12]\d)[-/](\d{1,2})[-/](\d{1,2})\b")
+
+# A date the site itself put in the URL: /blog/2026/09/02/title, or
+# /blog/2026-08-19. The highest-confidence source there is, because it is the
+# site's own filing decision rather than anyone's reading of the page.
+URL_DATE_RE = re.compile(r"/(20[12]\d)[/-](\d{1,2})[/-](\d{1,2})(?:[/-]|$)")
+
+# Three-letter stems, not full names, because a byline is as likely to say
+# "Aug. 3rd, 2026" as "August 3, 2026". The trailing `[a-z]*` swallows the rest
+# of the word, so one pattern covers "Aug", "Aug.", "August" and "Sept".
+MONTH_STEMS = (
+    "jan",
+    "feb",
+    "mar",
+    "apr",
+    "may",
+    "jun",
+    "jul",
+    "aug",
+    "sep",
+    "oct",
+    "nov",
+    "dec",
+)
+_M = "(" + "|".join(MONTH_STEMS) + r")[a-z]*\.?"
+# "August 19, 2026" and "19 August 2026", the two orders a visible byline
+# actually uses. Numeric bylines are DATE_RE's job.
+TEXT_DATE_RE = re.compile(
+    r"\b(?:" + _M + r"\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20[12]\d)"
+    r"|(\d{1,2})(?:st|nd|rd|th)?\s+" + _M + r",?\s+(20[12]\d))\b",
+    re.I,
+)
+
+# Where `published` came from. A date is only as good as its source, and until
+# now every source collapsed into one nullable string (A4).
+#
+# **[verified] 2026-09-03**: 31 of the 76 documents in the two validation
+# crawls carried exactly `2026-01-01` and 9 were null. A date shared by 31
+# documents across two unrelated sites is not 31 publication dates; it is
+# htmldate's coarse fallback reaching for a year boundary. One page,
+# fly.io/docs/about/healthcare, was dated `1998-01-01`.
+PUBLISHED_URL = "url_path"  # the site filed it under a dated path
+PUBLISHED_META = "metadata"  # <time>, JSON-LD, or an article: meta tag
+PUBLISHED_BYLINE = "byline"  # a date in the visible text near the top
+PUBLISHED_NONE = "none"  # no evidence, and that is the honest answer
+
+
+def date_from_url(url: str) -> str | None:
+    """A publication date the site put in its own URL, or None."""
+    m = URL_DATE_RE.search(urllib.parse.urlparse(url).path)
+    return _iso(m.group(1), m.group(2), m.group(3)) if m else None
+
+
+def date_from_metadata(html: str) -> str | None:
+    """What the page DECLARES, with htmldate's fuzzy search turned off.
+
+    `extensive_search=False` is the whole fix. With it on -- the default, and
+    what `trafilatura.extract_metadata` uses -- htmldate falls back to hunting
+    any year-like string on the page and guessing, which is where
+    `2026-01-01` and `1998-01-01` came from.
+
+    **[verified] 2026-09-09**, the same four pages under both settings:
+
+    | page | extensive | strict |
+    | --- | --- | --- |
+    | fly.io/blog/corrosion | 2025-10-22 | **2025-10-22** |
+    | fly.io/docs/about/healthcare | 1998-01-01 | **None** |
+    | fly.io/team | 2026-01-01 | **None** |
+    | thoughtbot.com/team | 2026-01-01 | **None** |
+
+    Strict keeps the real date and drops every fabricated one. That is the
+    whole trade, and it is the reason this is not merely "stop calling
+    htmldate".
+    """
+    try:
+        return htmldate.find_date(html, extensive_search=False) or None
+    except Exception:
+        # htmldate parses arbitrary third-party HTML. A crash here must not
+        # lose the document, and a missing date is already a value we handle.
+        return None
+
+
+# A date is only a byline if something says so. **[verified] 2026-09-09**: a
+# first version of this read any date near the top of the text and, across 76
+# documents, fired exactly once -- on fly.io/docs/about/discontinued-plans,
+# turning "If you purchased a Launch or Scale plan before October 7, 2024" into
+# a publication date of 2024-10-07. One for one, and wrong. A date in a
+# sentence is a fact the page states, not a claim about when it was written.
+BYLINE_CUE_RE = re.compile(
+    r"(post|publish|updat|writ|releas)\w*\s*(on|at|:)?\s*$", re.I
+)
+
+# How much text before the date is searched for that cue. Wide enough for
+# "Last updated on", narrow enough that a cue in the previous sentence does not
+# reach across and vouch for an unrelated date.
+BYLINE_CUE_WINDOW = 24
+
+
+def _has_cue(head: str, start: int) -> bool:
+    return bool(BYLINE_CUE_RE.search(head[max(0, start - BYLINE_CUE_WINDOW) : start]))
+
+
+def date_from_byline(text: str, window: int = 400) -> str | None:
+    """A date in the visible text near the top, IF something calls it one.
+
+    Numeric or written out, but always preceded by a publication cue --
+    "posted", "published", "last updated", "written". Without that gate this
+    reads prose; see BYLINE_CUE_RE.
+    """
+    head = text[:window]
+    m = DATE_RE.search(head)
+    if m and _has_cue(head, m.start()):
+        return _iso(m.group(1), m.group(2), m.group(3))
+    m = TEXT_DATE_RE.search(head)
+    if not m or not _has_cue(head, m.start()):
+        return None
+    if m.group(1):
+        month, day, year = m.group(1), m.group(2), m.group(3)
+    else:
+        day, month, year = m.group(4), m.group(5), m.group(6)
+    return _iso(year, MONTH_STEMS.index(month.lower()[:3]) + 1, day)
+
+
+def _iso(year, month, day) -> str | None:
+    """A real calendar date, or None. Guards against 2026-13-45."""
+    try:
+        return datetime(int(year), int(month), int(day)).date().isoformat()
+    except ValueError:
+        return None
+
+
+def extract_published(url: str, html: str, text: str) -> tuple[str | None, str]:
+    """The publication date and WHERE IT CAME FROM, best evidence first.
+
+    Ordered by how much the site itself is asserting. A dated URL path is the
+    site's own filing decision; declared metadata is the site's own statement;
+    a visible byline is a human reading the page. htmldate's fuzzy guess is
+    none of those and is no longer consulted at all -- see
+    docs/open-questions.md §1.6 and ADR-0021.
+
+    Returning `(None, PUBLISHED_NONE)` for a services page is the correct
+    answer. Most pages on a company website have no publication date, and
+    inventing one for them is the defect this replaces.
+    """
+    for source, value in (
+        (PUBLISHED_URL, date_from_url(url)),
+        (PUBLISHED_META, date_from_metadata(html)),
+        (PUBLISHED_BYLINE, date_from_byline(text)),
+    ):
+        if value:
+            return value, source
+    return None, PUBLISHED_NONE
 
 
 # --------------------------------------------------------------------------- #
@@ -79,9 +255,9 @@ DATE_RE = re.compile(
 # --------------------------------------------------------------------------- #
 # Outcome of the robots.txt fetch. "Could not read the policy" and "the policy
 # said no" are different facts and must never collapse into one flag (A5).
-ROBOTS_OK = "ok"                      # 2xx, parsed; its rules apply
-ROBOTS_ABSENT = "absent"              # 4xx (not 401/403): no robots.txt exists
-ROBOTS_UNREADABLE = "unreadable"      # 401/403: exists, withheld from us
+ROBOTS_OK = "ok"  # 2xx, parsed; its rules apply
+ROBOTS_ABSENT = "absent"  # 4xx (not 401/403): no robots.txt exists
+ROBOTS_UNREADABLE = "unreadable"  # 401/403: exists, withheld from us
 ROBOTS_SERVER_ERROR = "server_error"  # 5xx: site is unwell, do not crawl
 ROBOTS_FETCH_FAILED = "fetch_failed"  # transport error, timeout, DNS
 
@@ -119,6 +295,7 @@ UNREACHABLE_STREAK = 3
 @dataclass
 class PageOutcome:
     """One row of `crawl_page_outcomes`, mirrored field for field."""
+
     url: str
     outcome: str
     http_status: int | None = None
@@ -157,9 +334,13 @@ class PoliteClient:
         # The client must exist before robots.txt is fetched: robots.txt is
         # fetched through it, with our real User-Agent. See _load_robots.
         self._client = httpx.Client(
-            headers={"User-Agent": USER_AGENT,
-                     "Accept": "text/html,application/xhtml+xml"},
-            timeout=TIMEOUT, follow_redirects=True)
+            headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml",
+            },
+            timeout=TIMEOUT,
+            follow_redirects=True,
+        )
         self._robots, self.robots_reason = self._load_robots()
 
     def _request(self, url: str) -> httpx.Response:
@@ -242,13 +423,15 @@ class PoliteClient:
         except Exception as exc:
             return None, self._transport_outcome(url, exc)
         if r.status_code != 200:
-            return None, PageOutcome(url, PAGE_HTTP_ERROR,
-                                     http_status=r.status_code)
+            return None, PageOutcome(url, PAGE_HTTP_ERROR, http_status=r.status_code)
         ctype = r.headers.get("content-type", "")
         if "html" not in ctype.lower():
-            return None, PageOutcome(url, PAGE_NON_HTML,
-                                     http_status=r.status_code,
-                                     detail=ctype.split(";")[0].strip())
+            return None, PageOutcome(
+                url,
+                PAGE_NON_HTML,
+                http_status=r.status_code,
+                detail=ctype.split(";")[0].strip(),
+            )
         return r.text, PageOutcome(url, PAGE_STORED, http_status=r.status_code)
 
     def close(self):
@@ -265,6 +448,10 @@ class Document:
     title: str
     text: str
     published: str | None = None
+    # Where `published` came from: url_path, metadata, byline, or none. A date
+    # is only as good as its source, and every source used to collapse into
+    # one nullable string (A4). See ADR-0021.
+    published_source: str = PUBLISHED_NONE
     # Which extraction strategy produced `text`. A document recovered by the
     # DOM fallback is real content but lower confidence than one trafilatura
     # extracted cleanly, and downstream must be able to tell them apart (A4).
@@ -319,8 +506,7 @@ def stable_digest(text: str) -> str:
     duplicate. That is evidence, not a proof; `content_hash` stays exact so the
     reordering is always still visible.
     """
-    return hashlib.sha256(
-        "\x00".join(sorted(text.split())).encode()).hexdigest()[:16]
+    return hashlib.sha256("\x00".join(sorted(text.split())).encode()).hexdigest()[:16]
 
 
 def classify(url: str) -> str:
@@ -339,8 +525,9 @@ def classify(url: str) -> str:
     reason, so nobody re-adds it on the reasonable-sounding theory that a
     title saying "Careers" means a careers page.
     """
-    segments = [seg for seg in
-                urllib.parse.urlparse(url).path.lower().split("/") if seg]
+    segments = [
+        seg for seg in urllib.parse.urlparse(url).path.lower().split("/") if seg
+    ]
     for kind, pat in KIND_PATTERNS:
         if any(re.match(pat, seg) for seg in segments):
             return kind
@@ -353,22 +540,38 @@ MIN_WORDS = 30
 
 # Outcome of extraction. "We got nothing" and "we got nothing the easy way"
 # are different facts and must not collapse into one None (A5).
-EXTRACT_OK = "ok"                    # precision pass produced usable text
+EXTRACT_OK = "ok"  # precision pass produced usable text
 EXTRACT_RECALL = "recovered_recall"  # precision was thin, recall pass recovered
-EXTRACT_DOM = "recovered_dom"        # both trafilatura passes thin, DOM used
-EXTRACT_THIN = "thin"                # every strategy came in under MIN_WORDS
-EXTRACT_EMPTY = "empty"              # no strategy produced any text at all
+EXTRACT_DOM = "recovered_dom"  # both trafilatura passes thin, DOM used
+EXTRACT_THIN = "thin"  # every strategy came in under MIN_WORDS
+EXTRACT_EMPTY = "empty"  # no strategy produced any text at all
 
 # Structural elements whose text is chrome, not content. Stripped before the
 # DOM fallback, which unlike trafilatura has no readability model of its own.
-DOM_NOISE_TAGS = ("script", "style", "noscript", "svg", "template",
-                  "iframe", "nav", "footer", "form")
+DOM_NOISE_TAGS = (
+    "script",
+    "style",
+    "noscript",
+    "svg",
+    "template",
+    "iframe",
+    "nav",
+    "footer",
+    "form",
+)
 
 
 def _trafilatura_text(html: str, url: str, *, precision: bool) -> str:
-    return trafilatura.extract(
-        html, include_comments=False, include_tables=True,
-        favor_precision=precision, url=url) or ""
+    return (
+        trafilatura.extract(
+            html,
+            include_comments=False,
+            include_tables=True,
+            favor_precision=precision,
+            url=url,
+        )
+        or ""
+    )
 
 
 def dom_text(html: str) -> str:
@@ -415,18 +618,17 @@ def extract(url: str, html: str) -> tuple[Document | None, str]:
     title_node = tree.css_first("title")
     title = title_node.text(strip=True) if title_node else ""
 
-    published = None
-    meta = trafilatura.extract_metadata(html)
-    if meta and meta.date:
-        published = meta.date
-    else:
-        m = DATE_RE.search(text[:400])
-        if m:
-            published = f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    published, published_source = extract_published(url, html, text)
 
-    return Document(url=url, kind=classify(url), title=title,
-                    text=text, published=published,
-                    extract_reason=reason).finalise(), reason
+    return Document(
+        url=url,
+        kind=classify(url),
+        title=title,
+        text=text,
+        published=published,
+        published_source=published_source,
+        extract_reason=reason,
+    ).finalise(), reason
 
 
 def discover_links(html: str, base_url: str, domain: str) -> list[str]:
@@ -435,7 +637,8 @@ def discover_links(html: str, base_url: str, domain: str) -> list[str]:
     keep = re.compile(
         r"/(about|nosotros|quienes|team|equipo|people|careers?|jobs?|empleos?|"
         r"blog|news|noticias|insights|services?|servicios|products?|solutions?)",
-        re.I)
+        re.I,
+    )
     for node in HTMLParser(html).css("a[href]"):
         href = node.attributes.get("href") or ""
         if href.startswith(("mailto:", "tel:", "#", "javascript:")):
@@ -467,6 +670,7 @@ def normalise(url: str) -> str:
 @dataclass
 class Signals:
     """Deterministic facts. Never inferred, always computed and citable."""
+
     has_team_page: bool = False
     team_page_url: str | None = None
     people_listed: int = 0
@@ -489,11 +693,16 @@ TEAM_PATH_RE = re.compile(r"/(team|equipo|people|leadership|nosotros)")
 # rule. TEAM_PATH_RE needs no such proof: a page at /team is a team page even
 # when its roster is markup we cannot parse, and calling it one is the honest
 # answer. See ADR-0018.
-ABOUT_PATH_RE = re.compile(
-    r"/(about|about-us|company|quienes-somos|sobre-nosotros)")
+ABOUT_PATH_RE = re.compile(r"/(about|about-us|company|quienes-somos|sobre-nosotros)")
 
-PERSON_SELECTORS = ("[class*=team]", "[class*=member]", "[class*=staff]",
-                    "[class*=person]", "[class*=bio]", "[class*=profile]")
+PERSON_SELECTORS = (
+    "[class*=team]",
+    "[class*=member]",
+    "[class*=staff]",
+    "[class*=person]",
+    "[class*=bio]",
+    "[class*=profile]",
+)
 
 
 _PERSON_KEYWORD_RE = re.compile(r"\[class\*=([a-z]+)\]")
@@ -541,9 +750,11 @@ def count_people(html: str) -> int:
     Order is deliberate: the two strategies with the longest verified record
     run first, and the portrait pass only sees pages where both found nothing.
     """
-    return (count_people_structurally(html)
-            or count_people_by_class(html)
-            or count_people_by_portrait(html))
+    return (
+        count_people_structurally(html)
+        or count_people_by_class(html)
+        or count_people_by_portrait(html)
+    )
 
 
 def count_people_structurally(html: str) -> int:
@@ -626,7 +837,8 @@ def count_people_by_portrait(html: str) -> int:
             if not text or len(text.split()) > hi:
                 continue
             by_tag.setdefault(child.tag, []).append(
-                images[0].attributes.get("src") or "")
+                images[0].attributes.get("src") or ""
+            )
         for sources in by_tag.values():
             # All distinct, not merely mostly: a repeated src is a shared icon,
             # which is the shape this pass exists to refuse.
@@ -670,9 +882,13 @@ def count_people_by_class(html: str) -> int:
         leaves = [n for n in nodes if not n.css(sel)[1:]]  # css() includes self
         groups: dict[tuple, int] = {}
         for n in leaves:
-            tokens = tuple(sorted(
-                t for t in (n.attributes.get("class") or "").split()
-                if keyword in t.lower()))
+            tokens = tuple(
+                sorted(
+                    t
+                    for t in (n.attributes.get("class") or "").split()
+                    if keyword in t.lower()
+                )
+            )
             key = (n.tag, tokens)
             groups[key] = groups.get(key, 0) + 1
         if groups:
@@ -682,7 +898,8 @@ def count_people_by_class(html: str) -> int:
 
 # A careers listing lives AT the careers path; a posting lives below it.
 ROLE_LISTING_RE = re.compile(
-    r"^/(careers?|jobs?|empleos?|vacantes?|join-us|trabaja[\w-]*)/?$", re.I)
+    r"^/(careers?|jobs?|empleos?|vacantes?|join-us|trabaja[\w-]*)/?$", re.I
+)
 
 # Sub-paths that are files, not vacancies.
 NON_ROLE_EXT_RE = re.compile(r"\.(xml|json|rss|atom|pdf|ics|txt)$", re.I)
@@ -690,12 +907,15 @@ NON_ROLE_EXT_RE = re.compile(r"\.(xml|json|rss|atom|pdf|ics|txt)$", re.I)
 # " . Fly", " | Acme", " - Acme" trailing site names. Plain hyphen is excluded
 # on purpose: it would mangle "Front-End Developer".
 TITLE_SUFFIX_RE = re.compile(
-    r"\s*[\u00b7|\u00bb]\s*[^\u00b7|\u00bb]{1,40}$|\s+[\u2014\u2013]\s+[^\u2014\u2013]{1,40}$")
+    r"\s*[\u00b7|\u00bb]\s*[^\u00b7|\u00bb]{1,40}$|\s+[\u2014\u2013]\s+[^\u2014\u2013]{1,40}$"
+)
 
 JOB_TITLE_RE = re.compile(
     r"\b(manager|engineer|developer|coordinator|analyst|specialist|director|"
     r"designer|associate|assistant|lead|architect|consultant|representative|"
-    r"gerente|desarrollador|analista|coordinador|responsable)\b", re.I)
+    r"gerente|desarrollador|analista|coordinador|responsable)\b",
+    re.I,
+)
 
 
 def extract_role_headings(html: str) -> list[str]:
@@ -703,7 +923,9 @@ def extract_role_headings(html: str) -> list[str]:
     if not html:
         return []
     out = []
-    for node in HTMLParser(html).css("h2, h3, h4, [class*=job], [class*=position], [class*=vacan]"):
+    for node in HTMLParser(html).css(
+        "h2, h3, h4, [class*=job], [class*=position], [class*=vacan]"
+    ):
         t = node.text(strip=True)
         if t and 3 < len(t) < 80 and JOB_TITLE_RE.search(t) and t not in out:
             out.append(t)
@@ -742,14 +964,14 @@ def listing_role_links(html: str, listing_url: str) -> list[str]:
 @dataclass
 class RosterPage:
     """The page `has_team_page` and `people_listed` both describe."""
+
     url: str
     document: "Document"
     people: int
     on_team_path: bool
 
 
-def choose_roster_page(docs: list[Document],
-                       raw: dict[str, str]) -> RosterPage | None:
+def choose_roster_page(docs: list[Document], raw: dict[str, str]) -> RosterPage | None:
     """
     Pick the one page the team signals describe, or None.
 
@@ -814,22 +1036,23 @@ def compute_signals(docs: list[Document], raw: dict[str, str]) -> Signals:
         # itself files under /team, which are not always the same document.
         on_team_path = any(
             TEAM_PATH_RE.search(urllib.parse.urlparse(u).path.lower())
-            for u in (d.url, *d.duplicate_urls))
+            for u in (d.url, *d.duplicate_urls)
+        )
         if on_team_path or (roster and d is roster.document):
             s.technical_roles_named += len(TECH_ROLE_RE.findall(d.text))
 
         if d.kind == "blog_post":
             s.blog_posts_seen += 1
-            if d.published and (s.latest_post_date is None
-                                or d.published > s.latest_post_date):
+            if d.published and (
+                s.latest_post_date is None or d.published > s.latest_post_date
+            ):
                 s.latest_post_date = d.published
 
     _count_open_roles(s, docs, raw)
     return s
 
 
-def _count_open_roles(s: Signals, docs: list[Document],
-                      raw: dict[str, str]) -> None:
+def _count_open_roles(s: Signals, docs: list[Document], raw: dict[str, str]) -> None:
     """
     Count vacancies by role IDENTITY, never by page.
 
@@ -846,7 +1069,7 @@ def _count_open_roles(s: Signals, docs: list[Document],
     what excludes "Compensation calculator" and "Career Paths".
     """
     listings: list[str] = []
-    candidates: dict[str, str] = {}          # url (or heading key) -> role name
+    candidates: dict[str, str] = {}  # url (or heading key) -> role name
 
     for d in docs:
         if d.kind != "job_posting":
@@ -867,8 +1090,11 @@ def _count_open_roles(s: Signals, docs: list[Document],
             for h in extract_role_headings(html):
                 candidates.setdefault("heading:" + h.lower(), h)
 
-    roles = [n for key, n in candidates.items()
-             if not NON_ROLE_EXT_RE.search(key) and JOB_TITLE_RE.search(n)]
+    roles = [
+        n
+        for key, n in candidates.items()
+        if not NON_ROLE_EXT_RE.search(key) and JOB_TITLE_RE.search(n)
+    ]
     s.open_roles_seen = len(roles)
     s.technical_roles_open = sum(1 for n in roles if TECH_ROLE_RE.search(n))
 
@@ -936,8 +1162,12 @@ class Prospect:
         return [o for o in self.page_outcomes if o["outcome"] == kind]
 
 
-def ingest(base_url: str, company_name: str = "",
-           max_pages: int = MAX_PAGES, verbose: bool = True) -> Prospect:
+def ingest(
+    base_url: str,
+    company_name: str = "",
+    max_pages: int = MAX_PAGES,
+    verbose: bool = True,
+) -> Prospect:
     if not base_url.startswith("http"):
         base_url = "https://" + base_url
     client = PoliteClient(base_url)
@@ -945,7 +1175,9 @@ def ingest(base_url: str, company_name: str = "",
     if verbose:
         print(f"  robots.txt: {client.robots_reason}")
 
-    queue: list[str] = [normalise(urllib.parse.urljoin(base_url, p)) for p in SEED_PATHS]
+    queue: list[str] = [
+        normalise(urllib.parse.urljoin(base_url, p)) for p in SEED_PATHS
+    ]
     seen: set[str] = set()
     docs: list[Document] = []
     raw: dict[str, str] = {}
@@ -966,22 +1198,35 @@ def ingest(base_url: str, company_name: str = "",
     # apart: [verified] 39.5 s of politeness extended to a host that does not
     # exist. A host that HANGS was worse, at roughly 24 x TIMEOUT.
     fail = client.robots_failure
-    if fail is not None and fail.outcome in (PAGE_DNS_FAILURE,
-                                             PAGE_TRANSPORT_ERROR):
+    if fail is not None and fail.outcome in (PAGE_DNS_FAILURE, PAGE_TRANSPORT_ERROR):
         client.close()
-        return _unreachable(base_url, company_name, domain, fail,
-                            CRAWL_ABORTED_UNREACHABLE,
-                            client.robots_reason, verbose)
+        return _unreachable(
+            base_url,
+            company_name,
+            domain,
+            fail,
+            CRAWL_ABORTED_UNREACHABLE,
+            client.robots_reason,
+            verbose,
+        )
 
     # A 5xx robots.txt is a full disallow (RFC 9309 s2.3.1.4), so every URL
     # would be skipped one at a time. Say so once instead.
     if client.robots_reason == ROBOTS_SERVER_ERROR:
         client.close()
         return _unreachable(
-            base_url, company_name, domain,
-            PageOutcome(f"{base_url}/robots.txt", PAGE_SKIPPED_ROBOTS,
-                        detail="robots.txt returned 5xx: full disallow"),
-            CRAWL_ABORTED_ROBOTS, client.robots_reason, verbose)
+            base_url,
+            company_name,
+            domain,
+            PageOutcome(
+                f"{base_url}/robots.txt",
+                PAGE_SKIPPED_ROBOTS,
+                detail="robots.txt returned 5xx: full disallow",
+            ),
+            CRAWL_ABORTED_ROBOTS,
+            client.robots_reason,
+            verbose,
+        )
 
     # Consecutive transport failures with nothing fetched yet. A host that
     # accepts connections and then hangs cannot be settled by one attempt the
@@ -991,9 +1236,10 @@ def ingest(base_url: str, company_name: str = "",
     while queue and len(docs) < max_pages:
         # Serve the highest-value kind that is still under its cap, oldest URL
         # within it. Kind comes from the path, so this costs no extra request.
-        idx = min(range(len(queue)),
-                  key=lambda i: (queue_rank(classify(queue[i]),
-                                            kind_counts, max_pages), i))
+        idx = min(
+            range(len(queue)),
+            key=lambda i: (queue_rank(classify(queue[i]), kind_counts, max_pages), i),
+        )
         url = normalise(queue.pop(idx))
         if url in seen:
             continue
@@ -1006,8 +1252,11 @@ def ingest(base_url: str, company_name: str = "",
         html, outcome = client.get(url)
         outcomes[url] = outcome
         if html is None:
-            if outcome.outcome in (PAGE_DNS_FAILURE, PAGE_TIMEOUT,
-                                   PAGE_TRANSPORT_ERROR):
+            if outcome.outcome in (
+                PAGE_DNS_FAILURE,
+                PAGE_TIMEOUT,
+                PAGE_TRANSPORT_ERROR,
+            ):
                 streak += 1
                 if not docs and streak >= UNREACHABLE_STREAK:
                     aborted = True
@@ -1027,8 +1276,9 @@ def ingest(base_url: str, company_name: str = "",
             # `thin` and `empty` are the word-count distinction the schema
             # comment asks for, at the granularity that changes a diagnosis:
             # empty usually means client-rendered, thin means we nearly had it.
-            outcomes[url] = PageOutcome(url, PAGE_THIN_EXTRACTION,
-                                        http_status=200, detail=reason)
+            outcomes[url] = PageOutcome(
+                url, PAGE_THIN_EXTRACTION, http_status=200, detail=reason
+            )
 
         for link in discover_links(html, url, domain):
             if link not in seen and len(seen) + len(queue) < max_pages * 3:
@@ -1040,8 +1290,7 @@ def ingest(base_url: str, company_name: str = "",
     # difference between "we looked and there was nothing" and "we stopped
     # looking", and only one of those is a fact about the company.
     for leftover in queue:
-        outcomes.setdefault(leftover, PageOutcome(leftover,
-                                                  PAGE_BUDGET_EXHAUSTED))
+        outcomes.setdefault(leftover, PageOutcome(leftover, PAGE_BUDGET_EXHAUSTED))
 
     # Drop near-duplicate pages (same content on /about and /about-us).
     docs = deduplicate(docs, outcomes)
@@ -1055,13 +1304,13 @@ def ingest(base_url: str, company_name: str = "",
         crawled_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
         robots_reason=client.robots_reason,
         page_outcomes=[asdict(o) for o in outcomes.values()],
-        crawl_outcome=(CRAWL_ABORTED_UNREACHABLE if aborted
-                       else CRAWL_COMPLETED),
+        crawl_outcome=(CRAWL_ABORTED_UNREACHABLE if aborted else CRAWL_COMPLETED),
     )
 
 
-def deduplicate(docs: list[Document],
-                outcomes: dict[str, PageOutcome]) -> list[Document]:
+def deduplicate(
+    docs: list[Document], outcomes: dict[str, PageOutcome]
+) -> list[Document]:
     """
     Collapse URLs serving the same page into one document, recording what was
     lost. Mutates `outcomes`, and returns the survivors.
@@ -1091,8 +1340,11 @@ def deduplicate(docs: list[Document],
             # into a plain duplicate: it is the observable evidence of an A7
             # violation on that URL, and the only place we can see it without
             # fetching the same URL twice.
-            how = ("reordered" if other.content_hash != canonical.content_hash
-                   else "identical")
+            how = (
+                "reordered"
+                if other.content_hash != canonical.content_hash
+                else "identical"
+            )
             # A disagreement about `kind` between two URLs for one page is
             # the measurement §1.1c said it did not have. Record it; do not
             # invent a winner. It used to be recorded ONLY here, inside a
@@ -1107,9 +1359,12 @@ def deduplicate(docs: list[Document],
                 if other.kind not in canonical.kind_conflicts:
                     canonical.kind_conflicts.append(other.kind)
                     canonical.kind_conflicts.sort()
-            outcomes[other.url] = PageOutcome(other.url, PAGE_DUPLICATE_CONTENT,
-                                              http_status=200,
-                                              detail=f"{how} of {canonical.url}")
+            outcomes[other.url] = PageOutcome(
+                other.url,
+                PAGE_DUPLICATE_CONTENT,
+                http_status=200,
+                detail=f"{how} of {canonical.url}",
+            )
         survivors.append(canonical)
     return survivors
 
@@ -1136,8 +1391,10 @@ def explain_empty_crawl(p: Prospect) -> str:
     # reader to check a robots policy on a host that does not exist.
     for transport in (PAGE_DNS_FAILURE, PAGE_TIMEOUT, PAGE_TRANSPORT_ERROR):
         if tally.get(transport):
-            return (f"{tally[transport]} of {len(p.page_outcomes)} URLs ended "
-                    f"in {transport}")
+            return (
+                f"{tally[transport]} of {len(p.page_outcomes)} URLs ended "
+                f"in {transport}"
+            )
     if p.robots_reason == ROBOTS_SERVER_ERROR:
         return "robots.txt returned 5xx; RFC 9309 treats that as full disallow"
     if p.robots_reason == ROBOTS_FETCH_FAILED:
@@ -1148,9 +1405,15 @@ def explain_empty_crawl(p: Prospect) -> str:
     return f"{count} of {len(p.page_outcomes)} URLs ended in {dominant}"
 
 
-def _unreachable(base_url: str, company_name: str, domain: str,
-                 outcome: PageOutcome, crawl_outcome: str,
-                 robots_reason: str, verbose: bool) -> Prospect:
+def _unreachable(
+    base_url: str,
+    company_name: str,
+    domain: str,
+    outcome: PageOutcome,
+    crawl_outcome: str,
+    robots_reason: str,
+    verbose: bool,
+) -> Prospect:
     """A crawl that stopped before it started, with the reason attached."""
     if verbose:
         print(f"  aborted: {crawl_outcome} ({outcome.outcome})")
@@ -1208,6 +1471,7 @@ def to_json(p: Prospect) -> str:
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print(__doc__)
         raise SystemExit(1)
@@ -1219,18 +1483,20 @@ if __name__ == "__main__":
         with open(out, "w", encoding="utf-8") as f:
             f.write(to_json(prospect))
         s = prospect.signals
-        print(f"  robots:    {prospect.robots_reason} "
-              f"({len(prospect.outcomes(PAGE_SKIPPED_ROBOTS))} paths skipped)")
+        print(
+            f"  robots:    {prospect.robots_reason} "
+            f"({len(prospect.outcomes(PAGE_SKIPPED_ROBOTS))} paths skipped)"
+        )
         print(f"  {s.pages_crawled} pages, {s.total_words} words")
-        recovered = sum(1 for d in prospect.documents
-                        if d.extract_reason != EXTRACT_OK)
-        print(f"  extract:   {recovered} recovered, "
-              f"{len(prospect.outcomes(PAGE_THIN_EXTRACTION))} too thin")
+        recovered = sum(1 for d in prospect.documents if d.extract_reason != EXTRACT_OK)
+        print(
+            f"  extract:   {recovered} recovered, "
+            f"{len(prospect.outcomes(PAGE_THIN_EXTRACTION))} too thin"
+        )
         tally: dict[str, int] = {}
         for o in prospect.page_outcomes:
             tally[o["outcome"]] = tally.get(o["outcome"], 0) + 1
-        print("  outcomes:  " + ", ".join(
-            f"{k} {v}" for k, v in sorted(tally.items())))
+        print("  outcomes:  " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
         print(f"  crawl:     {prospect.crawl_outcome}")
         # Printed only when it happens, and it has never happened. The first
         # crawl that produces one is the measurement docs/open-questions.md
@@ -1238,12 +1504,18 @@ if __name__ == "__main__":
         # out of the artifact afterwards.
         contested = [d for d in prospect.documents if d.kind_conflicts]
         for d in contested:
-            print(f"  kind?:     {d.url} is {d.kind}, also classified "
-                  f"{', '.join(d.kind_conflicts)} -- section 1.1c")
-        print(f"  team page: {s.has_team_page} ({s.people_listed} people, "
-              f"{s.technical_roles_named} technical mentions)")
-        print(f"  careers:   {s.has_careers_page} ({s.open_roles_seen} roles, "
-              f"{s.technical_roles_open} technical)")
+            print(
+                f"  kind?:     {d.url} is {d.kind}, also classified "
+                f"{', '.join(d.kind_conflicts)} -- section 1.1c"
+            )
+        print(
+            f"  team page: {s.has_team_page} ({s.people_listed} people, "
+            f"{s.technical_roles_named} technical mentions)"
+        )
+        print(
+            f"  careers:   {s.has_careers_page} ({s.open_roles_seen} roles, "
+            f"{s.technical_roles_open} technical)"
+        )
         print(f"  blog:      {s.blog_posts_seen} posts, latest {s.latest_post_date}")
         print(f"  -> {out}")
         if not prospect.documents:
