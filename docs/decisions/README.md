@@ -38,3 +38,4 @@ Every record states four things:
 | [0020](0020-evaluate-without-a-judge.md) | The harness computes the metrics that need no judge | Accepted |
 | [0021](0021-publication-dates-come-from-evidence-or-nowhere.md) | A publication date comes from evidence, or from nowhere | Accepted |
 | [0022](0022-local-generation-by-default.md) | Local generation by default; OpenAI as the alternative | Accepted |
+| [0023](0023-q4-asks-for-stated-needs.md) | q4 asks what a company says it needs, not what hurts | Accepted |

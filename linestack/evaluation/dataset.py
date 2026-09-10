@@ -39,7 +39,7 @@ QUESTION_IDS = (
     "q1_what_and_to_whom",
     "q2_technical_capacity",
     "q3_growth_signals",
-    "q4_stated_pain",
+    "q4_stated_need",
 )
 
 # The words each question is asked in. One definition: the scaffold writes it
@@ -51,7 +51,7 @@ QUESTIONS = {
     "q1_what_and_to_whom": "What does this company do, and who does it sell to?",
     "q2_technical_capacity": "What evidence is there of in-house technical capacity?",
     "q3_growth_signals": "What signals are there that they are investing or growing?",
-    "q4_stated_pain": "What pain or problem do they state explicitly?",
+    "q4_stated_need": "What need or priority do they state explicitly?",
 }
 
 OUTCOMES = ("answerable", "insufficient_evidence")

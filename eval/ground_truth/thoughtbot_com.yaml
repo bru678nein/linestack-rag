@@ -22,14 +22,16 @@ prospect:
 # every page it called a job posting and decide if it is a vacancy.
 signals:
   has_team_page: true
-  people_listed: 54
+  people_listed: 53
   open_roles_seen: 0
   technical_roles_open: 0
   latest_post_date: "2026-09-02"
   notes: >
-    people_listed counted by hand on the live https://thoughtbot.com/team on
-    2026-09-03: 54 person cards. It agrees with the crawler and with the
-    crawled text, which lists 54 name-and-title pairs.
+    people_listed re-counted by hand on the live https://thoughtbot.com/team
+    on 2026-09-10: 53 person cards. It agrees with the crawler's 53 on the
+    2026-09-09 crawl. It was 54 on 2026-09-03, by hand and by the crawler, so
+    both counts moved together: one fewer person is listed, which is the site
+    changing, not a counting defect.
 
     Note what this field is: how many people the PAGE lists, not how many the
     company employs. They match here; they will not always.
@@ -93,8 +95,8 @@ questions:
       - TODO what a fluent, confident, wrong answer would say here.
       #  This is the highest-value field in the file (§1).
 
-  - id: q4_stated_pain
-    question: What pain or problem do they state explicitly?
+  - id: q4_stated_need
+    question: What need or priority do they state explicitly?
     reference: >
       TODO 2-4 sentences, in the register a colleague would use,
       claiming only what the pages in source_urls support.

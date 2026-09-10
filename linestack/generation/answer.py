@@ -431,7 +431,7 @@ async def _main(argv: list[str]) -> int:
     parser.add_argument("--prospect", required=True, help="domain, e.g. fly.io")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--question")
-    group.add_argument("--id", help="q1_what_and_to_whom ... q4_stated_pain, or q5")
+    group.add_argument("--id", help="q1_what_and_to_whom ... q4_stated_need, or q5")
     parser.add_argument("-k", type=int, default=None, help="passages to retrieve")
     args = parser.parse_args(argv)
 

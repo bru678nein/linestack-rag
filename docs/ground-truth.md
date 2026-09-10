@@ -73,15 +73,17 @@ questions:
       crawled corpus. The correct answer is that the corpus does not support
       a growth claim. See §3.
 
-  - id: q4_stated_pain
-    question: What pain or problem do they state explicitly?
+  - id: q4_stated_need
+    question: What need or priority do they state explicitly?
     reference: >
       ...
     source_urls:
       - https://thoughtbot.com/...
     must_not_claim:
-      - Pain inferred from the absence of something. Only pain the company
-        states in its own words.
+      - A need inferred from an absence. No open roles is not a stated need to
+        hire; only needs the company states in its own words count.
+      - A problem the company solves for its clients, presented as its own
+        need. That is q1 evidence (ADR-0023).
 ```
 
 ### Field meanings

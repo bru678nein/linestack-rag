@@ -148,7 +148,7 @@ def test_unscored_pairs_are_not_in_the_denominator() -> None:
         _scored("q1_what_and_to_whom", [TEAM]),
         PairResult("q2_technical_capacity", UNWRITTEN, "reference not written"),
         PairResult("q3_growth_signals", NO_EVIDENCE_EXPECTED, "cites nothing"),
-        PairResult("q4_stated_pain", NOT_INGESTED, "never crawled"),
+        PairResult("q4_stated_need", NOT_INGESTED, "never crawled"),
     )
 
     assert record.recall_at(5) == 1.0
@@ -190,10 +190,10 @@ def test_the_report_names_an_unscored_pair_and_its_reason() -> None:
     lines = "\n".join(
         _record(
             PairResult(
-                "q4_stated_pain", NOT_INGESTED, "https://ex.test/x: never attempted"
+                "q4_stated_need", NOT_INGESTED, "https://ex.test/x: never attempted"
             )
         ).as_lines()
     )
 
-    assert "q4_stated_pain: not_ingested" in lines
+    assert "q4_stated_need: not_ingested" in lines
     assert "never attempted" in lines

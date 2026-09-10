@@ -55,10 +55,15 @@ contain the evidence. Recall@k is: of the retrieved chunks at cut-off `k`, did a
 least one come from a document whose `source_url` is in that list?
 
 Reported at k = 1, 3, 5, 10, **broken down per question**, because the four
-questions fail differently. **[assumed]** question 4 ("what pain do they state
-explicitly") will have the lowest recall, because the wording of the question and
-the wording on the page share little vocabulary. That expectation is what the
-harness is for.
+questions fail differently. **[assumed]** question 4 ("what need or priority do
+they state explicitly") will have the lowest recall, because its evidence lives
+where ranking does worst: job postings and engineering posts that state a need
+in their own vocabulary ("we're looking for someone to work on that networking
+team") rather than in the question's. It is also the question most often
+answered `insufficient_evidence`, because a company that is not hiring often
+states no need at all. The wording changed from "what pain" on 2026-09-10
+(ADR-0023), and this expectation was restated for it. It stays an assumption
+until the harness measures it.
 
 Recall is computed at document granularity, not chunk granularity, so that the
 metric does not change meaning when chunk sizes change (ADR-0005). A chunking

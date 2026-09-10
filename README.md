@@ -34,7 +34,7 @@ For each prospect the system answers exactly four questions:
 1. What does this company do, and who does it sell to?
 2. What evidence is there of in-house technical capacity?
 3. What signals are there that they are investing or growing?
-4. What pain or problem do they state explicitly?
+4. What need or priority do they state explicitly?
 
 A fifth question — "what is a concrete angle for a first approach?" — is a
 product output, not an extraction task. It has no ground truth, so it is
