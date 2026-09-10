@@ -401,6 +401,100 @@ async def test_a_genuinely_changed_document_replaces_only_its_own_chunks(
     assert after_other == before_other, "an unrelated document was re-chunked"
 
 
+_FIRST_HEADER = (
+    "SELECT split_part(c.content, E'\\n', 1) FROM chunks c "
+    "  JOIN documents d ON d.id = c.document_id "
+    " WHERE d.prospect_id = :p AND d.source_url = :u "
+    " ORDER BY c.chunk_index LIMIT 1"
+)
+_OLDEST_CHUNK = (
+    "SELECT min(c.created_at) FROM chunks c "
+    "  JOIN documents d ON d.id = c.document_id "
+    " WHERE d.prospect_id = :p AND d.source_url = :u"
+)
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("published", "2020-05-17"),
+        ("title", "A page given a new title"),
+        ("kind", "blog_post"),
+    ],
+)
+async def test_a_changed_header_input_rechunks_even_when_the_text_did_not(
+    db_session, field: str, value: str
+) -> None:
+    """A chunk is a function of four inputs, and the skip used to check one.
+
+    **[verified] 2026-09-10.** ADR-0021 corrected `published` on most
+    documents without changing their text. The re-load updated
+    `documents.published_at` and skipped the chunks, so 30 of thoughtbot's 43
+    chunks kept embedding the fabricated `2026-01-01` in their provenance
+    header -- the part the model reads. The date column and the chunk text
+    disagreed, silently, and nothing counted it.
+    """
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    target = artifact.documents[0]
+    untouched_url = artifact.documents[1].url
+    params = {"p": first.prospect_id, "u": untouched_url}
+    before_other = await db_session.scalar(text(_OLDEST_CHUNK), params)
+
+    assert target.kind != "blog_post" or field != "kind", "precondition"
+    setattr(target, field, value)  # the text, and so stable_hash, unchanged
+
+    second = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    assert second.documents_relabelled == 1
+    assert second.documents_unchanged == 36
+    header = await db_session.scalar(
+        text(_FIRST_HEADER), {"p": first.prospect_id, "u": target.url}
+    )
+    assert value in header, f"the chunk header still shows the old {field}"
+    after_other = await db_session.scalar(text(_OLDEST_CHUNK), params)
+    assert after_other == before_other, "an unrelated document was re-chunked"
+
+
+async def test_chunks_left_stale_by_an_earlier_load_are_healed(db_session) -> None:
+    """The case the first version of the relabelled fix could not see.
+
+    **[verified] 2026-09-10.** An earlier load had already corrected the
+    document ROW, so row and artifact agreed -- while the chunks still carried
+    the old `2026-01-01` in their header. A check of title, kind and date on
+    the row passed, skipped the document, and healed nothing. The only witness
+    to the staleness is the chunk text itself, so that is what is checked.
+    """
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+    target = artifact.documents[0]
+    params = {"p": first.prospect_id, "u": target.url}
+
+    # What the old loader left behind: the row is current, the header is not.
+    await db_session.execute(
+        text(
+            "UPDATE chunks c SET content = 'Stale title · website · 2026-01-01' "
+            "  || substr(c.content, strpos(c.content, E'\\n\\n')) "
+            "  FROM documents d WHERE d.id = c.document_id "
+            "   AND d.prospect_id = :p AND d.source_url = :u"
+        ),
+        params,
+    )
+    await db_session.flush()
+    assert "Stale title" in await db_session.scalar(text(_FIRST_HEADER), params)
+
+    second = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    assert second.documents_relabelled == 1
+    assert second.documents_unchanged == 36
+    assert "Stale title" not in await db_session.scalar(text(_FIRST_HEADER), params)
+
+
 async def test_a_document_with_no_stable_hash_is_rechunked_not_skipped(
     db_session,
 ) -> None:

@@ -37,6 +37,7 @@ from linestack.ingestion.chunking import (
     ChunkingReport,
     chunk_document,
     default_token_counter,
+    provenance_header,
 )
 from linestack.retrieval.scope import ProspectScope
 
@@ -145,6 +146,10 @@ class LoadReport:
     documents_updated: int = 0
     documents_unchanged: int = 0
     documents_reordered: int = 0
+    #: Same text, but the chunks carry a provenance header other than the one
+    #: the document would get now: a changed title, kind or date, a changed
+    #: header format, or chunks an earlier load left stale. Re-chunked.
+    documents_relabelled: int = 0
     chunks_written: int = 0
     blocks_force_split: int = 0
 
@@ -162,7 +167,8 @@ class LoadReport:
             f"  documents: {self.documents_inserted} inserted, "
             f"{self.documents_updated} updated, "
             f"{self.documents_unchanged} unchanged, "
-            f"{self.documents_reordered} reordered",
+            f"{self.documents_reordered} reordered, "
+            f"{self.documents_relabelled} relabelled",
             f"  chunks:    {self.chunks_written} written"
             + (
                 f", {self.blocks_force_split} blocks force-split"
@@ -281,8 +287,26 @@ async def load_artifact(
 #   stable_hash equal, content_hash equal      unchanged   touch timestamps
 #   stable_hash equal, content_hash differs    reordered   store the new exact
 #                                                          hash, keep chunks
+#   stable_hash equal, chunk header stale      relabelled  re-chunk
 #   stable_hash differs                        changed     re-chunk
 #   stored stable_hash IS NULL                 unknown     re-chunk
+#
+# `relabelled` exists because a chunk is a function of FOUR inputs, not one:
+# the text, and the title, kind and publication date that ADR-0005's
+# provenance header writes into every chunk's content. The skip test used to
+# look at the text alone. **[verified] 2026-09-10**: after ADR-0021 corrected
+# `published` on most documents, a re-load updated `documents.published_at`
+# (0 rows left at 2026-01-01) and skipped the chunks -- 30 of thoughtbot's 43
+# still embedded the fabricated `2026-01-01` in their header, and 3 of fly.io's
+# embedded `1998-01-01`. The database disagreed with itself, and the side the
+# model reads was the wrong one.
+#
+# Checked against the chunks THEMSELVES, not the document row. The first
+# version of this fix compared title, kind and date on the row -- and healed
+# nothing, because the earlier load had already corrected the row: row and
+# artifact agreed while the chunks still said 2026-01-01. The chunk text is the
+# only witness to that staleness. Checking the header the chunks carry also
+# catches a change to the header's FORMAT, which no comparison of inputs can.
 #
 # Keyed on stable_hash, NOT content_hash, and ADR-0008 is corrected accordingly
 # in this module's docstring. fly.io/about reshuffles its roster on every
@@ -304,9 +328,10 @@ async def _load_documents(
     count = count_tokens or default_token_counter()
     scope = ProspectScope(session, report.prospect_id)
     fetched_at = artifact.crawled_at_utc
+    heads = await scope.first_chunk_contents()
 
     existing = {
-        row.source_url: (row.id, row.stable_hash, row.content_hash)
+        row.source_url: row
         for row in (
             await session.execute(
                 text(
@@ -325,10 +350,22 @@ async def _load_documents(
         )
 
         if previous is not None:
-            _, stored_stable, stored_content = previous
-            if stored_stable and stored_stable == doc.stable_hash:
+            same_text = bool(previous.stable_hash) and (
+                previous.stable_hash == doc.stable_hash
+            )
+            # Do the stored chunks start with the header this document would
+            # get now? The "\n\n" makes the match exact: a header that is a
+            # prefix of the old one ("Title · website" against "Title ·
+            # website · 2026-01-01") does not pass. A document with no stored
+            # chunk fails too, and is re-chunked -- the safe direction.
+            header = provenance_header(doc.title, doc.kind, doc.published)
+            head = heads.get(previous.id)
+            same_header = head is not None and head.startswith(
+                f"{header}\n\n" if header else ""
+            )
+            if same_text and same_header:
                 report.documents_updated += 1
-                if stored_content != doc.content_hash:
+                if previous.content_hash != doc.content_hash:
                     # Same words, different order. Recorded rather than
                     # collapsed into "unchanged": it is the observable evidence
                     # that this source reshuffles, and re-checking it on every
@@ -339,6 +376,8 @@ async def _load_documents(
                     report.documents_unchanged += 1
                 continue
             report.documents_updated += 1
+            if same_text:
+                report.documents_relabelled += 1
         else:
             report.documents_inserted += 1
 
@@ -360,12 +399,11 @@ async def _load_documents(
 def _parse_published(value: str | None) -> dt.date | None:
     """The artifact's `published` as a date, or None.
 
-    Stored exactly as given, never repaired. **[verified]** 31 of the corpus's
-    76 documents carry exactly `2026-01-01` and 9 carry none -- htmldate's
-    coarse fallback rather than real publication dates. A4 forbids inventing a
-    measurement, so a bad date is stored as the bad date it is. Anything keying
-    on recency -- `latest_post_date`, the chunk provenance header -- rests on
-    that, and this comment is where to start when it misleads someone.
+    Stored exactly as given, never repaired: A4 forbids inventing a
+    measurement. Until ADR-0021 that meant storing htmldate's coarse fallback
+    -- 31 of 76 documents carried exactly `2026-01-01`. The crawler now records
+    a date only when the page declares one, so a bad date here is a crawler
+    defect to fix upstream, not something to patch in the loader.
     """
     if not value:
         return None

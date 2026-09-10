@@ -16,7 +16,8 @@ Three sections:
 All **[verified]** against live sites on 2026-09-01/02. Every defect listed
 here is now fixed. What remains is recorded inline under the entry it belongs
 to: §1.1c does not yet know which URL should win a genuine `kind`
-disagreement.
+disagreement, and §1.7 does not yet re-chunk when a chunk size parameter
+changes.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -395,6 +396,30 @@ re-adds it on the reasonable-sounding theory that a title saying "Careers"
 means a careers page.
 
 ---
+
+### 1.7 A chunking change did not reach stored chunks — HALF FIXED 2026-09-10
+
+The loader skips re-chunking a document whose text has not changed (A7).
+**[verified] 2026-09-10** that skip was keyed on the text alone, and a chunk
+depends on more than its text: ADR-0005's provenance header writes the title,
+kind and publication date into every chunk. After ADR-0021 corrected
+`published` on most documents, a reload updated `documents.published_at` and
+left the chunks alone. 30 of thoughtbot's 43 chunks still embedded the
+fabricated `2026-01-01`, and that is the side the model reads.
+
+**Fixed for the header.** The loader now compares the header each document's
+chunks actually carry with the one the document would get now, and re-chunks
+on any difference (`relabelled`). It checks the chunks rather than the
+document row because the first version of the fix checked the row and healed
+nothing: the earlier load had already corrected the row, so row and artifact
+agreed while the chunks did not. The reload brought both prospects to 0.
+
+**Still open for the size band.** Changing `chunk_target_tokens`, the overlap
+or `chunk_hard_max_tokens` changes how a document is split without changing
+its text or its header, so it still does not reach stored chunks. The
+structural fix is a chunker version recorded on each chunk and compared at
+load. It is needed before the first chunking before-and-after under A3: an A/B
+run over a corpus that quietly kept its old chunks would measure nothing.
 
 ## 2. Assumptions that need verification
 

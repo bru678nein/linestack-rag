@@ -212,6 +212,26 @@ class ProspectScope:
             )
         )
 
+    async def first_chunk_contents(self) -> dict[int, str]:
+        """document_id -> the content of its first chunk, for this prospect.
+
+        The loader checks these against the provenance header each document
+        would get NOW. Comparing the document row instead cannot see chunks a
+        previous load left stale, because that load still updated the row.
+        **[verified] 2026-09-10**: exactly that left 30 of thoughtbot's 43
+        chunks carrying a fabricated date after the row itself was corrected.
+        """
+        rows = (
+            await self._session.execute(
+                text(
+                    "SELECT document_id, content FROM chunks "
+                    " WHERE prospect_id = :p AND chunk_index = 0"
+                ),
+                {"p": self._prospect_id},
+            )
+        ).all()
+        return {row.document_id: row.content for row in rows}
+
     async def pending_embedding(self, limit: int) -> list[PendingChunk]:
         """Chunks written but not yet embedded, oldest first.
 

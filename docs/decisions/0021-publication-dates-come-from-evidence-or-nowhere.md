@@ -111,10 +111,16 @@ for keeping the class-based person count.
   older artifacts still load. It is **not** persisted: `documents` has no
   column, and adding one before a recency-weighting decision needs it is
   infrastructure ahead of measurement (A9).
-- The chunk provenance header still embeds `published`. It now embeds a real
-  date or nothing, rather than `2026-01-01` on 41% of chunks. Whether that
-  changes retrieval is unmeasured, and is exactly the kind of thing the harness
-  exists to answer once the ground-truth set has scored pairs.
+- The chunk provenance header embeds `published`, and **for a day it
+  embedded the old fabricated dates anyway.** The first re-load after this
+  change updated `documents.published_at` but skipped re-chunking, because the
+  skip was keyed on the text alone: 30 of thoughtbot's 43 chunks still carried
+  `2026-01-01` in their header, and 6 of fly.io's carried `2026-01-01` or
+  `1998-01-01`. This bullet originally said the header "now embeds a real date
+  or nothing". For the loaded corpus that was false. Fixed 2026-09-10: the
+  loader now re-chunks any document whose chunks carry a header other than the
+  one it would get now (`relabelled`), and the reload brought both prospects
+  to 0. Whether the corrected header changes retrieval is unmeasured.
 
 ## Alternatives
 

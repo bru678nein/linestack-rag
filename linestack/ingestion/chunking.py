@@ -142,10 +142,13 @@ def provenance_header(title: str, kind: str, published: str | None) -> str:
     `content_tsv`, and counts toward `token_count`. It is a chunking parameter
     like any other and belongs in the A3 before-and-after.
 
-    Note the date is often not a real publication date. **[verified]** 31 of
-    the corpus's 76 documents carry exactly `2026-01-01` and 9 carry none --
-    htmldate's coarse fallback. Stored as given (A4 forbids inventing a
-    measurement); anything keying on recency rests on that.
+    The date is only as good as the crawler's. Until ADR-0021, 31 of 76
+    documents carried htmldate's coarse fallback `2026-01-01`; the crawler now
+    records a date only when the page declares one.
+
+    Changing this function's output changes every chunk, and that takes effect
+    on the next load: the loader compares the header a document's chunks carry
+    against this function's output and re-chunks on any difference.
     """
     parts = [p for p in (title.strip(), kind, published) if p]
     return " · ".join(parts)
