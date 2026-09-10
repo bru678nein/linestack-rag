@@ -44,8 +44,8 @@ signals:
     "Our Open Positions / We currently have no open positions." Zero, and so
     zero technical ones. This is the signal the crawler once reported as 4
     roles / 3 technical, by counting pages classified job_posting instead of
-    role identities. Still 0 and 0 on the 2026-09-09 crawl; not re-checked on
-    the live site since 2026-09-03.
+    role identities. Re-checked on the live site on 2026-09-10: still no open
+    positions, agreeing with the 2026-09-09 crawl.
 
     latest_post_date re-checked on the live blog on 2026-09-10: the newest post
     is dated 2026-09-09, agreeing with the crawler. It was 2026-09-02 on the
