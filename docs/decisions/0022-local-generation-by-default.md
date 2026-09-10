@@ -1,11 +1,9 @@
 # ADR-0022 — Local generation by default; OpenAI as the alternative
 
-Status: **Proposed** · Date: 2026-09-10
+Status: Accepted · Date: 2026-09-10 (proposed and measured the same day)
 
 Extends [ADR-0017](0017-local-embeddings-by-default.md) from embeddings to
-generation. Becomes Accepted when the local path has been measured on this
-machine — see *What acceptance requires* below. Until then the code is built
-and tested around the model, and the model itself has not run.
+generation. Measured on this machine the day it was proposed; see *Measured*.
 
 ## Decision
 
@@ -102,6 +100,58 @@ Measured on this machine, recorded here, before the status changes:
 4. Whether `enable_thinking=False` actually suppresses reasoning on this
    transformers version — the template accepting the variable is verified;
    the model honouring it is not.
+
+## Measured
+
+**[verified] 2026-09-10**, M5 MacBook Air with 16 GB, `Qwen/Qwen3-1.7B` at
+prompt `answer-v1`, on the thoughtbot corpus reloaded after ADR-0021.
+
+| | |
+| --- | --- |
+| download | 4.08 GB in 203 s, once |
+| model load, from cache | 7.5 s |
+| memory, alongside the embedder | 2.97 GB RSS, 4.83 GB GPU peak |
+| generation | 5.3 to 7.8 s per answer |
+| retrieval | 0.01 to 0.04 s |
+
+**Reasoning is suppressed.** With `enable_thinking=False` the model answers
+"Four." with no `<think>` block. With it on, the tag survives
+`skip_special_tokens=True` (it is not a special token), so `strip_reasoning`
+would still see it if suppression ever failed.
+
+### Five answers, no detectable problem, no declines, and that is the finding
+
+All five cited real passages, so every judge-free check passed. Two claims were
+then checked against the chunk text.
+
+- **q5** says thoughtbot prototypes with "Claude Code" and cites the MVP page.
+  **Supported**: both chunks of `/services/mvp-development` mention it.
+- **q3** says the company shows "investment in team development and strategic
+  growth". **Not supported.** Every growth-related match in the chunks it
+  cites is about an individual's career: "We expect team members to grow and
+  progress in their career path", "areas for growth", "a long-term plan for
+  your growth". Nothing there is about the company growing, hiring or
+  investing, and the careers page says there are no open positions. The model
+  read personal growth as company growth and built a confident paragraph on
+  it. On this corpus the answer should almost certainly have been a decline.
+
+To the checks, those two answers are indistinguishable, because both cite
+valid passages. **That is the limit of judge-free checking, measured: it
+verifies that a citation exists, not that it supports the claim.** A plausible
+claim with a real citation passes.
+
+What catches q3 mechanically is not a better citation check. It is ground
+truth: an `insufficient_evidence` pair on q3, scored by whether the answer
+declined (`is_decline`). That needs no judge. It needs the pair written.
+
+**Not acted on, deliberately.** The obvious moves are Qwen3-4B or a stricter
+prompt, and both are the tuning A3 forbids without a metric to judge them by.
+The metric is decline accuracy on insufficient_evidence pairs, and it waits on
+the ground-truth set.
+
+Accepted means local generation works on this machine, measured. It does not
+mean the answers are good, and this section is the evidence that they are not
+yet.
 
 ## Alternatives
 
