@@ -58,16 +58,16 @@ questions:
   - id: q1_what_and_to_whom
     question: What does this company do, and who does it sell to?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
+      thoughtbot works with companies through every step of identifying and
+      solving a problem: it runs product design sprints, builds apps, and
+      deploys them. It sells to healthcare, financial and insurance companies.
     source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      - https://thoughtbot.com/about
+      - https://thoughtbot.com/jobs
+      - https://thoughtbot.com/services/mvp-development
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That thoughtbot is itself a healthcare or financial company. The
+        "Healthcare + Financial" on /jobs is a list of employee benefits.
 
   - id: q2_technical_capacity
     question: What evidence is there of in-house technical capacity?
