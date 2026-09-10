@@ -16,8 +16,9 @@ Three sections:
 All **[verified]** against live sites on 2026-09-01/02. Every defect listed
 here is now fixed. What remains is recorded inline under the entry it belongs
 to: §1.1c does not yet know which URL should win a genuine `kind`
-disagreement, and §1.7 does not yet re-chunk when a chunk size parameter
-changes.
+disagreement, §1.7 does not yet re-chunk when a chunk size parameter
+changes, and §1.8 records whole sections of a site that discovery never
+reaches.
 
 ### 1.1 Silent thin-extraction threshold — FIXED 2026-09-02
 
@@ -420,6 +421,52 @@ its text or its header, so it still does not reach stored chunks. The
 structural fix is a chunker version recorded on each chunk and compared at
 load. It is needed before the first chunking before-and-after under A3: an A/B
 run over a corpus that quietly kept its old chunks would measure nothing.
+
+### 1.8 Discovery never reaches whole sections of a site — RECORDED 2026-09-10
+
+`discover_links` follows only paths matching an allowlist (`about`, `team`,
+`careers`, `jobs`, `blog`, `news`, `services`, `products`, `solutions`, …). A
+link anywhere else is dropped before it is queued, so it leaves no page-outcome
+row either. The record does not say "we stopped looking"; it says nothing.
+
+**[verified] 2026-09-10** on thoughtbot, while writing the first reference:
+the pages that say who thoughtbot sells to, `/industries/*`, were never crawled
+and never discovered. The sitemap robots.txt advertises (`sitemap_main.xml`,
+199 URLs) shows the gap is wider:
+
+| section | pages | allowlisted | fetched on 2026-09-09 |
+| --- | --- | --- | --- |
+| `/case-studies` | 76 | 0 | 0 |
+| `/events` | 51 | 3 | 0 |
+| `/services` | 21 | 21 | 19 |
+| `/resources` | 7 | 0 | 0 |
+| `/industries` | 5 | 0 | 0 |
+| about 35 other sections | 1 each | — | — |
+
+Case studies name clients, which makes them the best evidence there is for
+q1's "who do they sell to", and none were crawled.
+
+**The sitemap alone does not fix it**, and that was measured before building
+it. 197 of the 199 URLs classify as `website`, and the website quota is 18 of
+40 pages (ADR-0007). Appended in sitemap order, the 18 slots go to whatever the
+sitemap happens to list first. Ranked behind the allowlist, `/services` fills
+the quota by itself and `/industries` is still never fetched. Getting the URLs
+is not the bottleneck; choosing which 18 pages is.
+
+**Not fixed, deliberately.** A section-aware ranking changes what every
+prospect's corpus contains, and the evidence that coverage costs answers is one
+case: q1's "who", which a crawled page (`/services/mvp-development`) answered
+anyway. The ingestion-coverage metric (docs/evaluation.md §2.5) exists to
+measure exactly this across prospects, and the ranking waits for it (A3).
+Adding `industries` to the allowlist was rejected: it fixes one site's
+vocabulary and not the next one's, the trap ADR-0014 hit with CSS class names.
+
+**Observed the same day, not a defect.** thoughtbot's Cloudflare returned
+intermittent 500s on robots.txt to the crawler while a plain request got 200.
+The crawler treated each 5xx as a full disallow (RFC 9309) and stayed off,
+which is correct. Probing stopped there: hunting for the request shape that
+gets a 200 would be working around the site's edge (A6). The one hypothesis
+tested, the `Accept` header, was refuted.
 
 ## 2. Assumptions that need verification
 
