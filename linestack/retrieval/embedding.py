@@ -110,6 +110,21 @@ class LocalEmbedder:
         return vector.tolist()
 
 
+async def embed_question(client, question: str) -> list[float]:
+    """Embed one question the way the chunks were embedded -- the only way.
+
+    bge asks for an instruction on the query side and none on the document
+    side, and `LocalEmbedder.embed_query` is what applies it. Asking without it
+    ranks worse, quietly. This rule used to be written out separately in the
+    harness and in `ask.py`; a third copy was about to go into generation, and
+    three copies of a rule whose failure is silent is how one of them ends up
+    wrong without anybody noticing.
+    """
+    if isinstance(client, LocalEmbedder):
+        return client.embed_query(question)
+    return (await embed_texts(client, [question], EmbedReport()))[0]
+
+
 def build_client(model: str | None = None):
     """The embedder for the configured model. Local unless it is an OpenAI one."""
     name = model or settings.embedding_model

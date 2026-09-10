@@ -42,6 +42,18 @@ QUESTION_IDS = (
     "q4_stated_pain",
 )
 
+# The words each question is asked in. One definition: the scaffold writes it
+# into every ground-truth file and generation asks it
+# (linestack/generation/prompts.py). Two copies would drift, and a question
+# asked in different words from the one the reference answers is a different
+# question -- the pair would then be measuring the rewording.
+QUESTIONS = {
+    "q1_what_and_to_whom": "What does this company do, and who does it sell to?",
+    "q2_technical_capacity": "What evidence is there of in-house technical capacity?",
+    "q3_growth_signals": "What signals are there that they are investing or growing?",
+    "q4_stated_pain": "What pain or problem do they state explicitly?",
+}
+
 OUTCOMES = ("answerable", "insufficient_evidence")
 
 # A scaffolded file is not a written one. The placeholder is rejected so that a
@@ -457,17 +469,7 @@ def scaffold(artifact_path: str | Path, author: str = "TODO your email") -> str:
         "questions:",
     ]
 
-    prompts = {
-        "q1_what_and_to_whom": "What does this company do, and who does it sell to?",
-        "q2_technical_capacity": (
-            "What evidence is there of in-house technical capacity?"
-        ),
-        "q3_growth_signals": (
-            "What signals are there that they are investing or growing?"
-        ),
-        "q4_stated_pain": "What pain or problem do they state explicitly?",
-    }
-    for qid, prompt in prompts.items():
+    for qid, prompt in QUESTIONS.items():
         lines += [
             f"  - id: {qid}",
             f"    question: {prompt}",

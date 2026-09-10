@@ -218,3 +218,11 @@ ask:  ## Retrieve for one question: make ask PROSPECT=fly.io Q="..."
 	@test -n "$(PROSPECT)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"'; exit 2; }
 	@test -n "$(Q)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"'; exit 2; }
 	$(PY) -m linestack.retrieval.ask --prospect $(PROSPECT) --question "$(Q)" $(if $(K),-k $(K),)
+
+.PHONY: answer
+answer:  ## Answer with citations: make answer PROSPECT=x Q="..." (or ID=q2_technical_capacity)
+# Local model by default (ADR-0022). The first run downloads it and loads it;
+# the timing line separates that from generation so neither hides the other.
+	@test -n "$(PROSPECT)" || { echo 'usage: make answer PROSPECT=thoughtbot.com Q="..."   or   ID=q1_what_and_to_whom'; exit 2; }
+	$(PY) -m linestack.generation.answer --prospect $(PROSPECT) \
+	  $(if $(ID),--id $(ID),--question "$(Q)") $(if $(K),-k $(K),)

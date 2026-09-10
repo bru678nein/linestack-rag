@@ -87,10 +87,15 @@ applied against `pgvector/pgvector:pg17` (PostgreSQL 17.11, pgvector 0.8.6) on
 assumed: a chunk claiming one prospect against another prospect's document is
 rejected by the database with a foreign-key violation.
 
-**Not implemented.** Everything else. There is no database load, no chunking, no
-embedding, no retrieval, no generation, no API, no frontend, and no evaluation
-harness. The modules under `linestack/` are empty and carry only a docstring
-stating what each is responsible for.
+**Implemented and tested.** Artifact to Postgres load, chunking (ADR-0005),
+local embeddings (ADR-0017), prospect-scoped vector search (ADR-0009), the
+evaluation harness for the four metrics that need no LLM judge (ADR-0020), and
+cited generation with a local model (ADR-0022, **Proposed**: built and tested
+around the model, with the model itself not yet measured on this machine).
+
+**Not implemented.** The HTTP API, the frontend, observability wiring,
+faithfulness and answer-correctness scoring (both need a judge, ADR-0020), and
+the eval-report delta table (it diffs two runs, and there are not two yet).
 
 **Known defects.** All measured, all in `docs/open-questions.md`. Three are
 **fixed**: the silent 30-word extraction threshold (ADR-0011); the missing
@@ -104,7 +109,7 @@ utility classes; and page-kind misclassification (ADR-0015), where `careers?`
 matching inside a path segment labelled playbook articles as job postings and
 deduplication let crawl order decide a page's `kind`.
 
-**Every defect recorded in `docs/open-questions.md` §1 is now fixed.** Three
+**Every defect recorded in `docs/open-questions.md` §1 is now fixed.** Two
 limitations remain, all documented under the entry they belong to and all
 visible in the output rather than silent:
 
@@ -112,8 +117,6 @@ visible in the output rather than silent:
   page. The conflict is recorded on the document and printed by the crawl, and
   the first observed instance argues against the obvious rule (§1.1c,
   ADR-0019).
-- Publication dates are largely `htmldate`'s coarse fallback — 31 of 76
-  documents share one date — and `latest_post_date` rests on them (§1.6).
 - A roster of single-word names is now counted by its portraits, at the cost
   of a shape a marketing grid of feature cards could also match. Bounded, not
   prevented (§1.1b, ADR-0018).
@@ -174,14 +177,14 @@ Crawl a prospect (this is the only feature code that exists today):
 | Path | Contents |
 | --- | --- |
 | `ingest.py` | The crawler. Working, exercised against live sites. |
-| `linestack/` | Empty modules with responsibility docstrings. |
+| `linestack/` | The pipeline: load, chunking, retrieval, generation, evaluation. `api/` and `observability/` are still docstrings. |
 | `migrations/` | Plain SQL migrations, applied in filename order. |
 | `docs/architecture.md` | Ingestion and query paths, schema, how A1 is enforced. |
 | `docs/decisions/` | One ADR per settled decision. |
 | `docs/evaluation.md` | The harness design, written before the harness. |
 | `docs/ground-truth.md` | Format for the evaluation set and how to write one. |
 | `docs/open-questions.md` | Undecided, assumed, and known-broken. Read this first. |
-| `eval/ground_truth/` | The evaluation set, once it is written. Empty today. |
+| `eval/ground_truth/` | The evaluation set. thoughtbot scaffolded, signals checked, references not yet written. |
 
 ## Conventions
 

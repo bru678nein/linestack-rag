@@ -37,3 +37,4 @@ Every record states four things:
 | [0019](0019-a-contested-kind-is-recorded-not-resolved.md) | A contested `kind` is recorded on the document, not resolved | Accepted |
 | [0020](0020-evaluate-without-a-judge.md) | The harness computes the metrics that need no judge | Accepted |
 | [0021](0021-publication-dates-come-from-evidence-or-nowhere.md) | A publication date comes from evidence, or from nowhere | Accepted |
+| [0022](0022-local-generation-by-default.md) | Local generation by default; OpenAI as the alternative | **Proposed** |

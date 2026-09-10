@@ -53,8 +53,19 @@ class Settings(BaseSettings):
     # error rather than "config says 384, the model returned 1536".
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_dimensions: int = Field(default=384, gt=0)
-    generation_model: str = "gpt-4o-mini"
+    # Local by default, for the same reason as the embedder (ADR-0022,
+    # extending ADR-0017): the pipeline runs with no account and no key. A name
+    # starting with an OpenAI prefix ("gpt-", "o3", ...) routes to the OpenAI
+    # chat API instead; see linestack/generation/client.py.
+    generation_model: str = "Qwen/Qwen3-1.7B"
     generation_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+    # Enough for the two-to-four sentences the prompt asks for, with headroom.
+    generation_max_tokens: int = Field(default=400, gt=0)
+    # Budget for the signals block plus passages, counted with the chunker's
+    # cl100k_base encoding -- not the generation model's own tokenizer, so it
+    # is a budget rather than an exact fit. Five 800-1200 token chunks plus the
+    # signals block fit, which is the intent at retrieval_top_k=5.
+    generation_context_tokens: int = Field(default=6000, gt=0)
 
     # -- retrieval ---------------------------------------------------------
     retrieval_top_k: int = Field(default=5, gt=0)

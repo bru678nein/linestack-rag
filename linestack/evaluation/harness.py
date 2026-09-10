@@ -58,12 +58,7 @@ from linestack.evaluation.metrics import (
     recalls_for_question,
     signal_accuracy,
 )
-from linestack.retrieval.embedding import (
-    EmbedReport,
-    LocalEmbedder,
-    build_client,
-    embed_texts,
-)
+from linestack.retrieval.embedding import build_client, embed_question
 from linestack.retrieval.scope import ProspectScope
 from linestack.retrieval.search import search
 
@@ -306,12 +301,12 @@ class _Embedder:
             # give -- reports setup as embedding.
             started = time.perf_counter()
             self._client = self._client or build_client()
-            await _embed_question("warm-up", self._client)
+            await embed_question(self._client, "warm-up")
             self._record.model_load_seconds = time.perf_counter() - started
             self._ready = True
 
         started = time.perf_counter()
-        vector = await _embed_question(question, self._client)
+        vector = await embed_question(self._client, question)
         self._record.embed_seconds += time.perf_counter() - started
         return vector
 
@@ -429,21 +424,6 @@ async def _evaluate_pair(
         coverage=coverage,
         retrieved_urls=retrieved,
     )
-
-
-async def _embed_question(question: str, client) -> list[float]:
-    """Embed one question the same way the chunks were embedded.
-
-    bge asks for a query prefix and the documents carry none; asking it the
-    same way the chunks were embedded ranks worse. `LocalEmbedder.embed_query`
-    is what applies that, so the branch matters and is not tidiness.
-
-    Takes an already-built client. Building one here would reload the model per
-    question; see evaluate_directory.
-    """
-    if isinstance(client, LocalEmbedder):
-        return client.embed_query(question)
-    return (await embed_texts(client, [question], EmbedReport()))[0]
 
 
 async def _main(argv: list[str]) -> int:
