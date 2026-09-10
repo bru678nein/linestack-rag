@@ -11,7 +11,7 @@
 prospect:
   company_name: thoughtbot.com
   domain: thoughtbot.com
-  crawled_at: "2026-09-02T18:54:28+00:00"
+  crawled_at: "2026-09-09T21:04:38+00:00"
   corpus_artifact: prospect_thoughtbot_com.json
   author: TODO your email
   written_at: "2026-09-03"
@@ -25,7 +25,7 @@ signals:
   people_listed: 53
   open_roles_seen: 0
   technical_roles_open: 0
-  latest_post_date: "2026-09-02"
+  latest_post_date: "2026-09-09"
   notes: >
     people_listed re-counted by hand on the live https://thoughtbot.com/team
     on 2026-09-10: 53 person cards. It agrees with the crawler's 53 on the
@@ -44,13 +44,15 @@ signals:
     "Our Open Positions / We currently have no open positions." Zero, and so
     zero technical ones. This is the signal the crawler once reported as 4
     roles / 3 technical, by counting pages classified job_posting instead of
-    role identities.
+    role identities. Still 0 and 0 on the 2026-09-09 crawl; not re-checked on
+    the live site since 2026-09-03.
 
-    latest_post_date verified as 2026-09-02 on the live blog, which is also the
-    day of the crawl. Checked deliberately BECAUSE it looked suspicious: 31 of
-    the corpus's 76 documents carry htmldate's fallback dates
-    (docs/open-questions.md §1.6), so a date equal to the crawl date is exactly
-    the shape of a bad one. Here it happens to be right.
+    latest_post_date re-checked on the live blog on 2026-09-10: the newest post
+    is dated 2026-09-09, agreeing with the crawler. It was 2026-09-02 on the
+    earlier crawl; a new post went up in between. A date equal to the crawl
+    date is exactly the shape of a bad one, which is why it was checked by hand
+    both times. Since ADR-0021 the crawler records only dates a page declares,
+    and here it is right.
 
 questions:
   - id: q1_what_and_to_whom
