@@ -77,10 +77,40 @@ What moved, answer by answer:
   answers showed that. A contradiction of a signal is checkable without a
   judge; not built yet.
 
+## The model lever, measured — added 2026-09-11
+
+**[verified]** `Qwen/Qwen3-4B`, same prompt (`answer-v3`), corpus and
+retrieval, run with `GENERATION_MODEL` overridden for one run.
+
+| model | declined where it should | declined where it should not | per answer | max RSS | download |
+| --- | --- | --- | --- | --- | --- |
+| Qwen3-1.7B | 1 of 2 | 0 of 2 | ~7.5 s | 2.97 GB (ADR-0022) | 4.08 GB |
+| Qwen3-4B | **0 of 2** | 0 of 2 | ~10 s | 5.93 GB | 7.5 GB |
+
+The bigger model is worse on the metric this ADR is about.
+
+- **q3 answers and then declines**, and the answer part is false: "active
+  recruitment efforts indicate a commitment to growing its workforce". The
+  jobs page says "We currently have no open positions."
+- **q4 takes a client pitch as the company's need**: "it needs to accelerate
+  progress without waiting on full-time hires". That line opens
+  `/services/fractional-product-technical-leadership`, a list of what clients
+  get ("De-risk your roadmap"). The scope in the prompt names exactly this case
+  as not a need.
+- **q1 and q2 are better written**: one cited sentence each, no signals block
+  pasted on the end.
+
+So 4B writes better answers and declines less. One reading is that a model
+more confident in its own reading of the material is more willing to answer.
+Another is that answer-v3 was written against 1.7B's failures. Neither is
+tested; both need more than four pairs.
+
 ## Consequences
 
-- q4 is the remaining failure and the next lever is the model, Qwen3-4B,
-  measured the same way against these three runs.
+- The default stays `Qwen/Qwen3-1.7B`. Qwen3-4B lost on declines, the metric
+  it was tried for, at twice the memory and about 1.4 times the time.
+- q4 remains the failure. Neither lever tried here fixed it; fly.io's pairs
+  come before the next attempt.
 - Run records written before this ADR carry `answer-v1` and are not comparable
   with later runs on the declines. The version in the record is what makes that
   visible.
