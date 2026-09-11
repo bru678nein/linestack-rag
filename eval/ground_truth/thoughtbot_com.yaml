@@ -72,16 +72,16 @@ questions:
   - id: q2_technical_capacity
     question: What evidence is there of in-house technical capacity?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
+      thoughtbot has 22 Senior Developers, 3 Senior Designers, 1 Business
+      Development Manager, 8 Development Team Leads, 2 Product Management Team
+      Leads, 1 Design Team Lead, 1 Designer, 2 Development Directors, 1
+      Director of Development Operations, 1 Senior Associate Director of
+      Operations, 1 Principal Product Designer, 1 Developer and CEO, and 1
+      Managing Director.
     source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      - https://thoughtbot.com/team
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That thoughtbot has small or no in-house technical capacity.
 
   - id: q3_growth_signals
     question: What signals are there that they are investing or growing?

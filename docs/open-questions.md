@@ -566,6 +566,24 @@ Re-embedding every chunk with the header stripped leaves the roster at **110**.
 It widens the spread slightly (0.146 → 0.191) and moves nothing. The header is
 not the problem.
 
+**A second company, [verified] 2026-09-10**, this time scored against a
+hand-written ground-truth pair rather than a guessed source. On thoughtbot the
+answer to the same question is on `/team` (53 people listed, most with
+development or design titles), and `make eval` scores the pair a miss at every
+cut-off. Ranked across all 43 thoughtbot chunks, the three `/team` chunks come
+**15th, 21st and 43rd**. The top five are `/services` pages whose text says
+"technical": "fractional product technical leadership", "technical and
+business assistance". The score spread runs from 0.579 to 0.419, compressed the
+same way as fly.io's. Same model, same failure, second company: the question's
+vocabulary matches sales copy, and the roster that answers it says names and
+job titles.
+
+That meets ADR-0009's trigger for hybrid search as written (recall@5 below 0.8
+on a question, with the evidence present in the corpus and ranked outside the
+top 5) on thoughtbot's q2 pair. It is still not acted on: two scored pairs of a
+planned 48, on one question, is the evidence A3 says to finish collecting
+before changing the ranking.
+
 **What this does NOT establish**, and the distinction matters before anyone
 ships a fix:
 
