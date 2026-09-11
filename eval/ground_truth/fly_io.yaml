@@ -13,8 +13,8 @@ prospect:
   domain: fly.io
   crawled_at: "2026-09-09T21:03:11+00:00"
   corpus_artifact: prospect_fly_io.json
-  author: TODO your name or GitHub handle
-  written_at: TODO yyyy-mm-dd
+  author: bru678nein
+  written_at: "2026-09-11"
 
 # Hand-check these against the LIVE site and replace each TODO.
 # The values the crawler reported are shown beside each one: they are
@@ -33,16 +33,25 @@ questions:
   - id: q1_what_and_to_whom
     question: What does this company do, and who does it sell to?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
+      fly.io sells virtual machines for running servers and AI agents. It also
+      offers private networking, autoscaling and monitoring. These services are
+      aimed at clients who want to run their projects in the cloud.
     source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      - https://fly.io/
+      - https://fly.io/docs/networking/services
+      - https://fly.io/docs/about/cost-management
+      - https://fly.io/docs/about/support
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That fly.io sells to a single industry. /docs/about/healthcare is about
+        customers running HIPAA apps, not a sign fly.io is a healthcare company.
+      - That coding agents are what fly.io mainly sells. It built one,
+        Phoenix.new, but its product is the machines agents run on.
+      - That fly.io is partnered with Anthropic. Sprites come with Claude Code
+        pre-installed; no page states a partnership.
+    notes: >
+      /customer-stories was the natural source for "who", and it was never
+      crawled (docs/open-questions.md §1.8). Zero-downtime deploys and granular
+      routing were dropped: they are on the live site, not in the crawl.
 
   - id: q2_technical_capacity
     question: What evidence is there of in-house technical capacity?

@@ -446,6 +446,11 @@ and never discovered. The sitemap robots.txt advertises (`sitemap_main.xml`,
 Case studies name clients, which makes them the best evidence there is for
 q1's "who do they sell to", and none were crawled.
 
+**Second site, [verified] 2026-09-11**, writing fly.io's q1: its customer
+stories live at `/customer-stories/`. The page is not among the 39 documents
+and has no page-outcome row, the same silent drop. The author reached for it
+first when answering "who", and the pair had to be written without it.
+
 **The sitemap alone does not fix it**, and that was measured before building
 it. 197 of the 199 URLs classify as `website`, and the website quota is 18 of
 40 pages (ADR-0007). Appended in sitemap order, the 18 slots go to whatever the
@@ -497,6 +502,33 @@ the roster only (what the prompt says the number is), or keep the count and
 describe it as mentions (what it is). The first changes a signal every prospect
 carries and needs fly.io's roster checked the same way; the second is a prompt
 change and needs a new prompt version with its own run.
+
+### 1.10 A newer crawl never removes what the older one stored — RECORDED 2026-09-11
+
+The loader upserts the documents an artifact contains and does nothing about
+the prospect's documents it does not contain. After a re-crawl, a page the
+site dropped (or the crawl budget displaced) stays in the database, chunked
+and embedded, and keeps competing in retrieval.
+
+**[verified] 2026-09-11.** fly.io has two crawl runs (2026-09-02 and
+2026-09-09, 39 documents each) and 41 documents in the database. The two
+extra, both fetched on 2026-09-02 with 2 chunks each, are
+`/blog/mcps-everywhere` and `/blog/unfortunately-mcp`. Neither is in
+`prospect_fly_io.json`. thoughtbot has none.
+
+It moves a metric. Writing fly.io's q1, `/blog/mcps-everywhere` ranked 3rd,
+and the best source page (`/docs/about/support`) ranked 11th of 114 chunks.
+Search is exact and each chunk's score is independent of the others, so
+without that one stale chunk the source moves to 10th and q1's recall@10
+flips from miss to hit. The ground truth is written against the frozen
+artifact (docs/ground-truth.md §2 step 1); the harness evaluates the database.
+Here they disagree.
+
+**Not fixed yet.** The obvious fix is for the loader to delete a prospect's
+documents that the artifact being loaded does not contain, which the chunks'
+`ON DELETE CASCADE` makes one statement. It needs one guard first: loading an
+older artifact after a newer one must not delete the newer documents, so the
+delete belongs only to a load of the prospect's latest crawl run.
 
 ## 2. Assumptions that need verification
 
