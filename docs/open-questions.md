@@ -468,6 +468,36 @@ which is correct. Probing stopped there: hunting for the request shape that
 gets a 200 would be working around the site's edge (A6). The one hypothesis
 tested, the `Accept` header, was refuted.
 
+### 1.9 `technical_roles_named` counts words, and the prompt calls them titles — RECORDED 2026-09-11
+
+`TECH_ROLE_RE` is counted with `findall` over the whole text of the roster page
+and of every page on a team-like path, prose included. The answer prompt then
+describes the value as "technical job titles mentioned on team pages"
+(`ANSWER_SIGNALS` in `linestack/generation/answer.py`).
+
+**[verified] 2026-09-11** on thoughtbot's 2026-09-09 crawl, 37 in total:
+
+| page | matches | what they are |
+| --- | --- | --- |
+| `/team` | 23 | titles: 22 Senior Developer, 1 Developer and CEO |
+| `/playbook/the-thoughtbot-way/people/apprenticeship` | 10 | "developer" in prose |
+| `/playbook/our-company/career-paths` | 4 | "developer" in prose |
+
+It also misses titles on the roster itself: 8 Development Team Leads, 2
+Development Directors and a Director of Development Operations say
+"development", which the pattern does not match. The hand count of development
+roles on `/team` is 34 (eval/ground_truth/thoughtbot_com.yaml, q2).
+
+It reached the answers. With `answer-v3`, both Qwen3-1.7B and Qwen3-4B answered
+q2 with "37 technical job titles", the prompt's label repeated as a fact. It is
+now a `must_not_claim` on thoughtbot's q2.
+
+**Not fixed yet.** Two fixes, and they are different claims: count titles on
+the roster only (what the prompt says the number is), or keep the count and
+describe it as mentions (what it is). The first changes a signal every prospect
+carries and needs fly.io's roster checked the same way; the second is a prompt
+change and needs a new prompt version with its own run.
+
 ## 2. Assumptions that need verification
 
 Each of these appears in the documentation marked as an assumption. This is the

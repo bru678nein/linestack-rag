@@ -72,16 +72,21 @@ questions:
   - id: q2_technical_capacity
     question: What evidence is there of in-house technical capacity?
     reference: >
-      thoughtbot has 22 Senior Developers, 3 Senior Designers, 1 Business
-      Development Manager, 8 Development Team Leads, 2 Product Management Team
-      Leads, 1 Design Team Lead, 1 Designer, 2 Development Directors, 1
-      Director of Development Operations, 1 Senior Associate Director of
-      Operations, 1 Principal Product Designer, 1 Developer and CEO, and 1
-      Managing Director.
+      thoughtbot's team page lists 34 people in development roles: 22 Senior
+      Developers, 8 Development Team Leads, 2 Development Directors, 1
+      Director of Development Operations, and 1 Developer and CEO.
     source_urls:
       - https://thoughtbot.com/team
     must_not_claim:
       - That thoughtbot has small or no in-house technical capacity.
+      - That it lists 37 technical job titles. technical_roles_named = 37
+        counts the word "developer" on /team (23) and in the text of two
+        playbook pages (14); it is not a count of titles.
+    notes: >
+      Counted from /team on the 2026-09-09 crawl: 53 titles. Development only,
+      decided 2026-09-11: design (8), product management (5), the Internal
+      Tools Specialist and 5 non-technical roles are excluded, because
+      development is the one group every reader would call technical capacity.
 
   - id: q3_growth_signals
     question: What signals are there that they are investing or growing?
