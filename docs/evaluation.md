@@ -23,6 +23,7 @@ never averaged into one score, never shown as a single number.
 | Gate | Cross-prospect leakage | Did any chunk from another prospect appear? | None — binary |
 | Diagnostic | Signal accuracy | Do the computed signals match ground truth? | None — exact |
 | Diagnostic | Ingestion coverage | Was the evidence even crawled? | None — exact |
+| Diagnostic | Decline accuracy | Does the model decline where the corpus has no answer, and only there? | None — exact |
 
 ### Why correctness is secondary
 
@@ -145,6 +146,30 @@ reporting a number about the crawler while calling it a number about retrieval �
 which is exactly the confusion ADR-0007 was written about.
 
 ---
+
+### 2.6 Decline accuracy — judge-free, exact, IMPLEMENTED
+
+The one check on generated answers that needs no judge. `make eval` answers
+every pair that can be answered, through the same path a user gets
+(`linestack.generation.answer`), and records whether each answer declined,
+recognised by the fixed phrase `Insufficient evidence.` (ADR-0022). Two counts
+come out of it:
+
+- **declines on `insufficient_evidence` pairs**, the correct answer there
+  (docs/ground-truth.md §3). A model that answers instead has invented
+  something the corpus does not contain.
+- **declines on answerable pairs**, the opposite failure. It is tracked beside
+  the first because a model that declines everything would otherwise score
+  perfectly.
+
+Reported as counts, not rates: at two pairs, "1 of 2" says what happened and
+"0.50" claims a precision it does not have. Recorded with the generation model
+and prompt version, because a count from one is not comparable with another's.
+
+What it cannot see is an answer that does not decline but is wrong some other
+way. That is faithfulness (§2.2), and it still needs a judge.
+
+`make eval NO_ANSWERS=1` scores retrieval only and loads no model.
 
 ## 3. What the harness runs against
 

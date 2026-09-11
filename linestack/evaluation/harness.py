@@ -31,6 +31,15 @@ reported separately, always (docs/evaluation.md §1).
 
 Faithfulness and answer correctness are not computed at all; ADR-0020 records
 why, and `linestack/evaluation/metrics.py` carries the resolver output.
+
+## What it does compute about answers
+
+Given a generator, it also answers every pair it can -- the scored ones and the
+insufficient_evidence ones -- through the same path a user gets, and records
+whether each answer declined. That yields two counts no judge is needed for
+(docs/evaluation.md §2.6): declines on insufficient_evidence pairs, which is
+the correct answer there, and declines on answerable pairs, the opposite
+failure.
 """
 
 from __future__ import annotations
@@ -58,6 +67,8 @@ from linestack.evaluation.metrics import (
     recalls_for_question,
     signal_accuracy,
 )
+from linestack.generation.answer import AnswerUnavailable, answer
+from linestack.generation.prompts import PROMPT_VERSION
 from linestack.retrieval.embedding import build_client, embed_question
 from linestack.retrieval.scope import ProspectScope
 from linestack.retrieval.search import search
@@ -79,6 +90,13 @@ class PairResult:
     recalls: list[Recall] = field(default_factory=list)
     coverage: CoverageReport | None = None
     retrieved_urls: list[str] = field(default_factory=list)
+    #: The generated answer, when the run was given a generator. `declined` is
+    #: None when no answer was attempted, which is different from an answer
+    #: that was attempted and could not be produced (`answer_detail`).
+    answer: str | None = None
+    declined: bool | None = None
+    answer_problems: list[str] = field(default_factory=list)
+    answer_detail: str = ""
 
     @property
     def first_hit_rank(self) -> int | None:
@@ -122,6 +140,12 @@ class RunRecord:
     model_load_seconds: float = 0.0
     embed_seconds: float = 0.0
     retrieve_seconds: float = 0.0
+    #: Set only when the run generated answers. A decline count from one model
+    #: and prompt is not comparable with another's, so both travel with it.
+    generation_model: str | None = None
+    prompt_version: str | None = None
+    generation_load_seconds: float = 0.0
+    generate_seconds: float = 0.0
 
     def recall_at(self, k: int) -> float | None:
         """Share of scored pairs whose evidence was retrieved by rank `k`.
@@ -137,6 +161,38 @@ class RunRecord:
         hits = sum(1 for p in scored for r in p.recalls if r.k == k and r.hit)
         return hits / len(scored)
 
+    def _answered(self, status: str) -> list[PairResult]:
+        return [
+            p
+            for pr in self.prospects
+            for p in pr.pairs
+            if p.status == status and p.declined is not None
+        ]
+
+    def declines_on_insufficient(self) -> tuple[int, int] | None:
+        """(declined, answered) over insufficient_evidence pairs.
+
+        Declining is the CORRECT answer on these (docs/ground-truth.md §3), so
+        this is the count that catches a model inventing an answer the corpus
+        does not contain. Counts, not a rate: at two pairs, "1 of 2" says what
+        happened and "0.50" claims a precision it does not have.
+        """
+        answered = self._answered(NO_EVIDENCE_EXPECTED)
+        if not answered:
+            return None
+        return sum(bool(p.declined) for p in answered), len(answered)
+
+    def declines_on_answerable(self) -> tuple[int, int] | None:
+        """(declined, answered) over scored pairs, where declining is WRONG.
+
+        Kept beside the first count because a model that declines everything
+        would otherwise score perfectly on it.
+        """
+        answered = self._answered(SCORED)
+        if not answered:
+            return None
+        return sum(bool(p.declined) for p in answered), len(answered)
+
     def as_lines(self) -> list[str]:
         lines = [
             f"  model:     {self.embedding_model} "
@@ -150,6 +206,9 @@ class RunRecord:
             lines += [f"    {line}" for line in _signal_lines(prospect.signals)]
             for pair in prospect.pairs:
                 lines.append(f"    {_pair_line(pair)}")
+                note = _answer_note(pair)
+                if note:
+                    lines.append(f"      {note}")
 
         scored = sum(len(p.scored) for p in self.prospects)
         lines.append(f"  scored:    {scored} pair(s)")
@@ -166,6 +225,25 @@ class RunRecord:
                 f"  timing:    {self.model_load_seconds:.2f}s model load, "
                 f"{self.embed_seconds:.2f}s embed, "
                 f"{self.retrieve_seconds:.2f}s retrieve"
+            )
+        insufficient = self.declines_on_insufficient()
+        answerable = self.declines_on_answerable()
+        if insufficient or answerable:
+            lines.append(
+                f"  answers:   {self.generation_model} "
+                f"(prompt {self.prompt_version}), "
+                f"{self.generation_load_seconds:.1f}s load, "
+                f"{self.generate_seconds:.1f}s generate"
+            )
+        if insufficient:
+            lines.append(
+                f"  declined where it should:     {insufficient[0]} of "
+                f"{insufficient[1]} insufficient_evidence pairs"
+            )
+        if answerable:
+            lines.append(
+                f"  declined where it should not: {answerable[0]} of "
+                f"{answerable[1]} answerable pairs"
             )
         return lines
 
@@ -196,9 +274,44 @@ def _pair_line(pair: PairResult) -> str:
     return f"{pair.question_id}: {hits}  ({where})"
 
 
+def _answer_note(pair: PairResult) -> str:
+    """Which way the answer went, judged against what the pair expects."""
+    if pair.answer_detail:
+        return f"answer: not produced ({pair.answer_detail})"
+    if pair.declined is None:
+        return ""
+    if pair.status == NO_EVIDENCE_EXPECTED:
+        verdict = (
+            "declined, correctly"
+            if pair.declined
+            else "ANSWERED where it should have declined"
+        )
+    else:
+        verdict = (
+            "DECLINED where it should have answered" if pair.declined else "answered"
+        )
+    extra = f"; {'; '.join(pair.answer_problems)}" if pair.answer_problems else ""
+    return f"answer: {verdict}{extra}"
+
+
 # --------------------------------------------------------------------------- #
 # what is scoreable, decided without touching a database
 # --------------------------------------------------------------------------- #
+def written_signals(signals: dict[str, Any] | None) -> dict[str, Any]:
+    """The signals the author has actually checked.
+
+    The scaffold writes `people_listed: TODO`. Compared as a value, that string
+    would disagree with every number the crawler computed, and a file nobody
+    has filled in yet would report the crawler as wrong about everything. A
+    placeholder is unchecked, not a claim.
+    """
+    return {
+        k: v
+        for k, v in (signals or {}).items()
+        if not (isinstance(v, str) and TODO in v)
+    }
+
+
 def written_source_urls(question: dict[str, Any]) -> list[str] | None:
     """The cited URLs, or None if the author has not written them.
 
@@ -243,9 +356,16 @@ async def evaluate_directory(
     directory: str | Path = "eval/ground_truth",
     *,
     client=None,
+    generator=None,
+    count_tokens=None,
     cutoffs: tuple[int, ...] = RECALL_CUTOFFS,
 ) -> RunRecord:
-    """Run every ground-truth file in `directory` against the loaded corpus."""
+    """Run every ground-truth file in `directory` against the loaded corpus.
+
+    With a `generator`, also answer every pair that can be answered and record
+    whether it declined. Without one -- the default -- nothing is generated and
+    no generation model is loaded, so tests and CI never pull one.
+    """
     record = RunRecord(
         started_at=time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         embedding_model=settings.embedding_model,
@@ -258,10 +378,15 @@ async def evaluate_directory(
         return record
 
     embedder = _Embedder(client, record)
+    if generator is not None:
+        record.generation_model = generator.name
+        record.prompt_version = PROMPT_VERSION
     for path in paths:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
         record.prospects.append(
-            await _evaluate_prospect(session, data, record, embedder, cutoffs)
+            await _evaluate_prospect(
+                session, data, record, embedder, cutoffs, generator, count_tokens
+            )
         )
     return record
 
@@ -293,7 +418,24 @@ class _Embedder:
         self._record = record
         self._ready = False
 
+    async def client(self):
+        """The warmed client, for a caller that embeds through its own path.
+
+        answer() does its own retrieval. Handing it this client is what stops
+        it building a second embedder and loading the model a second time --
+        the v1 defect above, reached by a different door.
+        """
+        await self._warm()
+        return self._client
+
     async def embed(self, question: str) -> list[float]:
+        await self._warm()
+        started = time.perf_counter()
+        vector = await embed_question(self._client, question)
+        self._record.embed_seconds += time.perf_counter() - started
+        return vector
+
+    async def _warm(self) -> None:
         if not self._ready:
             # Timed as itself. sentence-transformers loads lazily on first use,
             # so without this the first question absorbs the whole load and the
@@ -305,11 +447,6 @@ class _Embedder:
             self._record.model_load_seconds = time.perf_counter() - started
             self._ready = True
 
-        started = time.perf_counter()
-        vector = await embed_question(self._client, question)
-        self._record.embed_seconds += time.perf_counter() - started
-        return vector
-
 
 async def _evaluate_prospect(
     session,
@@ -317,6 +454,8 @@ async def _evaluate_prospect(
     record: RunRecord,
     embedder: _Embedder,
     cutoffs: tuple[int, ...],
+    generator=None,
+    count_tokens=None,
 ) -> ProspectResult:
     domain = str(data.get("prospect", {}).get("domain", "")).lower()
     prospect_id = await session.scalar(
@@ -343,7 +482,7 @@ async def _evaluate_prospect(
         )
         or {}
     )
-    result.signals = signal_accuracy(data.get("signals") or {}, computed)
+    result.signals = signal_accuracy(written_signals(data.get("signals")), computed)
 
     crawled = set(
         (
@@ -370,11 +509,21 @@ async def _evaluate_prospect(
 
     scope = await ProspectScope.open(session, prospect_id)
     for question in data.get("questions") or []:
-        result.pairs.append(
-            await _evaluate_pair(
-                question, scope, crawled, outcomes, record, embedder, cutoffs
-            )
+        pair = await _evaluate_pair(
+            question, scope, crawled, outcomes, record, embedder, cutoffs
         )
+        if generator is not None and pair.status in (SCORED, NO_EVIDENCE_EXPECTED):
+            await _answer_pair(
+                session,
+                domain,
+                question,
+                pair,
+                record,
+                embedder,
+                generator,
+                count_tokens,
+            )
+        result.pairs.append(pair)
     return result
 
 
@@ -426,6 +575,43 @@ async def _evaluate_pair(
     )
 
 
+async def _answer_pair(
+    session,
+    domain: str,
+    question: dict[str, Any],
+    pair: PairResult,
+    record: RunRecord,
+    embedder: _Embedder,
+    generator,
+    count_tokens=None,
+) -> None:
+    """Answer one pair through the path a user gets, and record whether it
+    declined.
+
+    answer() is called as a black box on purpose. A decline count measured on
+    anything but the real answering path would measure something else.
+    """
+    load_before = generator.load_seconds
+    try:
+        result = await answer(
+            session,
+            domain,
+            str(question.get("question") or "") or None,
+            question_id=pair.question_id,
+            embedder=await embedder.client(),
+            generator=generator,
+            count_tokens=count_tokens,
+        )
+    except AnswerUnavailable as exc:
+        pair.answer_detail = str(exc).splitlines()[0]
+        return
+    record.generation_load_seconds += generator.load_seconds - load_before
+    record.generate_seconds += result.generate_seconds
+    pair.answer = result.text
+    pair.declined = result.declined
+    pair.answer_problems = result.problems
+
+
 async def _main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Run the ground-truth set.")
     parser.add_argument("--dir", default="eval/ground_truth")
@@ -434,12 +620,23 @@ async def _main(argv: list[str]) -> int:
         metavar="PATH",
         help="also write the full run record here, for the A3 before-and-after",
     )
+    parser.add_argument(
+        "--no-answers",
+        action="store_true",
+        help="score retrieval only; load no model and generate nothing",
+    )
     args = parser.parse_args(argv)
 
     from linestack.db import session_factory
 
+    generator = None
+    if not args.no_answers:
+        from linestack.generation.client import build_generator
+
+        generator = build_generator()
+
     async with session_factory() as session:
-        record = await evaluate_directory(session, args.dir)
+        record = await evaluate_directory(session, args.dir, generator=generator)
 
     print("\n".join(line for line in record.as_lines() if line))
     if args.json:

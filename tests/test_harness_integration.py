@@ -293,3 +293,141 @@ async def test_recall_is_computed_against_the_real_ranking(
     assert pair.first_hit_rank == 1
     assert record.recall_at(1) == 1.0
     await db_session.rollback()
+
+
+# ---------------------------------------------------------------------------
+# answers and declines, with a stub model
+# ---------------------------------------------------------------------------
+class _VecStub:
+    """OpenAI-shaped embedder returning one fixed vector."""
+
+    class embeddings:  # noqa: N801
+        @staticmethod
+        async def create(model, input, **kwargs):
+            from types import SimpleNamespace
+
+            from linestack.config import settings
+
+            dim = settings.embedding_dimensions
+            return SimpleNamespace(
+                data=[
+                    SimpleNamespace(embedding=[1.0] + [0.0] * (dim - 1)) for _ in input
+                ]
+            )
+
+
+class _Reply:
+    """A generator that always says the same thing."""
+
+    name = "stub-model"
+    load_seconds = 0.0
+
+    def __init__(self, reply: str) -> None:
+        self.reply = reply
+
+    async def complete(self, messages, *, max_tokens, temperature):
+        return self.reply
+
+
+def _words(text_: str) -> int:
+    return len(text_.split())
+
+
+_Q3 = {
+    "id": "q3_growth_signals",
+    "question": "Are they growing?",
+    "reference": "Insufficient evidence. Nothing says so.",
+    "source_urls": [],
+    "expected_outcome": "insufficient_evidence",
+}
+
+
+async def _seed_answerable(db_session) -> int:
+    """_seed plus one embedded chunk, so answer() has something to answer from."""
+    from linestack.config import settings
+
+    prospect_id = await _seed(db_session, {})
+    document_id = await db_session.scalar(
+        text("SELECT id FROM documents WHERE prospect_id = :p"), {"p": prospect_id}
+    )
+    dim = settings.embedding_dimensions
+    await db_session.execute(
+        text(
+            "INSERT INTO chunks (document_id, prospect_id, kind, chunk_index, "
+            "  content, token_count, embedding, embedding_model) "
+            "VALUES (:d, :p, 'website', 0, 'We are not hiring right now.', 1, "
+            "  CAST(:e AS halfvec), :m)"
+        ),
+        {
+            "d": document_id,
+            "p": prospect_id,
+            "e": str([1.0] + [0.0] * (dim - 1)),
+            "m": settings.embedding_model,
+        },
+    )
+    await db_session.flush()
+    return prospect_id
+
+
+async def test_a_decline_on_an_insufficient_pair_is_counted_as_correct(
+    db_session, tmp_path
+) -> None:
+    await _seed_answerable(db_session)
+    _write(tmp_path, questions=[_Q3])
+
+    record = await evaluate_directory(
+        db_session,
+        tmp_path,
+        client=_VecStub(),
+        generator=_Reply("Insufficient evidence. No page mentions growth."),
+        count_tokens=_words,
+    )
+
+    assert record.prospects[0].pairs[0].declined is True
+    assert record.declines_on_insufficient() == (1, 1)
+    assert record.generation_model == "stub-model"
+    await db_session.rollback()
+
+
+async def test_an_invented_answer_on_an_insufficient_pair_is_counted_as_wrong(
+    db_session, tmp_path
+) -> None:
+    """The failure the model showed on thoughtbot's q3 (ADR-0022), as a count."""
+    await _seed_answerable(db_session)
+    _write(tmp_path, questions=[_Q3])
+
+    record = await evaluate_directory(
+        db_session,
+        tmp_path,
+        client=_VecStub(),
+        generator=_Reply("They are investing in strategic growth [1]."),
+        count_tokens=_words,
+    )
+
+    assert record.declines_on_insufficient() == (0, 1)
+    assert any(
+        "ANSWERED where it should have declined" in line for line in record.as_lines()
+    )
+    await db_session.rollback()
+
+
+async def test_nothing_to_answer_from_is_reported_not_counted(
+    db_session, tmp_path
+) -> None:
+    """No embedded chunks is a setup problem. It must not become a decline, an
+    answer, or a crash."""
+    await _seed(db_session, {})
+    _write(tmp_path, questions=[_Q3])
+
+    record = await evaluate_directory(
+        db_session,
+        tmp_path,
+        client=_VecStub(),
+        generator=_Reply("never called"),
+        count_tokens=_words,
+    )
+
+    pair = record.prospects[0].pairs[0]
+    assert "no embedded chunks" in pair.answer_detail
+    assert record.declines_on_insufficient() is None
+    await db_session.rollback()

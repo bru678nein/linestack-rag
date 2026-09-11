@@ -18,6 +18,7 @@ from linestack.evaluation.harness import (
     ProspectResult,
     RunRecord,
     pair_status,
+    written_signals,
     written_source_urls,
 )
 from linestack.evaluation.metrics import recalls_for_question
@@ -197,3 +198,97 @@ def test_the_report_names_an_unscored_pair_and_its_reason() -> None:
 
     assert "q4_stated_need: not_ingested" in lines
     assert "never attempted" in lines
+
+
+# ---------------------------------------------------------------------------
+# signals the author has not checked yet
+# ---------------------------------------------------------------------------
+def test_a_scaffolded_signal_is_unchecked_not_a_mismatch() -> None:
+    """The scaffold writes `people_listed: TODO`. Compared as a value, that
+    string disagrees with every number the crawler computed, and a file nobody
+    has filled in would report the crawler as wrong about everything."""
+    written = written_signals(
+        {"people_listed": "TODO", "open_roles_seen": 0, "has_team_page": True}
+    )
+
+    assert written == {"open_roles_seen": 0, "has_team_page": True}
+
+
+def test_no_signals_block_is_no_signals() -> None:
+    assert written_signals(None) == {}
+
+
+# ---------------------------------------------------------------------------
+# declines, when the run generated answers
+# ---------------------------------------------------------------------------
+def _answered(qid: str, status: str, declined: bool, problems=()) -> PairResult:
+    return PairResult(
+        question_id=qid,
+        status=status,
+        answer="an answer",
+        declined=declined,
+        answer_problems=list(problems),
+    )
+
+
+def test_declines_are_counted_separately_for_the_two_kinds_of_pair() -> None:
+    """Declining is right on an insufficient_evidence pair and wrong on an
+    answerable one. Counted apart, because a model that declines everything
+    would otherwise look perfect on the first count."""
+    record = _record(
+        _answered("q3_growth_signals", NO_EVIDENCE_EXPECTED, declined=True),
+        _answered("q4_stated_need", NO_EVIDENCE_EXPECTED, declined=False),
+        _answered("q1_what_and_to_whom", SCORED, declined=False),
+        _answered("q2_technical_capacity", SCORED, declined=True),
+    )
+
+    assert record.declines_on_insufficient() == (1, 2)
+    assert record.declines_on_answerable() == (1, 2)
+
+
+def test_a_run_that_generated_nothing_has_no_decline_counts() -> None:
+    """None, not (0, n): nothing was asked, so nothing declined or answered."""
+    record = _record(PairResult("q3_growth_signals", NO_EVIDENCE_EXPECTED, "x"))
+
+    assert record.declines_on_insufficient() is None
+    assert not any("declined where" in line for line in record.as_lines())
+
+
+def test_an_answer_that_could_not_be_produced_is_not_counted() -> None:
+    """No chunks to answer from is a setup problem, not a decline and not an
+    answer. Counting it either way would move the metric for the wrong reason."""
+    unproduced = PairResult(
+        "q3_growth_signals", NO_EVIDENCE_EXPECTED, "x", answer_detail="no chunks"
+    )
+    record = _record(
+        unproduced, _answered("q4_stated_need", NO_EVIDENCE_EXPECTED, declined=True)
+    )
+
+    assert record.declines_on_insufficient() == (1, 1)
+    assert any("not produced (no chunks)" in line for line in record.as_lines())
+
+
+def test_the_report_says_which_way_each_answer_went() -> None:
+    record = _record(
+        _answered("q3_growth_signals", NO_EVIDENCE_EXPECTED, declined=False),
+        _answered("q4_stated_need", NO_EVIDENCE_EXPECTED, declined=True),
+        _answered("q2_technical_capacity", SCORED, declined=True),
+    )
+    lines = "\n".join(record.as_lines())
+
+    assert "ANSWERED where it should have declined" in lines
+    assert "declined, correctly" in lines
+    assert "DECLINED where it should have answered" in lines
+    assert "declined where it should:     1 of 2" in lines
+
+
+def test_the_generation_setup_travels_with_the_counts() -> None:
+    """A decline count from one model and prompt is not comparable with
+    another's, so the report names both."""
+    record = _record(_answered("q3_growth_signals", NO_EVIDENCE_EXPECTED, True))
+    record.generation_model = "Qwen/Qwen3-1.7B"
+    record.prompt_version = "answer-v1"
+
+    lines = "\n".join(record.as_lines())
+
+    assert "Qwen/Qwen3-1.7B" in lines and "answer-v1" in lines

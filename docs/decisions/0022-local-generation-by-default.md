@@ -149,6 +149,13 @@ prompt, and both are the tuning A3 forbids without a metric to judge them by.
 The metric is decline accuracy on insufficient_evidence pairs, and it waits on
 the ground-truth set.
 
+**Measured since, [verified] 2026-09-11.** `make eval` now answers every pair
+and counts declines (docs/evaluation.md §2.6). On thoughtbot, with both
+`insufficient_evidence` pairs written by hand, the model declined on **0 of 2**
+(q3 and q4), and wrongly declined on 0 of 2 answerable pairs. It never
+declines. The q3 failure described above is now a number re-checked on every
+run, and the baseline any change to the model or the prompt has to beat.
+
 Accepted means local generation works on this machine, measured. It does not
 mean the answers are good, and this section is the evidence that they are not
 yet.

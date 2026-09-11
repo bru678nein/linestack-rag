@@ -162,9 +162,9 @@ load:  ## Load crawl artifacts into Postgres: make load ARTIFACTS="a.json b.json
 # make embed PROSPECT=...
 # --------------------------------------------------------------------------
 .PHONY: eval
-eval:  ## Run the ground-truth set. JSON=path also writes the full run record.
+eval:  ## Run the ground-truth set with answers. NO_ANSWERS=1 skips them; JSON=path saves the record.
 	$(PY) -m linestack.evaluation.harness --dir $(or $(DIR),eval/ground_truth) \
-	  $(if $(JSON),--json $(JSON),)
+	  $(if $(JSON),--json $(JSON),) $(if $(NO_ANSWERS),--no-answers,)
 
 .PHONY: eval-report
 eval-report:  ## [not implemented] Delta table against the previous run
