@@ -23,6 +23,7 @@ __pycache__/
 # are force-added, and CI fails without them, which is how this rule was found.
 /prospect_*.json
 !/prospect_thoughtbot_com.json
+!/prospect_fly_io.json
 
 # Debugging leftovers from the ingest.py hardening session (ADR-0010).
 ingest.py.bak*

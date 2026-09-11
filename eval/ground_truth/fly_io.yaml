@@ -1,0 +1,135 @@
+# fly.io — ground truth
+#
+# Scaffolded from the frozen artifact. Every TODO below is rejected by
+# `make ground-truth-validate` until you replace it.
+#
+# Read docs/ground-truth.md §2 before filling this in. The rule that
+# matters most: write the reference answers from the CRAWLED text, not
+# from the live site. An answer written from something the crawler
+# never fetched is an ingestion test wearing a retrieval test's label.
+
+prospect:
+  company_name: fly.io
+  domain: fly.io
+  crawled_at: "2026-09-09T21:03:11+00:00"
+  corpus_artifact: prospect_fly_io.json
+  author: TODO your name or GitHub handle
+  written_at: TODO yyyy-mm-dd
+
+# Hand-check these against the LIVE site and replace each TODO.
+# The values the crawler reported are shown beside each one: they are
+# the claim under test, not the answer. Count the people yourself; open
+# every page it called a job posting and decide if it is a vacancy.
+signals:
+  has_team_page: TODO          # the crawler says: True
+  people_listed: TODO          # the crawler says: 53
+  open_roles_seen: TODO          # the crawler says: 3
+  technical_roles_open: TODO          # the crawler says: 2
+  latest_post_date: TODO          # the crawler says: 2026-09-03
+  notes: >
+    TODO how you checked, and anything the next author needs.
+
+questions:
+  - id: q1_what_and_to_whom
+    question: What does this company do, and who does it sell to?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+  - id: q2_technical_capacity
+    question: What evidence is there of in-house technical capacity?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+  - id: q3_growth_signals
+    question: What signals are there that they are investing or growing?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+  - id: q4_stated_need
+    question: What need or priority do they state explicitly?
+    reference: >
+      TODO 2-4 sentences, in the register a colleague would use,
+      claiming only what the pages in source_urls support.
+    source_urls:
+      - TODO https://... the pages you actually used
+    # expected_outcome: insufficient_evidence   # if the corpus
+    #   genuinely does not answer this. That is a CORRECT answer
+    #   and roughly a quarter of the set should be these (§3).
+    must_not_claim:
+      - TODO what a fluent, confident, wrong answer would say here.
+      #  This is the highest-value field in the file (§1).
+
+# ---------------------------------------------------------------
+# Candidate source URLs, from the 39 documents in this artifact.
+# Only these were crawled. If the page you want is missing, that is a
+# coverage finding worth more than the pair (§2 step 2) -- check
+# crawl_page_outcomes for the reason before assuming it does not exist.
+#   blog_post (18):
+#     https://fly.io/blog
+#     https://fly.io/blog/build-better-agents-with-morphllm
+#     https://fly.io/blog/building-agents-that-dont-break-themselves
+#     https://fly.io/blog/code-and-let-live
+#     https://fly.io/blog/corrosion
+#     https://fly.io/blog/design-and-implementation
+#     https://fly.io/blog/everyone-write-an-agent
+#     https://fly.io/blog/games-as-model-eval
+#     https://fly.io/blog/kurt-got-got
+#     https://fly.io/blog/kurt-scott-money-sprites
+#     https://fly.io/blog/litestream-v050-is-here
+#     https://fly.io/blog/litestream-vfs
+#     https://fly.io/blog/litestream-writable-vfs
+#     https://fly.io/blog/phoenix-new-the-remote-ai-runtime
+#     https://fly.io/blog/sprites-mcp
+#     https://fly.io/blog/the-future-isn-t-model-agnostic
+#     https://fly.io/blog/trust-calibration-for-ai-software-builders
+#     https://fly.io/news
+#   job_posting (4):
+#     https://fly.io/jobs
+#     https://fly.io/jobs/account-manager-strategic-accounts
+#     https://fly.io/jobs/infra-engineer
+#     https://fly.io/jobs/networking-engineer
+#   website (17):
+#     https://fly.io/
+#     https://fly.io/about
+#     https://fly.io/contact
+#     https://fly.io/docs/about
+#     https://fly.io/docs/about/billing
+#     https://fly.io/docs/about/brand
+#     https://fly.io/docs/about/cost-management
+#     https://fly.io/docs/about/discontinued-plans
+#     https://fly.io/docs/about/extensions
+#     https://fly.io/docs/about/free-trial
+#     https://fly.io/docs/about/healthcare
+#     https://fly.io/docs/about/merch
+#     https://fly.io/docs/about/open-source
+#     https://fly.io/docs/about/pricing
+#     https://fly.io/docs/about/support
+#     https://fly.io/docs/kubernetes/services
+#     https://fly.io/docs/networking/services
