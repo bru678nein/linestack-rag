@@ -403,7 +403,9 @@ SIGNALS_TO_CHECK = (
 )
 
 
-def scaffold(artifact_path: str | Path, author: str = "TODO your email") -> str:
+def scaffold(
+    artifact_path: str | Path, author: str = "TODO your name or GitHub handle"
+) -> str:
     """Build an unfilled ground-truth file from a frozen crawl artifact.
 
     Fills in only what is mechanical: the prospect block, the artifact

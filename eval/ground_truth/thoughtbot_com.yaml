@@ -13,7 +13,7 @@ prospect:
   domain: thoughtbot.com
   crawled_at: "2026-09-09T21:04:38+00:00"
   corpus_artifact: prospect_thoughtbot_com.json
-  author: TODO your email
+  author: bru678nein
   written_at: "2026-09-03"
 
 # Hand-check these against the LIVE site and replace each TODO.

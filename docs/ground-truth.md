@@ -21,7 +21,7 @@ prospect:
   domain: thoughtbot.com
   crawled_at: "2026-09-01T00:00:00+00:00"   # the frozen corpus this refers to
   corpus_artifact: prospect_thoughtbot_com.json
-  author: brunoracconto@gmail.com
+  author: your-github-handle
   written_at: "2026-09-02"
 
 # Computed facts, hand-checked against the live site. Exact comparison,

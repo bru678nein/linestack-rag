@@ -41,7 +41,7 @@ import trafilatura
 from selectolax.parser import HTMLParser
 
 USER_AGENT = (
-    "Linestack-Research/1.0 (+https://linestack.dev; contact: brunoracconto@live.com)"
+    "Linestack-Research/1.0 (+https://linestack.dev)"
 )
 DELAY_SECONDS = 1.5
 TIMEOUT = 20.0

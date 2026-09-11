@@ -88,10 +88,7 @@ class Settings(BaseSettings):
     # duplication is deliberate and temporary (ADR-0010): ingest.py moves into
     # the package later. Until it does, a unit test asserts the two agree, so
     # a divergence fails a test rather than silently mislabelling a crawl_run.
-    crawl_user_agent: str = (
-        "Linestack-Research/1.0 "
-        "(+https://linestack.dev; contact: brunoracconto@live.com)"
-    )
+    crawl_user_agent: str = "Linestack-Research/1.0 (+https://linestack.dev)"
     crawl_delay_seconds: float = Field(default=1.5, ge=0)
     crawl_timeout_seconds: float = Field(default=20.0, gt=0)
     crawl_max_pages: int = Field(default=40, gt=0)
