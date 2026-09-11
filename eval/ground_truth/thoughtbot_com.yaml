@@ -86,16 +86,15 @@ questions:
   - id: q3_growth_signals
     question: What signals are there that they are investing or growing?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
-    source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      Insufficient evidence. The careers page says there are no open
+      positions, and no page mentions funding.
+    source_urls: []
+    expected_outcome: insufficient_evidence
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That thoughtbot is investing in growth because its playbook talks
+        about growth. Those passages are about individual employees' careers.
+      - That thoughtbot is expanding. The pages that say "expanding" describe
+        clients' projects, not thoughtbot.
 
   - id: q4_stated_need
     question: What need or priority do they state explicitly?
