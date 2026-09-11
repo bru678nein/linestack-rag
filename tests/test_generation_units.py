@@ -32,6 +32,7 @@ from linestack.generation.client import (
 from linestack.generation.prompts import (
     INSUFFICIENT,
     PROMPT_VERSION,
+    QUESTION_SCOPE,
     SUGGESTION_ID,
     SYSTEM_PROMPT,
     build_messages,
@@ -106,6 +107,35 @@ def test_the_question_is_the_last_thing_the_model_reads() -> None:
     assert messages[-1]["content"].index("CONTEXT HERE") < messages[-1][
         "content"
     ].index("QUESTION")
+
+
+def test_every_evaluated_question_says_what_counts_as_an_answer() -> None:
+    """A model graded by a rule it was never shown is measured on guessing the
+    rule. One scope per evaluated question, and none for anything else."""
+    assert tuple(QUESTION_SCOPE) == QUESTION_IDS
+
+
+def test_the_scope_sits_just_before_the_question() -> None:
+    user = build_messages("q?", "CTX", question_id="q4_stated_need")[-1]["content"]
+
+    assert user.endswith("QUESTION: q?")
+    assert QUESTION_SCOPE["q4_stated_need"] in user
+    assert user.index("CTX") < user.index("WHAT COUNTS") < user.index("QUESTION")
+
+
+def test_a_question_without_an_id_gets_no_scope() -> None:
+    """A free-text question from `make answer` has no grading rule to state."""
+    assert "WHAT COUNTS" not in build_messages("q?", "c")[-1]["content"]
+    assert (
+        "WHAT COUNTS"
+        not in build_messages("q?", "c", question_id=SUGGESTION_ID)[-1]["content"]
+    )
+
+
+def test_the_prompt_forbids_inference_words() -> None:
+    """answer-v1 answered both insufficient_evidence pairs on thoughtbot by
+    linking true facts to conclusions with "suggesting" and "indicating"."""
+    assert '"suggesting"' in SYSTEM_PROMPT and '"indicating"' in SYSTEM_PROMPT
 
 
 def test_a_suggestion_is_told_it_is_a_suggestion() -> None:
@@ -312,6 +342,17 @@ def test_an_answer_that_cites_nothing_is_flagged() -> None:
 
 def test_a_decline_needs_no_citation() -> None:
     assert _answer("Insufficient evidence. Nothing mentions funding.").problems == []
+
+
+def test_an_answer_that_also_declines_is_flagged() -> None:
+    """answer-v2 on thoughtbot's q1 answered, then ended with "Insufficient
+    evidence." It is not a decline and not a clean answer, and counting it as
+    either would hide it."""
+    reply = "They build apps [1]. Insufficient evidence. Nothing says to whom."
+    answer = _answer(reply)
+
+    assert not answer.declined
+    assert "answers and declines in the same reply" in answer.problems
 
 
 def test_a_fabricated_citation_is_reported_as_a_problem() -> None:

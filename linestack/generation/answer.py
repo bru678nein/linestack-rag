@@ -285,6 +285,8 @@ class GeneratedAnswer:
             )
         if not self.declined and not self.citations.cited_anything:
             found.append("makes claims without citing anything")
+        if not self.declined and INSUFFICIENT.lower() in self.text.lower():
+            found.append("answers and declines in the same reply")
         return found
 
 
@@ -351,7 +353,12 @@ async def answer(
     load_before = generator.load_seconds
     started = time.perf_counter()
     reply = await generator.complete(
-        build_messages(question, render_context(context), is_suggestion=is_suggestion),
+        build_messages(
+            question,
+            render_context(context),
+            is_suggestion=is_suggestion,
+            question_id=question_id,
+        ),
         max_tokens=settings.generation_max_tokens,
         temperature=settings.generation_temperature,
     )

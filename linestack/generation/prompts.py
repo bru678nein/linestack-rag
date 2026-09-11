@@ -22,7 +22,7 @@ from linestack.evaluation.dataset import QUESTIONS
 
 # Bump on ANY change to the text below, including a comma. Two runs with the
 # same version and different wording are two runs nobody can compare.
-PROMPT_VERSION = "answer-v1"
+PROMPT_VERSION = "answer-v3"
 
 # The exact opening of a declined answer. Fixed so that declining is detectable
 # without a judge: docs/ground-truth.md §3 grades "the evidence is not present"
@@ -52,10 +52,46 @@ computed fact, [1], [2] and so on for a passage. A claim without a citation is \
 not allowed.
 3. If the material does not answer the question, reply with exactly \
 "{INSUFFICIENT}" followed by one sentence saying what is missing. That is a \
-correct answer, not a failure.
-4. Do not guess, estimate, or generalise past what is written. A plausible \
+correct answer, not a failure. Either answer or decline, never both: a decline \
+starts with "{INSUFFICIENT}" and says nothing else about the company.
+4. Material that is about the same topic but does not answer the question is \
+not an answer. Decline instead of describing it.
+5. Do not infer. If a sentence needs "suggesting", "indicating", "implies" or \
+"shows that" to connect the material to the question, the material does not \
+answer it. The absence of something is not evidence either.
+6. Do not guess, estimate, or generalise past what is written. A plausible \
 claim with no support is wrong even when it happens to be true.
-5. Answer in two to four plain sentences."""
+7. Answer in two to four plain sentences."""
+
+# What counts as an answer to each evaluated question. These are the grading
+# rules from docs/ground-truth.md and ADR-0023, stated for every prospect alike:
+# a model graded by a rule it was never shown is measured on guessing the rule.
+# Nothing here may name or describe one company; that would tune the prompt to
+# the ground-truth set instead of to the question.
+QUESTION_SCOPE = {
+    "q1_what_and_to_whom": (
+        "What the company sells, and to which kinds of customers. A problem it "
+        "solves for its clients belongs here."
+    ),
+    "q2_technical_capacity": (
+        "Evidence that the company itself employs people who build technology: "
+        "engineering or technical job titles, technical job postings, or "
+        "engineering work its own staff describe."
+    ),
+    "q3_growth_signals": (
+        "Growth or investment by the company itself: roles it is hiring for now, "
+        "funding, new offices, new products or teams. A headcount on its own is "
+        "not growth, because it says nothing about change. Employees' personal "
+        "career development is not company growth."
+    ),
+    "q4_stated_need": (
+        "A need the company states in its own words: something it says it cannot "
+        "yet do, such as a role it is hiring for and what that role must fix, or "
+        "a system it says it is rebuilding. A problem it solves for clients is "
+        "not its need. A value, commitment, policy or programme it already has "
+        "is not a need."
+    ),
+}
 
 SUGGESTION_ADDENDUM = (
     "This question asks for a suggestion, not a fact. Ground it in the "
@@ -78,12 +114,19 @@ def question_text(question_id: str) -> str:
 
 
 def build_messages(
-    question: str, context: str, *, is_suggestion: bool = False
+    question: str,
+    context: str,
+    *,
+    is_suggestion: bool = False,
+    question_id: str | None = None,
 ) -> list[dict[str, str]]:
     """Chat messages for one question. The context comes BEFORE the question,
-    so the last thing the model reads is what it is being asked."""
+    so the last thing the model reads is what it is being asked. An evaluated
+    question also gets what counts as an answer to it, just before it."""
     system = SYSTEM_PROMPT + ("\n\n" + SUGGESTION_ADDENDUM if is_suggestion else "")
+    scope = QUESTION_SCOPE.get(question_id or "")
+    counts = f"WHAT COUNTS AS AN ANSWER: {scope}\n\n" if scope else ""
     return [
         {"role": "system", "content": system},
-        {"role": "user", "content": f"{context}\n\nQUESTION: {question}"},
+        {"role": "user", "content": f"{context}\n\n{counts}QUESTION: {question}"},
     ]

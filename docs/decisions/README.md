@@ -39,3 +39,4 @@ Every record states four things:
 | [0021](0021-publication-dates-come-from-evidence-or-nowhere.md) | A publication date comes from evidence, or from nowhere | Accepted |
 | [0022](0022-local-generation-by-default.md) | Local generation by default; OpenAI as the alternative | Accepted |
 | [0023](0023-q4-asks-for-stated-needs.md) | q4 asks what a company says it needs, not what hurts | Accepted |
+| [0024](0024-the-prompt-states-what-counts-as-an-answer.md) | The prompt states what counts as an answer | Accepted |

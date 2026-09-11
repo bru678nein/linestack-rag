@@ -166,6 +166,10 @@ Reported as counts, not rates: at two pairs, "1 of 2" says what happened and
 "0.50" claims a precision it does not have. Recorded with the generation model
 and prompt version, because a count from one is not comparable with another's.
 
+A reply that contains the phrase without starting with it counts as answered,
+and is reported with the problem "answers and declines in the same reply"
+(ADR-0024). Counting it either way would hide it.
+
 What it cannot see is an answer that does not decline but is wrong some other
 way. That is faithfulness (§2.2), and it still needs a judge.
 

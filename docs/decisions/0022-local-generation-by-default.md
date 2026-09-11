@@ -155,6 +155,7 @@ and counts declines (docs/evaluation.md §2.6). On thoughtbot, with both
 (q3 and q4), and wrongly declined on 0 of 2 answerable pairs. It never
 declines. The q3 failure described above is now a number re-checked on every
 run, and the baseline any change to the model or the prompt has to beat.
+ADR-0024 acts on the prompt side, measured against it.
 
 Accepted means local generation works on this machine, measured. It does not
 mean the answers are good, and this section is the evidence that they are not
