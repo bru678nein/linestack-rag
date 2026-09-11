@@ -99,16 +99,17 @@ questions:
   - id: q4_stated_need
     question: What need or priority do they state explicitly?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
-    source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      Insufficient evidence. No crawled page states something thoughtbot
+      needs or cannot yet do: the careers page has no open positions, and its
+      stated commitments, such as its DEI work, are things it already does.
+    source_urls: []
+    expected_outcome: insufficient_evidence
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That thoughtbot needs to hire. The careers page says there are no
+        open positions.
+      - That its DEI work is a need. It is a commitment it already acts on.
+      - That a problem it solves for clients is its own need. That is q1
+        evidence.
 
 # ---------------------------------------------------------------
 # Candidate source URLs, from the 37 documents in this artifact.

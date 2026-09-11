@@ -86,6 +86,23 @@ questions:
         need. That is q1 evidence (ADR-0023).
 ```
 
+### What q4 counts
+
+q4 asks what a company says it **needs**: something it states it cannot yet do
+on its own, such as a role it is hiring for and what that role has to fix, or
+a system it says it is rebuilding. Two things that look like needs do not
+count:
+
+- **A problem it solves for its clients.** That is q1 evidence.
+- **A commitment it already acts on**: values, a DEI programme, a pledge.
+  Nearly every company publishes these, so counting them would make q4
+  answerable from a values page for everyone, and it would tell a seller
+  nothing about what the prospect lacks.
+
+When no crawled page states a need, the answer is `insufficient_evidence`. For
+a company that is not hiring, that will often be the correct answer
+(ADR-0023).
+
 ### Field meanings
 
 | Field | Required | Purpose |

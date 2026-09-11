@@ -57,6 +57,24 @@ own.
   q3 takes the fact that they're hiring, q4 takes what the posting says the
   role has to do.
 
+## What counts as a stated need — added 2026-09-11
+
+Settled while writing thoughtbot's q4. Searching the crawled pages for
+thoughtbot describing its own priorities found commitments it already acts on:
+its DEI work ("works to create a more diverse, equitable, inclusive…
+environment", a DEI council, a CEO diversity pledge) and "our commitment to
+sharing what we learn". It also found one past need, already solved: it built
+its own hiring software because nothing off the shelf fit. It found nothing
+thoughtbot says it currently needs or cannot yet do.
+
+A commitment a company already acts on does not count as a stated need. Nearly
+every company publishes its values, so counting them would make q4 answerable
+from boilerplate for every prospect, the same failure as reading the old
+wording as "pain solved for customers". It would also tell a seller nothing
+about what the prospect lacks. thoughtbot's q4 is therefore
+insufficient_evidence, and the rule is in docs/ground-truth.md so every
+prospect is judged the same way.
+
 ## Why the id changed too
 
 Rewording while keeping `q4_stated_pain` would let a run record of the old
