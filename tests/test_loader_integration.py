@@ -401,6 +401,101 @@ async def test_a_genuinely_changed_document_replaces_only_its_own_chunks(
     assert after_other == before_other, "an unrelated document was re-chunked"
 
 
+_DOCUMENTS = "SELECT count(*) FROM documents WHERE prospect_id = :p"
+
+
+def _recrawled(artifact, *, hours: int):
+    """The same prospect crawled `hours` later (or earlier, if negative)."""
+    copy = artifact.model_copy(deep=True)
+    copy.crawled_at = (artifact.crawled_at_utc + dt.timedelta(hours=hours)).isoformat()
+    return copy
+
+
+async def test_a_newer_crawl_removes_the_documents_it_no_longer_contains(
+    db_session,
+) -> None:
+    """**[verified] 2026-09-11** (docs/open-questions.md §1.10): two fly.io
+    pages from the 2026-09-02 crawl survived the 2026-09-09 load, still
+    embedded, and one ranked 3rd for a ground-truth question whose answer is
+    written against the newer crawl."""
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    newer = _recrawled(artifact, hours=1)
+    dropped = newer.documents.pop()
+    dropped_id = await db_session.scalar(
+        text("SELECT id FROM documents WHERE prospect_id = :p AND source_url = :u"),
+        {"p": first.prospect_id, "u": dropped.url},
+    )
+
+    report = await load_artifact(db_session, newer, now=NOW)
+    await db_session.flush()
+
+    assert report.documents_removed == [dropped.url]
+    assert dropped.url in "\n".join(report.as_lines())
+    assert await db_session.scalar(text(_DOCUMENTS), {"p": first.prospect_id}) == 36
+    orphans = await db_session.scalar(
+        text("SELECT count(*) FROM chunks WHERE document_id = :d"), {"d": dropped_id}
+    )
+    assert orphans == 0, "the removed document's chunks are still searchable"
+
+    again = await load_artifact(db_session, newer, now=NOW)
+    assert again.documents_removed == [], "a re-load removed something (A7)"
+
+
+async def test_an_older_crawl_loaded_after_a_newer_one_leaves_the_documents_alone(
+    db_session,
+) -> None:
+    """Its run is history and is recorded. Its documents are not written:
+    they would put back pages the newer crawl replaced, which is §1.10 again
+    from the other direction."""
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    newer = _recrawled(artifact, hours=1)
+    first = await load_artifact(db_session, newer, now=NOW)
+    await db_session.flush()
+
+    older = artifact  # the earlier crawled_at
+    older.documents.pop()
+    older.documents[0].stable_hash = "an-older-version-of-this-page"
+
+    report = await load_artifact(db_session, older, now=NOW)
+    await db_session.flush()
+
+    assert report.crawl_run_existed is False
+    assert "newer crawl" in report.documents_held
+    assert report.documents_removed == []
+    assert report.documents_inserted == report.documents_updated == 0
+    assert await db_session.scalar(text(_DOCUMENTS), {"p": first.prospect_id}) == 37
+    stored = await db_session.scalar(
+        text(
+            "SELECT stable_hash FROM documents "
+            " WHERE prospect_id = :p AND source_url = :u"
+        ),
+        {"p": first.prospect_id, "u": older.documents[0].url},
+    )
+    assert stored == newer.documents[0].stable_hash
+
+
+async def test_a_crawl_that_did_not_complete_removes_nothing(db_session) -> None:
+    """A robots.txt answering 5xx, or a host down for a day, says nothing
+    about which pages still exist."""
+    artifact = _artifact("prospect_thoughtbot_com.json")
+    first = await load_artifact(db_session, artifact, now=NOW)
+    await db_session.flush()
+
+    newer = _recrawled(artifact, hours=1)
+    newer.crawl_outcome = "aborted_robots"
+    newer.documents.pop()
+
+    report = await load_artifact(db_session, newer, now=NOW)
+    await db_session.flush()
+
+    assert report.documents_removed == []
+    assert "aborted_robots" in report.documents_held
+    assert await db_session.scalar(text(_DOCUMENTS), {"p": first.prospect_id}) == 37
+
+
 _FIRST_HEADER = (
     "SELECT split_part(c.content, E'\\n', 1) FROM chunks c "
     "  JOIN documents d ON d.id = c.document_id "

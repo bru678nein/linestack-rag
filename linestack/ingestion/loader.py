@@ -3,8 +3,9 @@ Postgres, idempotently.
 
 Owns: upsert of prospects, documents and chunks keyed on the natural keys the
 schema declares; skipping re-chunking and re-embedding for documents whose
-content_hash is unchanged (A7); and writing crawl_runs and crawl_page_outcomes
-so that a document that is absent has a recorded reason (A5).
+content_hash is unchanged (A7); removing documents the latest completed crawl
+no longer contains; and writing crawl_runs and crawl_page_outcomes so that a
+document that is absent has a recorded reason (A5).
 
 Does not own: crawling. The two steps are deliberately separate so a crawl can
 be re-run and diffed without touching the database (ADR-0008).
@@ -152,6 +153,11 @@ class LoadReport:
     documents_relabelled: int = 0
     chunks_written: int = 0
     blocks_force_split: int = 0
+    #: Stored documents this crawl no longer contains, deleted with their
+    #: chunks. By URL, not a count: each one is a page that left the corpus.
+    documents_removed: list[str] = field(default_factory=list)
+    #: Why this load left the stored documents alone, when it did.
+    documents_held: str = ""
 
     def as_lines(self) -> list[str]:
         tally = ", ".join(f"{k} {v}" for k, v in sorted(self.counts_by_outcome.items()))
@@ -175,6 +181,9 @@ class LoadReport:
                 if self.blocks_force_split
                 else ""
             ),
+            f"  removed:   {len(self.documents_removed)} no longer in this crawl"
+            + "".join(f"\n    {url}" for url in self.documents_removed),
+            *([f"  held:      {self.documents_held}"] if self.documents_held else []),
         ]
 
 
@@ -278,8 +287,67 @@ async def load_artifact(
             report.counts_by_outcome.get(outcome.outcome, 0) + 1
         )
 
+    # The stored documents are the latest crawl's. An older artifact still
+    # records its run and outcomes -- that is history -- but writing its
+    # documents would put back pages a newer crawl already replaced or dropped.
+    latest = await _latest_crawl_start(session, report.prospect_id)
+    if artifact.crawled_at_utc < latest:
+        report.documents_held = (
+            f"a newer crawl ({latest.isoformat()}) is already loaded, so this "
+            "one's documents were not written"
+        )
+        return report
+
     await _load_documents(session, artifact, report, count_tokens)
+
+    # Removal only on a crawl that finished normally and stored something. A
+    # host that was unreachable today, or a robots.txt answering 5xx, says
+    # nothing about which pages still exist, and must not empty the corpus.
+    if artifact.crawl_outcome != "completed":
+        report.documents_held = (
+            f"the crawl ended {artifact.crawl_outcome}, so stored documents it "
+            "did not reach were kept"
+        )
+    elif not artifact.documents:
+        report.documents_held = "the crawl stored no documents, so none were removed"
+    else:
+        report.documents_removed = await _remove_documents_not_in(
+            session, report.prospect_id, artifact
+        )
     return report
+
+
+async def _latest_crawl_start(session: AsyncSession, prospect_id: int) -> dt.datetime:
+    """The newest crawl loaded for a prospect. Called after this load's own
+    run is inserted, so it is never earlier than this artifact's."""
+    return await session.scalar(
+        text("SELECT max(started_at) FROM crawl_runs WHERE prospect_id = :p"),
+        {"p": prospect_id},
+    )
+
+
+async def _remove_documents_not_in(
+    session: AsyncSession, prospect_id: int, artifact: Artifact
+) -> list[str]:
+    """Delete the prospect's documents this crawl does not contain. Returns
+    their URLs.
+
+    **[verified] 2026-09-11** (docs/open-questions.md §1.10): two fly.io pages
+    from the 2026-09-02 crawl survived the 2026-09-09 load, and one ranked 3rd
+    for q1, pushing the ground truth's best source page out of the top 10.
+
+    Their chunks go with them through the chunks' ON DELETE CASCADE, so this
+    module still writes no chunk SQL of its own (A1).
+    """
+    rows = await session.execute(
+        text(
+            "DELETE FROM documents "
+            " WHERE prospect_id = :p AND source_url <> ALL(CAST(:urls AS text[])) "
+            "RETURNING source_url"
+        ),
+        {"p": prospect_id, "urls": [doc.url for doc in artifact.documents]},
+    )
+    return sorted(row.source_url for row in rows)
 
 
 # What to do with one document, given what is already stored for that URL.

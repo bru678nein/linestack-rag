@@ -503,7 +503,7 @@ describe it as mentions (what it is). The first changes a signal every prospect
 carries and needs fly.io's roster checked the same way; the second is a prompt
 change and needs a new prompt version with its own run.
 
-### 1.10 A newer crawl never removes what the older one stored — RECORDED 2026-09-11
+### 1.10 A newer crawl never removes what the older one stored — FIXED 2026-09-11
 
 The loader upserts the documents an artifact contains and does nothing about
 the prospect's documents it does not contain. After a re-crawl, a page the
@@ -524,11 +524,23 @@ flips from miss to hit. The ground truth is written against the frozen
 artifact (docs/ground-truth.md §2 step 1); the harness evaluates the database.
 Here they disagree.
 
-**Not fixed yet.** The obvious fix is for the loader to delete a prospect's
-documents that the artifact being loaded does not contain, which the chunks'
-`ON DELETE CASCADE` makes one statement. It needs one guard first: loading an
-older artifact after a newer one must not delete the newer documents, so the
-delete belongs only to a load of the prospect's latest crawl run.
+**Fixed.** The stored documents are now the latest crawl's
+(`linestack/ingestion/loader.py`):
+
+- A load of the prospect's latest crawl deletes the documents it does not
+  contain, and their chunks go through `ON DELETE CASCADE`. The report lists
+  each removed URL.
+- An older artifact loaded after a newer one records its run and outcomes, and
+  writes no documents. Writing them would put back what the newer crawl
+  replaced, the same defect from the other direction.
+- A crawl that did not complete (`aborted_robots`, `aborted_unreachable`), or
+  stored nothing, removes nothing. A host down for a day says nothing about
+  which pages still exist.
+
+**Measured after, [verified] 2026-09-11**, re-loading both frozen artifacts:
+fly.io removed exactly `/blog/mcps-everywhere` and `/blog/unfortunately-mcp`;
+thoughtbot removed nothing. fly.io's q1 went from a miss at @10 to a hit at
+rank 10, as predicted from the ranks above. No chunk was re-embedded.
 
 ## 2. Assumptions that need verification
 
