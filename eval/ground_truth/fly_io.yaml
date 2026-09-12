@@ -101,16 +101,30 @@ questions:
   - id: q4_stated_need
     question: What need or priority do they state explicitly?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
+      fly.io says it is focusing the company on Sprites, its computers for AI
+      agents. Its job postings state what it needs: an Infrastructure
+      Operations Engineer to keep its server fleet healthy and ahead of
+      demand, a Networking Engineer to work on the proxy that routes each
+      request to the closest VM, and an Account Manager to own its largest,
+      fastest-growing accounts.
     source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      - https://fly.io/blog/kurt-scott-money-sprites
+      - https://fly.io/jobs/infra-engineer
+      - https://fly.io/jobs/networking-engineer
+      - https://fly.io/jobs/account-manager-strategic-accounts
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That fly.io needs agents to have real computers. That is what it
+        sells (q1 evidence), not its need.
+      - That its priority is model-agnostic AI tooling.
+        /blog/the-future-isn-t-model-agnostic argues against it.
+      - That its customers' growth is fly.io's need. The Account Manager
+        posting is about serving those customers.
+    notes: >
+      Per ADR-0023, q3 takes the fact that fly.io is hiring and q4 takes what
+      each posting says the role must do. Left out: the partner search on
+      /docs/about/extensions (a need for partners, not staff), and 2025
+      engineering plans on the blog (Litestream read replicas, Corrosion
+      regionalization), which are older and mostly shipped.
 
 # ---------------------------------------------------------------
 # Candidate source URLs, from the 39 documents in this artifact.
