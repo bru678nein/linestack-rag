@@ -658,6 +658,31 @@ top 5) on thoughtbot's q2 pair. It is still not acted on: two scored pairs of a
 planned 48, on one question, is the evidence A3 says to finish collecting
 before changing the ranking.
 
+**Corrected 2026-09-11: it does not meet the trigger, and hybrid would not fix
+it.** ADR-0009's trigger has two halves, and the second is "an exact term
+present in the corpus that vector search ranked outside the top 5". Neither
+roster contains any of the question's words: `evidence`, `in-house`,
+`technical` and `capacity` occur 0 times on fly.io's `/about` and on
+thoughtbot's `/team`. Lexical search on the question would miss both rosters
+the same way vector search does, and on thoughtbot it would favour the
+`/services` pages that say "technical". The paragraph above read only the
+first half of the trigger.
+
+**Third data point, [verified] 2026-09-11**, fly.io's q2 written by hand
+(38 engineering roles on `/about`). A miss at every cut-off; `/about` ranks
+**97th of 110**. The top ten are four chunks of `/blog/corrosion`, three of
+`/blog/trust-calibration-for-ai-software-builders`, the blog index and a
+pricing chunk. q2 now misses on both prospects with a written reference, for
+the same reason.
+
+**What the evidence points at instead** is the query, not the ranking. The
+2026-09-03 measurement above already showed it: the same roster ranks 4th of
+111 for "who works here, employees and their roles", the page's own
+vocabulary. Retrieving with a query written for each question rather than the
+question itself (or generating one, as HyDE does) is the candidate, and it
+is not in ADR-0009's list. Not acted on: it changes what every question
+retrieves, and needs its own ADR and a before-and-after on all scored pairs.
+
 **What this does NOT establish**, and the distinction matters before anyone
 ships a fix:
 

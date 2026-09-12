@@ -56,16 +56,25 @@ questions:
   - id: q2_technical_capacity
     question: What evidence is there of in-house technical capacity?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
+      fly.io's team page lists 53 people. 38 are in engineering roles: 19
+      Developers, 18 engineers (9 Support Engineers, 2 Infra Ops Engineers, 1
+      Infra Engineer, 2 Platform Engineers, 2 Site Reliability Engineers, 1
+      Staff Engineer, 1 Fullstack Engineer) and a VP of Engineering.
     source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      - https://fly.io/about
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That fly.io has a small technical team, or no in-house technical
+        capacity.
+      - That fly.io employs 53 people. 53 is how many the team page lists.
+    notes: >
+      Titles counted from the crawled /about on 2026-09-11, without recording
+      names. Engineering roles include support engineers and engineering
+      leadership; the Solutions Architect, product, design and non-technical
+      roles are excluded. The same rule gives thoughtbot's 34, which has no
+      support engineers. 53 is the crawler's people_listed; confirm it with
+      the live count in signals. technical_roles_named is also 38 here, by
+      coincidence: it counts the words "developer" and "engineer", not titles
+      (docs/open-questions.md §1.9).
 
   - id: q3_growth_signals
     question: What signals are there that they are investing or growing?
