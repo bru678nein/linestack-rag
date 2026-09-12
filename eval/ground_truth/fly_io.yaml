@@ -79,16 +79,24 @@ questions:
   - id: q3_growth_signals
     question: What signals are there that they are investing or growing?
     reference: >
-      TODO 2-4 sentences, in the register a colleague would use,
-      claiming only what the pages in source_urls support.
+      fly.io raised $25M, announced on 2026-07-24, and is hiring for 3 roles:
+      an Account Manager for strategic accounts, an Infrastructure Operations
+      Engineer and a Networking Engineer.
     source_urls:
-      - TODO https://... the pages you actually used
-    # expected_outcome: insufficient_evidence   # if the corpus
-    #   genuinely does not answer this. That is a CORRECT answer
-    #   and roughly a quarter of the set should be these (§3).
+      - https://fly.io/news
+      - https://fly.io/blog/kurt-scott-money-sprites
+      - https://fly.io/jobs
     must_not_claim:
-      - TODO what a fluent, confident, wrong answer would say here.
-      #  This is the highest-value field in the file (§1).
+      - That fly.io is raising a Series A. "raising that Series A round" on
+        /blog is someone's daydream.
+      - That fly.io is a Series B startup. That is the byline of a customer
+        testimonial on the homepage.
+      - That fly.io raised "tens of millions" building agents.
+        /blog/everyone-write-an-agent says that about other startups.
+    notes: >
+      "Raised $25M" rests on two pages together: /news ties $25M to funding
+      in its headline, and the post the same day says "we've raised a bunch
+      more money" without an amount. Neither says both.
 
   - id: q4_stated_need
     question: What need or priority do they state explicitly?
