@@ -645,7 +645,10 @@ hand-written ground-truth pair rather than a guessed source. On thoughtbot the
 answer to the same question is on `/team` (53 people listed, most with
 development or design titles), and `make eval` scores the pair a miss at every
 cut-off. Ranked across all 43 thoughtbot chunks, the three `/team` chunks come
-**15th, 21st and 43rd**. The top five are `/services` pages whose text says
+**15th, 21st and 43rd**. (Corrected 2026-09-13: only the 43rd is the roster,
+`/team`, which is one chunk and ranked last. The 15th and 21st are
+`/playbook/the-thoughtbot-way/people/team`, a different page whose URL also
+ends in `/team`.) The top five are `/services` pages whose text says
 "technical": "fractional product technical leadership", "technical and
 business assistance". The score spread runs from 0.579 to 0.419, compressed the
 same way as fly.io's. Same model, same failure, second company: the question's
@@ -682,6 +685,10 @@ vocabulary. Retrieving with a query written for each question rather than the
 question itself (or generating one, as HyDE does) is the candidate, and it
 is not in ADR-0009's list. Not acted on: it changes what every question
 retrieves, and needs its own ADR and a before-and-after on all scored pairs.
+
+**Acted on 2026-09-13, ADR-0025.** With a query written per question, fly.io's
+q2, q3 and q4 sources rank 1st, thoughtbot's roster 14th, and recall@5 goes
+from 0.33 to 0.50. q1 got worse on both prospects.
 
 **What this does NOT establish**, and the distinction matters before anyone
 ships a fix:

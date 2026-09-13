@@ -47,6 +47,7 @@ from linestack.generation.prompts import (
 )
 from linestack.retrieval.embedding import build_client as build_embedder
 from linestack.retrieval.embedding import embed_question
+from linestack.retrieval.queries import retrieval_query
 from linestack.retrieval.scope import ProspectScope
 from linestack.retrieval.search import search
 
@@ -331,7 +332,9 @@ async def answer(
     )
 
     started = time.perf_counter()
-    query_vector = await embed_question(embedder or build_embedder(), question)
+    query_vector = await embed_question(
+        embedder or build_embedder(), retrieval_query(question, question_id)
+    )
     hits = await search(scope, query_vector, k=k)
     urls = await scope.source_urls([hit.id for hit in hits])
     retrieve_seconds = time.perf_counter() - started

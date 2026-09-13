@@ -70,6 +70,7 @@ from linestack.evaluation.metrics import (
 from linestack.generation.answer import AnswerUnavailable, answer
 from linestack.generation.prompts import PROMPT_VERSION
 from linestack.retrieval.embedding import build_client, embed_question
+from linestack.retrieval.queries import query_version, retrieval_query
 from linestack.retrieval.scope import ProspectScope
 from linestack.retrieval.search import search
 
@@ -132,6 +133,9 @@ class RunRecord:
     retrieval_top_k: int
     cutoffs: list[int]
     prospects: list[ProspectResult] = field(default_factory=list)
+    #: What retrieval searched with: a QUERY_VERSION, or "question" when every
+    #: question searched with its own words (ADR-0025).
+    retrieval_queries: str = ""
     #: One-time cost of getting the embedder ready, kept OUT of embed_seconds.
     #: ADR-0017 measured it at 7.2 s per process against 1.84 s to embed the
     #: whole 154-chunk corpus, so folding it in would report a run as dominated
@@ -199,6 +203,8 @@ class RunRecord:
             f"({self.embedding_dimensions} dimensions)",
             f"  top_k:     {self.retrieval_top_k}",
         ]
+        if self.retrieval_queries:
+            lines.append(f"  queries:   {self.retrieval_queries}")
         for prospect in self.prospects:
             lines.append(f"  {prospect.domain}:")
             if prospect.detail:
@@ -372,6 +378,7 @@ async def evaluate_directory(
         embedding_dimensions=settings.embedding_dimensions,
         retrieval_top_k=settings.retrieval_top_k,
         cutoffs=list(cutoffs),
+        retrieval_queries=query_version(),
     )
     paths = sorted(Path(directory).glob("*.yaml"))
     if not paths:
@@ -554,7 +561,11 @@ async def _evaluate_pair(
             coverage=coverage,
         )
 
-    query_vector = await embedder.embed(str(question.get("question", "")))
+    # The same text answer() searches with, so what is scored is what the
+    # model is given (ADR-0025).
+    query_vector = await embedder.embed(
+        retrieval_query(str(question.get("question", "")), qid)
+    )
 
     started = time.perf_counter()
     hits = await search(scope, query_vector, k=max(cutoffs))

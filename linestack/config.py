@@ -69,6 +69,10 @@ class Settings(BaseSettings):
 
     # -- retrieval ---------------------------------------------------------
     retrieval_top_k: int = Field(default=5, gt=0)
+    # ADR-0025: search with a query written for each evaluated question
+    # (linestack/retrieval/queries.py) rather than the question's own words.
+    # Off reproduces the baseline it is measured against.
+    use_retrieval_queries: bool = True
 
     # ADR-0005: 800-1200 tokens with roughly 150 of overlap. .env.example
     # carries the target and the overlap; the band is derived from the target
