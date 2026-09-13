@@ -105,6 +105,42 @@ more confident in its own reading of the material is more willing to answer.
 Another is that answer-v3 was written against 1.7B's failures. Neither is
 tested; both need more than four pairs.
 
+## The other direction, measured on fly.io — added 2026-09-13
+
+**[verified]** `Qwen/Qwen3-1.7B`, `answer-v3`, after fly.io's four pairs were
+written by hand. All four are answerable, so they are the first check that the
+stricter prompt does not decline what it should answer.
+
+| | declined where it should | declined where it should not |
+| --- | --- | --- |
+| thoughtbot + fly.io | 1 of 2 | **0 of 6** |
+
+It does not over-decline. Reading the four fly.io answers against their
+references and the passages they cite shows what the counts do not:
+
+- **q1: good.** A cloud platform on micro-VMs, sold to developers and
+  businesses; the wording traces to two blog posts in its context.
+- **q2: right facts, wrong citations.** "53 people", "38 technical job
+  titles", "3 open roles, of which 2 are technical" are the computed signals,
+  and it cites four blog passages ([1] to [4]: trust calibration and
+  Corrosion) instead of `[S]`. Every citation is valid, so no check fires. The
+  38 is also the mislabelled word count (docs/open-questions.md §1.9), right by
+  coincidence.
+- **q3: half right.** The funding and the Sprites relaunch, correctly cited to
+  `/blog/kurt-scott-money-sprites`. It misses the $25M and the three roles,
+  whose pages were not in its top five, and calls a headcount of 53 a hiring
+  signal, which the q3 scope says it is not.
+- **q4: wrong, and retrieval came first.** None of the four source pages was
+  in its context (best rank 25 of 110). It got three chunks of an essay on
+  writing a coding agent, one of `/blog/code-and-let-live` and one of trust
+  calibration, and turned the essay into a stated need: fly.io "wants to
+  build a coding agent that can run anywhere". Given that context, the right
+  answer was a decline.
+
+So the remaining failures on answerable pairs start in retrieval (q4, and q3's
+missing half), and the prompt's inability to decline on a context that does
+not answer (q4) is the same failure thoughtbot's q4 shows.
+
 ## Consequences
 
 - The default stays `Qwen/Qwen3-1.7B`. Qwen3-4B lost on declines, the metric
