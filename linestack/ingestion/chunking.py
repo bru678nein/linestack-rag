@@ -258,6 +258,10 @@ def _force_split(
     inside it is a heading or a paragraph break, so there is no good boundary
     -- only a necessary one, which is why every force-split is counted rather
     than absorbed.
+
+    The local default embedder, bge-small-en-v1.5, reads only the first 512
+    tokens of a chunk, so for it this cap is not the binding limit; the chunk
+    target is, and most chunks exceed the window (docs/open-questions.md §1.11).
     """
     if block.tokens <= hard_max:
         return [block]

@@ -81,10 +81,13 @@ class Settings(BaseSettings):
     chunk_overlap_tokens: int = Field(default=150, ge=0)
 
     # Not in .env.example. A single atomic block -- one table, one list -- can
-    # exceed the embedding model's 8191-token input limit, and no heading or
-    # paragraph boundary exists inside it to split on. Measured: fly.io's
-    # pricing table is one block of roughly 13,000 tokens. Above this a block
-    # is force-split at row boundaries, and every force-split is counted.
+    # exceed an embedding model's input limit (8191 tokens for
+    # text-embedding-3-small), and no heading or paragraph boundary exists
+    # inside it to split on. Measured: fly.io's pricing table is one block of
+    # roughly 13,000 tokens. Above this a block is force-split at row
+    # boundaries, and every force-split is counted. The local default,
+    # bge-small-en-v1.5, reads only the first 512 tokens of a chunk, well
+    # below both this cap and the target (docs/open-questions.md §1.11).
     chunk_hard_max_tokens: int = Field(default=6000, gt=0)
 
     # -- ingestion ---------------------------------------------------------

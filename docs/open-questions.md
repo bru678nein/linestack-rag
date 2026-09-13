@@ -542,6 +542,40 @@ fly.io removed exactly `/blog/mcps-everywhere` and `/blog/unfortunately-mcp`;
 thoughtbot removed nothing. fly.io's q1 went from a miss at @10 to a hit at
 rank 10, as predicted from the ranks above. No chunk was re-embedded.
 
+### 1.11 The local embedder reads only the first 512 tokens of a chunk — RECORDED 2026-09-13
+
+bge-small-en-v1.5, the default embedder since ADR-0017, embeds at most 512
+WordPiece tokens per input (`max_seq_length: 512` in its
+`sentence_bert_config.json`) and ignores the rest without warning. Chunks are
+sized for text-embedding-3-small's 8191-token limit (ADR-0005: 800–1200
+tokens, a 6000-token hard cap, job postings never split), and until now
+nothing in the code mentioned the smaller window.
+
+**[verified] 2026-09-13**, bge's own tokenizer over every stored chunk, no
+model weights loaded:
+
+| prospect | chunks | over 510 content tokens | median | max | chunk text never embedded |
+| --- | --- | --- | --- | --- | --- |
+| fly.io | 110 | 82 | 878 | 5,520 | 50% |
+| thoughtbot.com | 43 | 20 | 458 | 1,366 | 26% |
+
+What it costs the scored pairs, so far:
+
+- Both rosters fit (fly.io `/about` 484 tokens, thoughtbot `/team` 327), so
+  neither q2 miss is caused by it.
+- Every fly.io q1 source is cut, by 36% to 64% of its text.
+- Of eight sentences carrying a reference's key fact, seven sit before the cut
+  and one after: the Networking Engineer posting's "We need to get it to the
+  closest VM" (1,573 tokens, never split). fly.io q4 does not depend on it,
+  because its other sources rank first. The eight were picked by the
+  assistant; key-fact markers, which would make this mechanical, do not exist
+  yet.
+
+**Not fixed yet.** Every remedy changes every prospect's chunks: a chunk
+target that fits the window, several vectors per chunk, or a longer-window
+embedder. It needs §1.7's chunker version first. The roadmap's trigger is key
+facts past the window on at least two scored pairs; today that is one.
+
 ## 2. Assumptions that need verification
 
 Each of these appears in the documentation marked as an assumption. This is the
@@ -689,6 +723,26 @@ retrieves, and needs its own ADR and a before-and-after on all scored pairs.
 **Acted on 2026-09-13, ADR-0025.** With a query written per question, fly.io's
 q2, q3 and q4 sources rank 1st, thoughtbot's roster 14th, and recall@5 goes
 from 0.33 to 0.50. q1 got worse on both prospects.
+
+**Lexical probe, [verified] 2026-09-13**, read-only SQL on the three pairs
+that miss at @5 under queries-v1. Every chunk of the prospect ranked by
+`ts_rank` against an OR-query of the queries-v1 content words, under `simple`
+and `english` (raw and length-normalised ranking gave the same picture):
+
+| pair | vector (queries-v1) | lexical `simple` | lexical `english` | query words in the evidence |
+| --- | --- | --- | --- | --- |
+| fly.io q1 | 18 | 8–9 | 11–12 | products, services, customers, work (+ build, stemmed) |
+| thoughtbot q1 | 7 | **3** | **1** | build, industries, products, services, work (+ customers, stemmed) |
+| thoughtbot q2 | 14 | 33–34 | 23 | team (+ developers, designers, stemmed) |
+
+Read against the queries actually used, ADR-0009's hybrid trigger is met on q1
+and q2: recall@5 below 0.8, and exact query terms in evidence that vector
+search ranks outside the top 5. The 2026-09-11 correction above was about the
+question's own words, before queries-v1. The probe predicts that fusion would
+help q1, thoughtbot's most, and would not help q2: the only word the roster
+shares with the query is "team", which the playbook pages use far more. Not
+acted on: the roadmap re-runs the probe on 24 or more pairs before any ranking
+change.
 
 **What this does NOT establish**, and the distinction matters before anyone
 ships a fix:

@@ -1,5 +1,7 @@
-"""Responsibility: turning text into a halfvec(1536) with text-embedding-3-small,
-and recording which model produced it.
+"""Responsibility: turning text into an embedding with the configured model --
+local bge-small-en-v1.5 at 384 dimensions by default (ADR-0017), OpenAI's
+text-embedding-3-small as the alternative -- and recording which model
+produced it.
 
 Owns: batching, retry, and the invariant that an embedding is never stored
 without its model name -- the schema enforces the pairing, this module supplies
@@ -28,6 +30,11 @@ from linestack.retrieval.scope import EmbeddingBatch, ProspectScope
 # number of inputs per request. Both limits are respected; the token ceiling is
 # the one that actually binds, because a batch of 64 chunks at 1,000 tokens is
 # 64,000 tokens.
+#
+# The local default reads far less. bge-small-en-v1.5 embeds at most 512
+# WordPiece tokens per input and silently ignores the rest. Measured 2026-09-13
+# (docs/open-questions.md §1.11): 82 of fly.io's 110 chunks and 20 of
+# thoughtbot's 43 are longer, and half of fly.io's chunk text is never embedded.
 MAX_INPUTS_PER_REQUEST = 64
 MAX_TOKENS_PER_REQUEST = 100_000
 
