@@ -116,6 +116,32 @@ class LocalEmbedder:
         )[0]
         return vector.tolist()
 
+    def window_tokens(self) -> int | None:
+        """The most tokens the model embeds per input; it drops the rest.
+
+        512 for bge-small-en-v1.5 (docs/open-questions.md §1.11). None for a
+        model that declares no limit.
+        """
+        return self._load().max_seq_length
+
+    def count_over_window(self, texts: list[str]) -> int:
+        """How many of `texts` are longer than the window, so partly unembedded.
+
+        Counted with the model's own tokenizer and its special tokens, because
+        that is what the window is measured in: 512 is [CLS], 510 tokens of
+        text and [SEP]. Truncation is off, or every count would be zero, and
+        so is `verbose`: a long input is counted here rather than warned about
+        once on stderr and forgotten. What gets embedded does not change.
+        """
+        model = self._load()
+        window = model.max_seq_length
+        if not window:
+            return 0
+        encoded = model.tokenizer(
+            list(texts), add_special_tokens=True, truncation=False, verbose=False
+        )
+        return sum(1 for ids in encoded["input_ids"] if len(ids) > window)
+
 
 async def embed_question(client, question: str) -> list[float]:
     """Embed one question the way the chunks were embedded -- the only way.
@@ -154,6 +180,14 @@ class EmbedReport:
     chunks_embedded: int = 0
     dry_run: bool = False
     batches: list[int] = field(default_factory=list)
+    #: Inputs longer than the local model's window, counted as they are
+    #: embedded. bge-small-en-v1.5 embeds the first 512 tokens and drops the
+    #: rest without a word (docs/open-questions.md §1.11), so the loss is
+    #: counted rather than absorbed, like a force-split in chunking.
+    over_window: int = 0
+    #: The window itself. None where the count does not apply: an OpenAI
+    #: model, a dry run, or a pass with nothing to embed.
+    window_tokens: int | None = None
 
     def as_lines(self) -> list[str]:
         head = "would embed" if self.dry_run else "embedded"
@@ -178,6 +212,12 @@ class EmbedReport:
             f"  {head}:  {self.chunks_embedded} chunks in "
             f"{self.requests} requests, {self.retries} retries"
         )
+        if self.window_tokens is not None:
+            lines.append(
+                f"  window:    {self.over_window} of {self.chunks_embedded} chunks "
+                f"exceed the model's {self.window_tokens}-token window; only "
+                f"their first {self.window_tokens} tokens were embedded"
+            )
         return lines
 
 
@@ -290,8 +330,17 @@ async def embed_prospect(
     if client is None:
         client = build_client()
 
+    # Counted, not absorbed (docs/open-questions.md §1.11). Only a local model
+    # has a window to count against: the OpenAI API rejects an input that is
+    # too long instead of cutting it, so there is nothing to count there.
+    if isinstance(client, LocalEmbedder):
+        report.window_tokens = client.window_tokens()
+
     for batch in plan_batches(pending):
-        vectors = await embed_texts(client, [c.content for c in batch], report)
+        texts = [c.content for c in batch]
+        vectors = await embed_texts(client, texts, report)
+        if report.window_tokens is not None:
+            report.over_window += client.count_over_window(texts)
         report.chunks_embedded += await scope.write_embeddings(
             [c.id for c in batch],
             EmbeddingBatch(

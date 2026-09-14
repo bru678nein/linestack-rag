@@ -62,12 +62,19 @@ from linestack.evaluation.metrics import (
     CoverageReport,
     Recall,
     SignalReport,
+    _normalise_url,
     check_no_leakage,
     ingestion_coverage,
     recalls_for_question,
     signal_accuracy,
 )
-from linestack.generation.answer import AnswerUnavailable, answer
+from linestack.generation.answer import (
+    DECLINE_INSIDE,
+    DECLINE_WRAPPED,
+    AnswerUnavailable,
+    answer,
+    decline_form,
+)
 from linestack.generation.prompts import PROMPT_VERSION
 from linestack.retrieval.embedding import build_client, embed_question
 from linestack.retrieval.queries import query_version, retrieval_query
@@ -82,6 +89,39 @@ UNWRITTEN = "unwritten"  # the author has not filled it in yet
 NO_EVIDENCE_EXPECTED = "insufficient_evidence"  # correct, and cites nothing
 NOT_INGESTED = "not_ingested"  # cited pages are not in the corpus
 
+#: Where the evidence stopped on an answered pair (roadmap 1.1). Named rather
+#: than collapsed for the same reason as the statuses above (A5): a wrong answer
+#: over a context that held an expected source is a generation failure, one
+#: whose source the budget cut is a budget failure, and one whose source never
+#: reached answer()'s top-k is a retrieval failure -- three different fixes
+#: (A8). Mechanical: a label says what the model was shown, never whether its
+#: answer was right.
+ADMITTED = "admitted"
+DROPPED_FOR_BUDGET = "dropped_for_budget"
+NOT_RETRIEVED = "not_retrieved"
+#: An insufficient_evidence pair cites nothing, so nothing on it can be
+#: admitted. What the model was shown instead is the bait, and the recorded
+#: passages -- their kinds and URLs -- are what it was tempted with.
+BAIT_ADMITTED = "bait_admitted"
+EMPTY_CONTEXT = "empty_context"
+
+
+@dataclass
+class AdmittedPassage:
+    """One passage the model was given, as the run record keeps it.
+
+    Everything except the text. The text stays in the database under
+    `chunk_id`; a run record is written to be committed, and the text of a
+    team page is a list of people's names.
+    """
+
+    number: int
+    chunk_id: int
+    source_url: str
+    kind: str
+    score: float
+    tokens: int
+
 
 @dataclass
 class PairResult:
@@ -90,6 +130,7 @@ class PairResult:
     detail: str = ""
     recalls: list[Recall] = field(default_factory=list)
     coverage: CoverageReport | None = None
+    #: The top of the ranking, cut at the deepest recall cut-off.
     retrieved_urls: list[str] = field(default_factory=list)
     #: The generated answer, when the run was given a generator. `declined` is
     #: None when no answer was attempted, which is different from an answer
@@ -98,6 +139,25 @@ class PairResult:
     declined: bool | None = None
     answer_problems: list[str] = field(default_factory=list)
     answer_detail: str = ""
+    #: How many chunks `first_hit_rank` was measured over: every embedded chunk
+    #: of the prospect, so a first hit at 14 of 43 reads as that rather than as
+    #: "never retrieved". Recall@k is still cut at k.
+    ranked: int | None = None
+    #: What answer() put in front of the model, copied from its context (A8).
+    #: Empty or None whenever no answer was produced.
+    context_passages: list[AdmittedPassage] = field(default_factory=list)
+    dropped_chunk_ids: list[int] = field(default_factory=list)
+    over_budget: bool | None = None
+    #: Scored pairs: distinct expected sources among the admitted passages, of
+    #: the distinct expected sources.
+    expected_admitted: int | None = None
+    expected_total: int | None = None
+    #: ADMITTED, DROPPED_FOR_BUDGET, NOT_RETRIEVED, BAIT_ADMITTED or
+    #: EMPTY_CONTEXT, on answered pairs only.
+    context_label: str | None = None
+    #: answer.decline_form of the reply. Recorded beside `declined` and never
+    #: counted: `declined` alone decides the decline counts.
+    decline_form: str | None = None
 
     @property
     def first_hit_rank(self) -> int | None:
@@ -212,9 +272,9 @@ class RunRecord:
             lines += [f"    {line}" for line in _signal_lines(prospect.signals)]
             for pair in prospect.pairs:
                 lines.append(f"    {_pair_line(pair)}")
-                note = _answer_note(pair)
-                if note:
-                    lines.append(f"      {note}")
+                for note in (_answer_note(pair), _context_note(pair)):
+                    if note:
+                        lines.append(f"      {note}")
 
         scored = sum(len(p.scored) for p in self.prospects)
         lines.append(f"  scored:    {scored} pair(s)")
@@ -275,9 +335,29 @@ def _pair_line(pair: PairResult) -> str:
     if pair.status != SCORED:
         return f"{pair.question_id}: {pair.status} ({pair.detail})"
     rank = pair.first_hit_rank
-    where = f"first hit at rank {rank}" if rank else "evidence never retrieved"
+    depth = f" of {pair.ranked}" if pair.ranked else ""
+    where = f"first hit at rank {rank}{depth}" if rank else "evidence never retrieved"
     hits = " ".join(f"@{r.k}={'hit' if r.hit else 'miss'}" for r in pair.recalls)
     return f"{pair.question_id}: {hits}  ({where})"
+
+
+def _context_note(pair: PairResult) -> str:
+    """What the model was shown, on answered pairs only (roadmap 1.1).
+
+    The decline form is named only when it is why a reply that reads like a
+    decline was not counted as one: "starts" is already in the decline count,
+    and "absent" says nothing.
+    """
+    if pair.context_label is None:
+        return ""
+    parts = [f"context: {pair.context_label}"]
+    if pair.expected_total:
+        parts.append(
+            f"{pair.expected_admitted} of {pair.expected_total} sources admitted"
+        )
+    if pair.decline_form in (DECLINE_WRAPPED, DECLINE_INSIDE):
+        parts.append(f"decline phrase: {pair.decline_form}")
+    return "; ".join(parts)
 
 
 def _answer_note(pair: PairResult) -> str:
@@ -298,6 +378,42 @@ def _answer_note(pair: PairResult) -> str:
         )
     extra = f"; {'; '.join(pair.answer_problems)}" if pair.answer_problems else ""
     return f"answer: {verdict}{extra}"
+
+
+# --------------------------------------------------------------------------- #
+# what reached the model, decided without touching a database (roadmap 1.1)
+# --------------------------------------------------------------------------- #
+def sources_admitted(expected: list[str], admitted: list[str]) -> tuple[int, int]:
+    """(expected sources admitted, expected sources), as distinct pages.
+
+    URLs compare the way recall compares them (`metrics._normalise_url`), so
+    two chunks of one page, or a trailing slash, are one source.
+    """
+    wanted = {_normalise_url(u) for u in expected}
+    shown = {_normalise_url(u) for u in admitted}
+    return len(wanted & shown), len(wanted)
+
+
+def label_context(
+    status: str, expected: list[str], admitted: list[str], dropped: list[str]
+) -> str:
+    """Where the evidence stopped on an answered pair (A5).
+
+    `admitted` and `dropped` are the source URLs of the passages answer() put
+    in front of the model and of those its token budget cut. Admission is
+    checked first: an expected page with one chunk admitted and another
+    dropped was shown to the model, so a wrong answer over it is the model's.
+    """
+    if status == NO_EVIDENCE_EXPECTED:
+        return BAIT_ADMITTED if admitted else EMPTY_CONTEXT
+    if status != SCORED:
+        raise ValueError(f"a {status} pair is never answered, so it has no context")
+    wanted = {_normalise_url(u) for u in expected}
+    if wanted & {_normalise_url(u) for u in admitted}:
+        return ADMITTED
+    if wanted & {_normalise_url(u) for u in dropped}:
+        return DROPPED_FOR_BUDGET
+    return NOT_RETRIEVED
 
 
 # --------------------------------------------------------------------------- #
@@ -523,6 +639,7 @@ async def _evaluate_prospect(
             await _answer_pair(
                 session,
                 domain,
+                scope,
                 question,
                 pair,
                 record,
@@ -567,28 +684,40 @@ async def _evaluate_pair(
         retrieval_query(str(question.get("question", "")), qid)
     )
 
+    # The whole prospect is ranked, so the first hit's rank is known however
+    # deep it is. "Missed at 10, found at 14" and "missed at 10, found at 97"
+    # are different problems (A8), and cut at 10 both read "never retrieved".
+    # Never shallower than the deepest cut-off, so a prospect with fewer
+    # embedded chunks than that is ranked by exactly the query it always was.
+    depth = max(await scope.count_embedded(), max(cutoffs))
+
     started = time.perf_counter()
-    hits = await search(scope, query_vector, k=max(cutoffs))
+    hits = await search(scope, query_vector, k=depth)
     urls = await scope.source_urls([hit.id for hit in hits])
     record.retrieve_seconds += time.perf_counter() - started
 
     # A1 is a hard boundary, so this raises and voids the run rather than
-    # lowering a score (docs/evaluation.md §1).
+    # lowering a score (docs/evaluation.md §1). Every ranked hit is checked,
+    # not only the top ten: a foreign chunk at rank 40 is as much a leak.
     check_no_leakage([hit.id for hit in hits], set(urls))
 
-    retrieved = [urls[hit.id] for hit in hits]
+    ranking = [urls[hit.id] for hit in hits]
     return PairResult(
         question_id=qid,
         status=SCORED,
-        recalls=recalls_for_question(qid, retrieved, expected, cutoffs),
+        # recall_at_k cuts the ranking at each k itself, so handing it the
+        # whole ranking moves first_hit_rank and nothing else.
+        recalls=recalls_for_question(qid, ranking, expected, cutoffs),
         coverage=coverage,
-        retrieved_urls=retrieved,
+        retrieved_urls=ranking[: max(cutoffs)],
+        ranked=len(ranking),
     )
 
 
 async def _answer_pair(
     session,
     domain: str,
+    scope: ProspectScope,
     question: dict[str, Any],
     pair: PairResult,
     record: RunRecord,
@@ -597,10 +726,12 @@ async def _answer_pair(
     count_tokens=None,
 ) -> None:
     """Answer one pair through the path a user gets, and record whether it
-    declined.
+    declined and what it was shown.
 
     answer() is called as a black box on purpose. A decline count measured on
-    anything but the real answering path would measure something else.
+    anything but the real answering path would measure something else. For
+    the same reason, the context recorded is the one answer() returns, read
+    back rather than rebuilt from the harness's own ranking.
     """
     load_before = generator.load_seconds
     try:
@@ -621,6 +752,27 @@ async def _answer_pair(
     pair.answer = result.text
     pair.declined = result.declined
     pair.answer_problems = result.problems
+    pair.decline_form = decline_form(result.text)
+
+    context = result.context
+    pair.context_passages = [
+        AdmittedPassage(p.number, p.chunk_id, p.source_url, p.kind, p.score, p.tokens)
+        for p in context.passages
+    ]
+    pair.dropped_chunk_ids = list(context.dropped)
+    pair.over_budget = context.over_budget
+    admitted = [p.source_url for p in context.passages]
+    dropped = (
+        list((await scope.source_urls(list(context.dropped))).values())
+        if context.dropped
+        else []
+    )
+    expected = written_source_urls(question) or []
+    if pair.status == SCORED:
+        pair.expected_admitted, pair.expected_total = sources_admitted(
+            expected, admitted
+        )
+    pair.context_label = label_context(pair.status, expected, admitted, dropped)
 
 
 async def _main(argv: list[str]) -> int:

@@ -320,3 +320,72 @@ def test_a_bge_model_gets_the_query_prefix_and_documents_do_not() -> None:
 
     _Stub("some/other-model").embed_query("who works here")
     assert captured["texts"] == ["who works here"]
+
+
+# ---------------------------------------------------------------------------
+# The local window (docs/open-questions.md §1.11)
+# ---------------------------------------------------------------------------
+class _Windowed:
+    """Stands in for a SentenceTransformer: a declared window, and a tokenizer
+    that yields one id per word plus the two special tokens bge adds. No
+    weights and no download, like the stub above."""
+
+    def __init__(self, window: int | None) -> None:
+        self.max_seq_length = window
+        self.calls: list[dict] = []
+
+    def tokenizer(self, texts, **kwargs):
+        self.calls.append(kwargs)
+        return {"input_ids": [[0] * (len(t.split()) + 2) for t in texts]}
+
+
+def _local_with(model):
+    from linestack.retrieval.embedding import LocalEmbedder
+
+    class _Stub(LocalEmbedder):
+        def _load(self):
+            return model
+
+    return _Stub("BAAI/bge-small-en-v1.5")
+
+
+def test_inputs_past_the_local_window_are_counted() -> None:
+    """Counted, not absorbed: bge embeds the first 512 tokens of an input and
+    drops the rest without a word. An input exactly at the window is whole."""
+    texts = ["one two three four", "one two three four five", "a b c d e f g h"]
+
+    assert _local_with(_Windowed(window=6)).count_over_window(texts) == 2
+
+
+def test_the_window_is_counted_untruncated_and_with_special_tokens() -> None:
+    """A tokenizer left to truncate reports every input as fitting, and one
+    without the special tokens undercounts by two. Both read as no loss."""
+    model = _Windowed(window=512)
+
+    _local_with(model).count_over_window(["text"])
+
+    assert model.calls == [
+        {"add_special_tokens": True, "truncation": False, "verbose": False}
+    ]
+
+
+def test_a_model_that_declares_no_window_counts_nothing() -> None:
+    assert _local_with(_Windowed(window=None)).count_over_window(["a " * 900]) == 0
+
+
+def test_the_report_states_how_many_inputs_the_window_cut() -> None:
+    report = EmbedReport(
+        prospect_id=1, chunks_embedded=110, over_window=82, window_tokens=512
+    )
+    lines = "\n".join(report.as_lines())
+
+    assert "82 of 110 chunks" in lines
+    assert "512-token window" in lines
+
+
+def test_no_window_line_where_the_count_does_not_apply() -> None:
+    """An OpenAI model, or a dry run: no line, rather than a zero that reads as
+    "nothing was cut"."""
+    lines = "\n".join(EmbedReport(prospect_id=1, chunks_embedded=43).as_lines())
+
+    assert "window:" not in lines

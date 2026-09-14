@@ -11,31 +11,67 @@ first hypothesis for a wrong answer is that the right chunk was never
 retrieved. This command is how that hypothesis gets tested by eye, cheaply,
 before anyone spends a week tuning a prompt to fix a chunking bug.
 
+An evaluated question can be asked by id. It is then asked in the ground-truth
+set's words and searched with the query written for it (ADR-0025), so the
+ranking shown is the one answer() and the harness get. Asked as free text, the
+same question searches with its own words, which is a different ranking -- and
+until the id existed it was the only one this command could show. `full` ranks
+every embedded chunk of the prospect, for the page at rank 14 that a cut at 10
+hides.
+
 Costs one embedding call per question -- roughly 20 tokens, a rounding error
 against the corpus itself. Nothing is written to the database.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 
 from sqlalchemy import text
 
 from linestack.config import settings
+from linestack.evaluation.dataset import QUESTION_IDS, QUESTIONS
 from linestack.retrieval.embedding import build_client, embed_question
+from linestack.retrieval.queries import query_version, retrieval_query
 from linestack.retrieval.scope import ProspectScope
 from linestack.retrieval.search import format_hits, search
+
+
+def question_and_query(
+    question: str | None, question_id: str | None = None
+) -> tuple[str, str]:
+    """The words shown, and the words searched with.
+
+    An evaluated question is asked in the ground-truth set's words and searched
+    with its written query -- the same pair answer() uses. Free text searches
+    with its own words, as it always has.
+    """
+    if question_id is not None:
+        if question_id not in QUESTIONS:
+            raise ValueError(
+                f"unknown question id {question_id!r}; one of {list(QUESTIONS)}"
+            )
+        if question is None:
+            question = QUESTIONS[question_id]
+    if not question:
+        raise ValueError("pass a question or a question_id")
+    return question, retrieval_query(question, question_id)
 
 
 async def ask(
     session,
     domain: str,
-    question: str,
+    question: str | None = None,
     *,
+    question_id: str | None = None,
     k: int | None = None,
+    full: bool = False,
     client=None,
 ) -> list[str]:
     """Answer nothing; show the evidence. Returns lines ready to print."""
+    question, query = question_and_query(question, question_id)
+
     prospect_id = await session.scalar(
         text("SELECT id FROM prospects WHERE domain = :d"),
         {"d": domain.lower()},
@@ -65,14 +101,18 @@ async def ask(
 
     # The query-side instruction bge expects is applied inside embed_question,
     # the one place that rule now lives (it used to be copied here).
-    query_vector = await embed_question(client, question)
+    query_vector = await embed_question(client, query)
 
-    hits = await search(scope, query_vector, k=k)
+    hits = await search(scope, query_vector, k=embedded if full else k)
     urls = await scope.source_urls([hit.id for hit in hits])
 
     lines = [
         f"  prospect:  {domain} (id {prospect_id}), {embedded} embedded chunks",
         f"  question:  {question}",
+    ]
+    if query != question:
+        lines.append(f"  searched:  {query}  ({query_version()})")
+    lines += [
         f"  model:     {settings.embedding_model}",
         "",
         *format_hits(hits, urls),
@@ -86,20 +126,51 @@ async def ask(
     return lines
 
 
-async def _main(argv: list[str]) -> int:
-    import argparse
+def _at_least_one(value: str) -> int:
+    k = int(value)
+    if k < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {k}")
+    return k
 
-    from linestack.db import session_factory
 
+def build_parser() -> argparse.ArgumentParser:
+    """The command line, apart from the run so its rules are testable without
+    a database: one of a question or an evaluated id, and one of a depth or
+    the whole prospect."""
     parser = argparse.ArgumentParser(prog="linestack.retrieval.ask")
     parser.add_argument("--prospect", required=True, help="domain, e.g. fly.io")
-    parser.add_argument("--question", required=True)
-    parser.add_argument("-k", type=int, default=None, help="chunks to return")
-    args = parser.parse_args(argv)
+    asked = parser.add_mutually_exclusive_group(required=True)
+    asked.add_argument("--question", help="free text, searched with its own words")
+    asked.add_argument(
+        "--id",
+        choices=QUESTION_IDS,
+        help="an evaluated question, searched with its written query (ADR-0025)",
+    )
+    depth = parser.add_mutually_exclusive_group()
+    depth.add_argument("-k", type=_at_least_one, default=None, help="chunks to return")
+    depth.add_argument(
+        "--full",
+        action="store_true",
+        help="rank every embedded chunk of the prospect",
+    )
+    return parser
 
+
+async def _main(argv: list[str]) -> int:
+    from linestack.db import session_factory
+
+    args = build_parser().parse_args(argv)
     async with session_factory() as session:
-        for line in await ask(session, args.prospect, args.question, k=args.k):
-            print(line)
+        lines = await ask(
+            session,
+            args.prospect,
+            args.question,
+            question_id=args.id,
+            k=args.k,
+            full=args.full,
+        )
+    for line in lines:
+        print(line)
     return 0
 
 

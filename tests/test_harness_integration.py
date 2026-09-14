@@ -18,6 +18,8 @@ pytest.importorskip("sqlalchemy")
 from sqlalchemy import text  # noqa: E402
 
 from linestack.evaluation.harness import (  # noqa: E402
+    ADMITTED,
+    BAIT_ADMITTED,
     NOT_INGESTED,
     SCORED,
     UNWRITTEN,
@@ -430,4 +432,121 @@ async def test_nothing_to_answer_from_is_reported_not_counted(
     pair = record.prospects[0].pairs[0]
     assert "no embedded chunks" in pair.answer_detail
     assert record.declines_on_insufficient() is None
+    await db_session.rollback()
+
+
+# ---------------------------------------------------------------------------
+# what reached the model (roadmap 1.1)
+# ---------------------------------------------------------------------------
+_Q2 = {
+    "id": "q2_technical_capacity",
+    "question": "Who builds their technology?",
+    "reference": "A written answer.",
+    "source_urls": [f"https://{DOMAIN}/team"],
+}
+
+
+async def test_what_the_model_was_shown_is_recorded_with_its_label(
+    db_session, tmp_path
+) -> None:
+    """The context is read back from answer(), not rebuilt. The one chunk is
+    on the cited page, so the label is ADMITTED: a wrong answer here would be
+    the model's. The record keeps the passage's identity and never its text."""
+    await _seed_answerable(db_session)
+    _write(tmp_path, questions=[_Q2])
+
+    record = await evaluate_directory(
+        db_session,
+        tmp_path,
+        client=_VecStub(),
+        generator=_Reply("They build their own apps [1]."),
+        count_tokens=_words,
+    )
+
+    pair = record.prospects[0].pairs[0]
+    assert pair.context_label == ADMITTED
+    assert [p.source_url for p in pair.context_passages] == [f"https://{DOMAIN}/team"]
+    assert (pair.expected_admitted, pair.expected_total) == (1, 1)
+    assert pair.dropped_chunk_ids == [] and pair.over_budget is False
+    assert pair.decline_form == "absent"
+    assert "not hiring" not in record.to_json(), "passage text stays out"
+    await db_session.rollback()
+
+
+async def test_a_decline_said_too_late_is_recorded_as_inside(
+    db_session, tmp_path
+) -> None:
+    """thoughtbot q3's shape under queries-v1 (ADR-0025): the right conclusion
+    with the phrase at the end. Still counted as answered, exactly as before;
+    the form says why."""
+    await _seed_answerable(db_session)
+    _write(tmp_path, questions=[_Q3])
+
+    record = await evaluate_directory(
+        db_session,
+        tmp_path,
+        client=_VecStub(),
+        generator=_Reply("Nothing here shows growth [1]. Insufficient evidence."),
+        count_tokens=_words,
+    )
+
+    pair = record.prospects[0].pairs[0]
+    assert pair.declined is False
+    assert pair.decline_form == "inside"
+    assert pair.context_label == BAIT_ADMITTED
+    assert record.declines_on_insufficient() == (0, 1)
+    await db_session.rollback()
+
+
+async def test_a_first_hit_past_rank_ten_is_reported_with_its_rank(
+    db_session, tmp_path
+) -> None:
+    """thoughtbot's roster at 14 of 43 read "evidence never retrieved" while
+    the harness ranked ten deep. Eleven closer chunks on another page push the
+    cited page to 12th: recall@10 is still a miss, and now the rank is known."""
+    from linestack.config import settings
+
+    prospect_id = await _seed(db_session, {})
+    dim = settings.embedding_dimensions
+    near = [1.0] + [0.0] * (dim - 1)
+    far = [0.0, 1.0] + [0.0] * (dim - 2)
+    team_id = await db_session.scalar(
+        text("SELECT id FROM documents WHERE prospect_id = :p"), {"p": prospect_id}
+    )
+    blog_id = await db_session.scalar(
+        text(
+            "INSERT INTO documents "
+            "  (prospect_id, source_url, kind, content_hash, fetched_at) "
+            "VALUES (:p, :u, 'website', 'h2', now()) RETURNING id"
+        ),
+        {"p": prospect_id, "u": f"https://{DOMAIN}/blog"},
+    )
+    for document_id, index, vector in [(blog_id, i, near) for i in range(11)] + [
+        (team_id, 0, far)
+    ]:
+        await db_session.execute(
+            text(
+                "INSERT INTO chunks (document_id, prospect_id, kind, chunk_index, "
+                "  content, token_count, embedding, embedding_model) "
+                "VALUES (:d, :p, 'website', :i, 'probe', 1, "
+                "  CAST(:e AS halfvec), :m)"
+            ),
+            {
+                "d": document_id,
+                "p": prospect_id,
+                "i": index,
+                "e": str(vector),
+                "m": settings.embedding_model,
+            },
+        )
+    await db_session.flush()
+    _write(tmp_path, questions=[_Q2])
+
+    record = await evaluate_directory(db_session, tmp_path, client=_VecStub())
+
+    pair = record.prospects[0].pairs[0]
+    assert (pair.first_hit_rank, pair.ranked) == (12, 12)
+    assert len(pair.retrieved_urls) == 10
+    assert record.recall_at(10) == 0.0
+    assert any("first hit at rank 12 of 12" in line for line in record.as_lines())
     await db_session.rollback()

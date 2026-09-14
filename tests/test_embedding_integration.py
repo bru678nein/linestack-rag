@@ -218,3 +218,82 @@ async def test_embedded_chunks_are_searchable_within_their_prospect(
         {"ids": [h.id for h in hits]},
     )
     assert {r[0] for r in owners} == {prospect_id}
+
+
+class _Vector(list):
+    """A numpy row's .tolist(), without numpy (see test_embedding_units)."""
+
+    def tolist(self):
+        return list(self)
+
+
+def _windowed_local(window: int):
+    """A LocalEmbedder whose model is a stub: a declared window, a tokenizer
+    that yields one id per word plus bge's two special tokens, and a fixed
+    vector. No weights are loaded."""
+    from linestack.retrieval.embedding import LocalEmbedder
+
+    class _Model:
+        max_seq_length = window
+
+        @staticmethod
+        def tokenizer(texts, **kwargs):
+            return {"input_ids": [[0] * (len(t.split()) + 2) for t in texts]}
+
+        @staticmethod
+        def encode(texts, **kwargs):
+            return [_Vector([1.0] + [0.0] * (DIM - 1)) for _ in texts]
+
+    class _Local(LocalEmbedder):
+        def _load(self):
+            return _Model()
+
+    return _Local(settings.embedding_model)
+
+
+async def test_chunks_past_the_local_window_are_counted_and_still_embedded(
+    db_session,
+) -> None:
+    """docs/open-questions.md §1.11: bge embeds the first 512 tokens of a chunk
+    and drops the rest without a word. The pass counts the chunks it cut and
+    embeds every one of them exactly as before: a record, not a filter."""
+    prospect_id = await db_session.scalar(
+        text(
+            "INSERT INTO prospects (company_name, domain) "
+            "VALUES ('W', 'window-probe.test') RETURNING id"
+        )
+    )
+    document_id = await db_session.scalar(
+        text(
+            "INSERT INTO documents "
+            "  (prospect_id, source_url, kind, content_hash, fetched_at) "
+            "VALUES (:p, 'https://window-probe.test/', 'website', 'h-window', now()) "
+            "RETURNING id"
+        ),
+        {"p": prospect_id},
+    )
+    for index, words in enumerate((5, 48, 49, 300)):
+        await db_session.execute(
+            text(
+                "INSERT INTO chunks (document_id, prospect_id, kind, chunk_index, "
+                "  content, token_count) "
+                "VALUES (:d, :p, 'website', :i, :c, :t)"
+            ),
+            {
+                "d": document_id,
+                "p": prospect_id,
+                "i": index,
+                "c": " ".join(["word"] * words),
+                "t": words,
+            },
+        )
+    await db_session.flush()
+
+    report = await embed_prospect(
+        db_session, prospect_id, client=_windowed_local(50), commit=False
+    )
+
+    assert report.window_tokens == 50
+    assert report.over_window == 2, "49 and 300 words, with [CLS] and [SEP], exceed 50"
+    assert report.chunks_embedded == 4, "every chunk is still embedded"
+    assert "2 of 4 chunks" in "\n".join(report.as_lines())

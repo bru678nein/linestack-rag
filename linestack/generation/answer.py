@@ -250,6 +250,48 @@ def is_decline(answer_text: str) -> bool:
     return answer_text.strip().lower().startswith(phrase)
 
 
+#: Where a reply carries the decline phrase. Recorded beside `declined`, never
+#: counted: `is_decline` alone decides what counts as a decline (roadmap 1.1).
+DECLINE_STARTS = "starts"
+DECLINE_WRAPPED = "wrapped_start"
+DECLINE_INSIDE = "inside"
+DECLINE_ABSENT = "absent"
+
+# What may sit in front of the phrase without saying anything: markdown
+# emphasis, quote and heading marks, list bullets, quotation marks -- anything
+# that is not a letter or a digit. "Note: Insufficient evidence." is not
+# wrapped, because "Note" is a word.
+_WRAPPER_RE = re.compile(r"^[\W_]+")
+
+
+def decline_form(answer_text: str) -> str:
+    """Where the decline phrase sits in a reply, for the record only.
+
+    `is_decline` counts a reply only when it OPENS with the phrase, and that
+    rule does not change here: it is what the prompt asks for and what the
+    decline counts mean. This says why a reply that reads like a decline was
+    not counted as one, which the counts alone cannot:
+
+    - "starts": `is_decline` is true.
+    - "wrapped_start": the phrase opens the reply once markdown or punctuation
+      is set aside -- "**Insufficient evidence.**", "> Insufficient evidence.".
+    - "inside": the phrase comes after something else was said. thoughtbot q3
+      under queries-v1 (ADR-0025): "There are no signals of investment or
+      growth… Insufficient evidence." It also catches the two words in an
+      ordinary sentence, one more reason this is recorded and not counted.
+    - "absent": the phrase is nowhere in the reply.
+    """
+    if is_decline(answer_text):
+        return DECLINE_STARTS
+    phrase = INSUFFICIENT.rstrip(".").lower()
+    lowered = answer_text.strip().lower()
+    if _WRAPPER_RE.sub("", lowered).startswith(phrase):
+        return DECLINE_WRAPPED
+    if phrase in lowered:
+        return DECLINE_INSIDE
+    return DECLINE_ABSENT
+
+
 # --------------------------------------------------------------------------- #
 # the answer
 # --------------------------------------------------------------------------- #

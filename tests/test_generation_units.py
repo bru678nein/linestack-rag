@@ -18,6 +18,7 @@ from linestack.generation.answer import (
     Context,
     GeneratedAnswer,
     assemble_context,
+    decline_form,
     is_decline,
     parse_citations,
     render_context,
@@ -309,6 +310,42 @@ def test_a_decline_is_recognised_by_its_fixed_phrase() -> None:
     assert is_decline("Insufficient evidence. No page mentions funding.")
     assert is_decline("  insufficient evidence -- nothing about hiring.")
     assert not is_decline("They have insufficient evidence of growth [1].")
+
+
+# thoughtbot q3 under queries-v1, as ADR-0025 records it: the right conclusion,
+# with the phrase after it instead of before.
+THOUGHTBOT_Q3 = "There are no signals of investment or growth… Insufficient evidence."
+
+
+@pytest.mark.parametrize(
+    "reply, form",
+    [
+        ("Insufficient evidence. No page mentions funding.", "starts"),
+        ("  insufficient evidence -- nothing about hiring.", "starts"),
+        ("**Insufficient evidence.** No page mentions funding.", "wrapped_start"),
+        ("> Insufficient evidence. No page mentions funding.", "wrapped_start"),
+        ('"Insufficient evidence." No page mentions funding.', "wrapped_start"),
+        ("- **Insufficient evidence**: nothing about hiring.", "wrapped_start"),
+        (THOUGHTBOT_Q3, "inside"),
+        (THOUGHTBOT_Q3 + " Nothing mentions funding or hiring.", "inside"),
+        ("Note: Insufficient evidence. Nothing mentions hiring.", "inside"),
+        # The two words in an ordinary sentence land here too, which is one
+        # reason the form is recorded and never counted.
+        ("They have insufficient evidence of growth [1].", "inside"),
+        ("They build Rails apps for startups [1].", "absent"),
+        ("", "absent"),
+    ],
+)
+def test_where_the_decline_phrase_sits_is_recorded(reply: str, form: str) -> None:
+    assert decline_form(reply) == form
+
+
+def test_the_decline_form_does_not_change_what_counts_as_a_decline() -> None:
+    """Recorded, not counted. thoughtbot q3 said the right thing in the wrong
+    form and was counted as answered (ADR-0025); the form names why, and the
+    count stays what the prompt asks for."""
+    assert not is_decline(THOUGHTBOT_Q3)
+    assert not is_decline("**Insufficient evidence.** No page mentions funding.")
 
 
 def _answer(reply: str, passage_count: int = 3) -> GeneratedAnswer:

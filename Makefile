@@ -211,13 +211,16 @@ embed:  ## Embed pending chunks: make embed PROSPECT=fly.io [DRY=1]
 	$(PY) -m linestack.retrieval.embedding --prospect $(PROSPECT) $(if $(DRY),--dry-run,)
 
 .PHONY: ask
-ask:  ## Retrieve for one question: make ask PROSPECT=fly.io Q="..."
-# Shows retrieved chunks and their scores. There is no generation yet, and that
-# is deliberate: A8 says the first hypothesis for a wrong answer is that the
-# right chunk was never retrieved, so this is where that gets checked by eye.
-	@test -n "$(PROSPECT)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"'; exit 2; }
-	@test -n "$(Q)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"'; exit 2; }
-	$(PY) -m linestack.retrieval.ask --prospect $(PROSPECT) --question "$(Q)" $(if $(K),-k $(K),)
+ask:  ## Retrieve for one question: make ask PROSPECT=fly.io Q="..." (or ID=q2_technical_capacity) [K=n] [FULL=1]
+# Shows retrieved chunks and their scores; no model writes anything here. A8
+# says the first hypothesis for a wrong answer is that the right chunk was
+# never retrieved, so this is where that gets checked by eye. ID= asks an
+# evaluated question and searches with the query written for it (ADR-0025) --
+# the ranking answer() and the harness get. FULL=1 ranks every embedded chunk.
+	@test -n "$(PROSPECT)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"   or   ID=q2_technical_capacity'; exit 2; }
+	@test -n "$(Q)$(ID)" || { echo 'usage: make ask PROSPECT=fly.io Q="your question"   or   ID=q2_technical_capacity'; exit 2; }
+	$(PY) -m linestack.retrieval.ask --prospect $(PROSPECT) \
+	  $(if $(ID),--id $(ID),--question "$(Q)") $(if $(K),-k $(K),) $(if $(FULL),--full,)
 
 .PHONY: answer
 answer:  ## Answer with citations: make answer PROSPECT=x Q="..." (or ID=q2_technical_capacity)
